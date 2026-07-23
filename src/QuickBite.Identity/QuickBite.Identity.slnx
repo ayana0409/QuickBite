@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/QuickBite.Identity.Application.Contracts/QuickBite.Identity.Application.Contracts.csproj" />
+    <Project Path="src/QuickBite.Identity.Application/QuickBite.Identity.Application.csproj" />
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <Project Path="src/QuickBite.Identity.DbMigrator/QuickBite.Identity.DbMigrator.csproj" />
+    <Project Path="src/QuickBite.Identity.Domain.Shared/QuickBite.Identity.Domain.Shared.csproj" />
+    <Project Path="src/QuickBite.Identity.Domain/QuickBite.Identity.Domain.csproj" />
+    <Project Path="src/QuickBite.Identity.EntityFrameworkCore/QuickBite.Identity.EntityFrameworkCore.csproj" />
+    <Project Path="src/QuickBite.Identity.HttpApi.Client/QuickBite.Identity.HttpApi.Client.csproj" />
+    
+    
+    <Project Path="src/QuickBite.Identity.HttpApi/QuickBite.Identity.HttpApi.csproj" />
+    
+    
+    <Project Path="src/QuickBite.Identity.Web/QuickBite.Identity.Web.csproj" />
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/QuickBite.Identity.Application.Tests/QuickBite.Identity.Application.Tests.csproj" />
+    <Project Path="test/QuickBite.Identity.Domain.Tests/QuickBite.Identity.Domain.Tests.csproj" />
+    <Project Path="test/QuickBite.Identity.EntityFrameworkCore.Tests/QuickBite.Identity.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="test/QuickBite.Identity.HttpApi.Client.ConsoleTestApp/QuickBite.Identity.HttpApi.Client.ConsoleTestApp.csproj" />
+    
+    <Project Path="test/QuickBite.Identity.TestBase/QuickBite.Identity.TestBase.csproj" />
+    <Project Path="test/QuickBite.Identity.Web.Tests/QuickBite.Identity.Web.Tests.csproj" />
+  </Folder>
+</Solution>

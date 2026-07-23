@@ -1,0 +1,77 @@
+// =========================
+// QUICKBITE EVENT CONSTANTS
+// =========================
+
+// IDENTITY SERVICE
+export const USER_REGISTERED = 'user.registered';
+export const USER_UPDATED = 'user.updated';
+export const TENANT_CREATED = 'tenant.created';
+
+// ORDER SERVICE
+export const ORDER_CREATED = 'order.created';
+export const ORDER_CONFIRMED = 'order.confirmed';
+export const ORDER_CANCELLED = 'order.cancelled';
+
+// PAYMENT SERVICE
+export const PAYMENT_AUTHORIZED = 'payment.authorized';
+export const PAYMENT_CAPTURED = 'payment.captured';
+export const PAYMENT_FAILED = 'payment.failed';
+export const PAYMENT_REFUNDED = 'payment.refunded';
+
+// INVENTORY SERVICE
+export const STOCK_RESERVED = 'stock.reserved';
+export const STOCK_REJECTED = 'stock.rejected';
+export const STOCK_RELEASED = 'stock.released';
+
+// CATALOG SERVICE
+export const MENU_UPDATED = 'menu.updated';
+export const RESTAURANT_STATUS_CHANGED = 'restaurant.status.changed';
+
+// NOTIFICATION SERVICE
+export const NOTIFICATION_CREATED = 'notification.created';
+export const NOTIFICATION_SENT = 'notification.sent';
+export const NOTIFICATION_FAILED = 'notification.failed';
+
+// DELIVERY EVENTS (FUTURE)
+export const DELIVERY_CREATED = 'delivery.created';
+export const DELIVERY_ASSIGNED = 'delivery.assigned';
+export const DELIVERY_PICKED_UP = 'delivery.picked_up';
+export const DELIVERY_COMPLETED = 'delivery.completed';
+export const DELIVERY_CANCELLED = 'delivery.cancelled';
+
+
+// =========================
+// KAFKA TOPICS
+// =========================
+
+export const ORDER_EVENTS_TOPIC = 'order-events';
+export const PAYMENT_EVENTS_TOPIC = 'payment-events';
+export const INVENTORY_EVENTS_TOPIC = 'inventory-events';
+export const DELIVERY_EVENTS_TOPIC = 'delivery-events';
+export const NOTIFICATION_EVENTS_TOPIC = 'notification-events';
+
+
+// =========================
+// STANDARD KAFKA HEADERS
+// =========================
+
+export const EVENT_ID = 'eventId';
+export const CORRELATION_ID = 'correlationId';
+export const TENANT_ID = 'tenantId';
+export const EVENT_VERSION = 'version';
+export const OCCURRED_AT = 'occurredAt';
+
+
+// =========================
+// SAGA RELATED EVENTS
+// =========================
+
+// Order -> Payment
+export const SAGA_PAYMENT_REQUESTED = 'saga.payment.requested';
+
+// Order -> Inventory
+export const SAGA_STOCK_RESERVATION_REQUESTED = 'saga.stock.reservation.requested';
+
+// Compensation Events
+export const SAGA_RELEASE_STOCK_REQUESTED = 'saga.stock.release.requested';
+export const SAGA_REFUND_PAYMENT_REQUESTED = 'saga.payment.refund.requested';
