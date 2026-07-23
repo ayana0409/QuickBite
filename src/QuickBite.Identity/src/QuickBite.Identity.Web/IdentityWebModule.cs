@@ -21,6 +21,10 @@ using Volo.Abp.AspNetCore.Mvc.UI.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.Shared;
+using Microsoft.AspNetCore.Authentication.Google;
+using Microsoft.AspNetCore.Authentication;
+using OpenIddict.Server.AspNetCore;
+using OpenIddict.Abstractions;
 using Volo.Abp.AspNetCore.Serilog;
 using Volo.Abp.Autofac;
 using Volo.Abp.Identity.Web;
@@ -77,18 +81,44 @@ public class IdentityWebModule : AbpModule
             });
         });
 
-        if (!hostingEnvironment.IsDevelopment())
+        PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
         {
-            PreConfigure<AbpOpenIddictAspNetCoreOptions>(options =>
-            {
-                options.AddDevelopmentEncryptionAndSigningCertificate = false;
-            });
+            serverBuilder.UseAspNetCore()
+                        . EnableAuthorizationEndpointPassthrough()
+                        .EnableAuthorizationEndpointPassthrough()
+                        .DisableTransportSecurityRequirement();
+                        
+            serverBuilder.SetTokenEndpointUris("/connect/token");
+            serverBuilder.SetRevocationEndpointUris("/connect/revocation");
+            serverBuilder.SetAuthorizationEndpointUris("/connect/authorize");
+            serverBuilder.SetUserInfoEndpointUris("/connect/userinfo");
+            serverBuilder.SetIntrospectionEndpointUris("/connect/introspect");
+            serverBuilder.SetEndSessionEndpointUris("/connect/logout");
 
-            PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
+            serverBuilder.AllowAuthorizationCodeFlow()
+                .AllowRefreshTokenFlow()
+                .AllowPasswordFlow()
+                .AllowClientCredentialsFlow();
+
+            serverBuilder.RegisterScopes(
+                OpenIddictConstants.Scopes.OpenId,
+                OpenIddictConstants.Scopes.Profile,
+                OpenIddictConstants.Scopes.Email,
+                OpenIddictConstants.Scopes.Phone,
+                OpenIddictConstants.Scopes.Roles,
+                "quickbite.api"
+            );
+
+            if (!hostingEnvironment.IsDevelopment())
             {
                 serverBuilder.AddProductionEncryptionAndSigningCertificate("openiddict.pfx", "241169aa-a9c9-463e-a110-afa15c634ead");
-            });
-        }
+            }
+            else
+            {
+                serverBuilder.AddDevelopmentEncryptionCertificate();
+                serverBuilder.AddDevelopmentSigningCertificate();
+            }
+        });
     }
 
     public override void ConfigureServices(ServiceConfigurationContext context)
@@ -109,11 +139,24 @@ public class IdentityWebModule : AbpModule
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)
     {
+        var configuration = context.Services.GetConfiguration();
+
         context.Services.ForwardIdentityAuthenticationForBearer(OpenIddictValidationAspNetCoreDefaults.AuthenticationScheme);
         context.Services.Configure<AbpClaimsPrincipalFactoryOptions>(options =>
         {
             options.IsDynamicClaimsEnabled = true;
         });
+
+        // context.Services.AddAuthentication()
+        //     .AddGoogle(options =>
+        //     {
+        //         options.ClientId = configuration["Authentication:Google:ClientId"];
+        //         options.ClientSecret = configuration["Authentication:Google:ClientSecret"];
+        //         options.CallbackPath = "/signin-google";
+        //         options.Scope.Add("profile");
+        //         options.Scope.Add("email");
+        //         options.SaveTokens = true;
+        //     });
     }
 
     private void ConfigureUrls(IConfiguration configuration)
