@@ -12,8 +12,7 @@ namespace QuickBite.Identity;
 [DependsOn(
     typeof(AbpAutofacModule),
     typeof(AbpTestBaseModule),
-    typeof(AbpAuthorizationModule),
-    typeof(AbpBackgroundJobsAbstractionsModule)
+    typeof(AbpAuthorizationModule)
     )]
 public class IdentityTestBaseModule : AbpModule
 {
