@@ -40,6 +40,7 @@ using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.UI;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.VirtualFileSystem;
+using Volo.Abp.AspNetCore.Mvc.Libs;
 
 namespace QuickBite.Identity.Web;
 
@@ -129,6 +130,12 @@ public class IdentityWebModule : AbpModule
         Configure<AppUrlOptions>(options =>
         {
             options.Applications["MVC"].RootUrl = configuration["App:SelfUrl"];
+        });
+
+        
+        Configure<AbpMvcLibsOptions>(options =>
+        {
+            options.CheckLibs = false;
         });
     }
 
