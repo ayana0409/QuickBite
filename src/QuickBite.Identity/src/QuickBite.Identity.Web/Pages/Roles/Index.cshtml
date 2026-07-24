@@ -1,0 +1,72 @@
+@page
+@model QuickBite.Identity.Web.Pages.Roles.IndexModel
+
+<h2 class="mb-4">Role Management</h2>
+
+<abp-card>
+    <abp-card-header>
+        <div class="d-flex justify-content-between align-items-center">
+            <h4>Roles</h4>
+            <a asp-page="./Create" class="btn btn-primary">
+                <i class="fa fa-plus"></i> Create Role
+            </a>
+        </div>
+    </abp-card-header>
+
+    <abp-card-body>
+        @if (Model.Roles.Any())
+        {
+            <table class="table table-bordered table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Is Default</th>
+                        <th>Is Public</th>
+                        <th width="220">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                @foreach (var role in Model.Roles)
+                {
+                    <tr>
+                        <td><strong>@role.Name</strong></td>
+                        <td>@(role.IsDefault ? "✅" : "")</td>
+                        <td>@(role.IsPublic ? "✅" : "")</td>
+                        <td>
+                            <a asp-page="./Edit" 
+                               asp-route-id="@role.Id" 
+                               class="btn btn-warning btn-sm">
+                                <i class="fa fa-edit"></i> Edit
+                            </a>
+
+                            <form method="post" 
+                                  asp-page-handler="Delete" 
+                                  asp-route-id="@role.Id" 
+                                  style="display:inline"
+                                  onsubmit="return confirmDelete(this);">
+
+                                <button type="submit" 
+                                        class="btn btn-danger btn-sm">
+                                    <i class="fa fa-trash"></i> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+        else
+        {
+            <div class="alert alert-info">No roles found.</div>
+        }
+    </abp-card-body>
+</abp-card>
+
+@section Scripts {
+    <script>
+        function confirmDelete(form) {
+            return confirm("Bạn có chắc chắn muốn xóa role này không?");
+        }
+    </script>
+}

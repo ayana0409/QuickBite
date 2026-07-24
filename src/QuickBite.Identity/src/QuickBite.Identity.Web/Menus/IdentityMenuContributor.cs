@@ -44,6 +44,17 @@ public class IdentityMenuContributor : IMenuContributor
             )
         );
 
+        context.Menu.Items.Insert(
+            1,
+            new ApplicationMenuItem(
+                IdentityMenus.Roles,
+                l["Roles"],
+                "~/roles",
+                icon: "fas fa-home",
+                order: 2
+            )
+        );
+
         administration.SetSubItemOrder(IdentityMenuNames.GroupName, 2);
         administration.SetSubItemOrder(SettingManagementMenuNames.GroupName, 3);
 
