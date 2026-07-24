@@ -37,6 +37,7 @@ using Volo.Abp.Timing;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace QuickBite.Identity.Web;
 
@@ -133,6 +134,25 @@ public class IdentityWebModule : AbpModule
         ConfigureNavigationServices();
         ConfigureAutoApiControllers();
         ConfigureSwaggerServices(context.Services);
+
+        Configure<RazorPagesOptions>(options =>
+        {
+            // Require login in all page
+            options.Conventions.AuthorizeFolder("/");
+
+            // Anonymous page
+            options.Conventions.AllowAnonymousToPage("/Account/Login");
+            options.Conventions.AllowAnonymousToPage("/Account/Register");
+            options.Conventions.AllowAnonymousToPage("/Account/ForgotPassword");
+            options.Conventions.AllowAnonymousToPage("/AccessDenied");
+        });
+
+        context.Services.ConfigureApplicationCookie(options =>
+        {
+            options.LoginPath = "/Account/Login";
+            options.LogoutPath = "/Account/Logout";
+            options.AccessDeniedPath = "/access-denied";
+        });
 
         context.Services.AddMapperlyObjectMapper<IdentityWebModule>();
     }

@@ -1,0 +1,35 @@
+@page "/access-denied"
+@model QuickBite.Identity.Web.Pages.AccessDeniedModel
+
+<abp-card class="text-center mt-5">
+
+    <abp-card-body>
+
+        <h1 class="text-danger">
+            403
+        </h1>
+
+        <h3>
+            Access Denied
+        </h3>
+
+        <p class="text-muted">
+
+            You don't have permission to access this resource.
+
+        </p>
+
+        <div class="mt-4">
+
+            <a asp-page="/Index"
+               class="btn btn-primary">
+
+                Go Home
+
+            </a>
+
+        </div>
+
+    </abp-card-body>
+
+</abp-card>

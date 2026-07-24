@@ -1,0 +1,111 @@
+@page "/accounts/edit/{id:guid}"
+@model QuickBite.Identity.Web.Pages.Accounts.EditModel
+
+<h2 class="mb-4">Edit Account</h2>
+
+<!-- INFORMATION -->
+
+<abp-card class="mb-4">
+
+    <abp-card-header>
+        Account Information
+    </abp-card-header>
+
+    <abp-card-body>
+
+        <form method="post"
+              asp-page-handler="Information">
+
+            <input type="hidden" asp-for="Id" />
+
+            <abp-input asp-for="Information.UserName" />
+
+            <abp-input asp-for="Information.Name" />
+
+            <abp-input asp-for="Information.Surname" />
+
+            <abp-input asp-for="Information.Email" />
+
+            <abp-input asp-for="Information.PhoneNumber" />
+
+            <abp-checkbox asp-for="Information.IsActive" />
+
+            <abp-checkbox asp-for="Information.LockoutEnabled" />
+
+            <div class="mt-3">
+
+                <abp-button button-type="Primary"
+                            type="submit">
+
+                    Save Information
+
+                </abp-button>
+
+            </div>
+
+        </form>
+
+    </abp-card-body>
+
+</abp-card>
+
+
+
+<!-- ROLES -->
+
+<abp-card class="mb-4">
+
+    <abp-card-header>
+        Roles
+    </abp-card-header>
+
+    <abp-card-body>
+
+        <form method="post"
+              asp-page-handler="Roles">
+
+            <input type="hidden"
+                   asp-for="Id" />
+
+            @if (Model.AllRoles.Any())
+            {
+                @foreach (var role in Model.AllRoles)
+                {
+                    <div class="form-check mb-2">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               name="SelectedRoles"
+                               value="@role.Name"
+                               checked="@Model.SelectedRoles.Contains(role.Name)" />
+
+                        <label class="form-check-label">
+
+                            @role.Name
+
+                        </label>
+
+                    </div>
+                }
+            }
+            else
+            {
+                <p>No roles found.</p>
+            }
+
+            <div class="mt-3">
+
+                <abp-button button-type="Primary"
+                            type="submit">
+
+                    Save Roles
+
+                </abp-button>
+
+            </div>
+
+        </form>
+
+    </abp-card-body>
+
+</abp-card>

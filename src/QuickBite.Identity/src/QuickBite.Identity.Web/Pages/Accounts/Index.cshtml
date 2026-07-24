@@ -1,0 +1,80 @@
+@page "/accounts"
+@model IndexModel
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between mb-4">
+        <h2>Account Management</h2>
+
+        <a class="btn btn-primary"
+           href="/accounts/create">
+            Create Account
+        </a>
+    </div>
+
+    <div class="card">
+
+        <div class="card-body">
+
+            <table class="table table-hover">
+
+                <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Phone Number</th>
+                    <th>Email Confirmed</th>
+                    <th>Active</th>
+                    <th width="180">Actions</th>
+                </tr>
+                </thead>
+
+                <tbody>
+
+                @foreach (var user in Model.Users)
+                {
+                    <tr>
+
+                        <td>@user.UserName</td>
+                        <td>@user.Email</td>
+                        <td>@user.PhoneNumber</td>
+                        <td>@user.EmailConfirmed</td>
+                        <td>@user.IsActive</td>
+
+                        <td>
+
+                            <a class="btn btn-warning btn-sm"
+                               href="/accounts/edit/@user.Id">
+                                Edit
+                            </a>
+
+                            <form method="post"
+                                asp-page-handler="Delete">
+
+                                <input type="hidden"
+                                    name="id"
+                                    value="@user.Id"/>
+
+                                <button type="submit"
+                                        class="btn btn-danger btn-sm">
+
+                                    Delete
+
+                                </button>
+
+                            </form>
+
+                        </td>
+
+                    </tr>
+                }
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+    </div>
+
+</div>

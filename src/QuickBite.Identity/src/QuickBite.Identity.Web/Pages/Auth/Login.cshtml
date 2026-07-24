@@ -1,0 +1,62 @@
+@page "/login"
+@model QuickBite.Identity.Web.Pages.Auth.LoginModel
+
+@{
+    Layout = null;
+}
+
+<div class="card shadow border-0">
+    <div class="card-body p-5">
+
+        <div class="text-center mb-4">
+            <h2 class="fw-bold">QuickBite Identity</h2>
+            <p class="text-muted">
+                Sign in to continue.
+            </p>
+        </div>
+
+        <form method="post">
+
+            <abp-input asp-for="LoginInput.UserNameOrEmailAddress"
+                       label="Email or Username" />
+
+            <abp-input asp-for="LoginInput.Password"
+                       type="password"
+                       label="Password" />
+
+            <abp-input asp-for="LoginInput.RememberMe" />
+
+            <div class="d-grid mt-4">
+                <abp-button button-type="Primary"
+                            type="submit"
+                            size="Large">
+                    Login
+                </abp-button>
+            </div>
+
+        </form>
+
+        <hr />
+
+        <div class="text-center">
+
+            <a asp-page="./ForgotPassword"
+               class="text-decoration-none">
+                Forgot password?
+            </a>
+
+        </div>
+
+        <div class="text-center mt-2">
+
+            Don't have an account?
+
+            <a asp-page="./Register"
+               class="fw-semibold text-decoration-none">
+                Register
+            </a>
+
+        </div>
+
+    </div>
+</div>
