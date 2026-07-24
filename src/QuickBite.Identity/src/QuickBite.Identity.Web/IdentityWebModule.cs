@@ -134,7 +134,6 @@ public class IdentityWebModule : AbpModule
         ConfigureNavigationServices();
         ConfigureAutoApiControllers();
         ConfigureSwaggerServices(context.Services);
-
         Configure<RazorPagesOptions>(options =>
         {
             // Require login in all page

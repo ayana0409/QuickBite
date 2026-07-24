@@ -1,43 +1,227 @@
 @page "/roles/edit/{id:guid}"
 @model QuickBite.Identity.Web.Pages.Roles.EditModel
 
-<h2 class="mb-4">Edit Role</h2>
-
 <abp-card>
-    <abp-card-header>Edit Role</abp-card-header>
+
+    <abp-card-header>
+        <h3>Edit Role - @Model.Information?.Name</h3>
+    </abp-card-header>
+
     <abp-card-body>
-        <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
 
-            <input type="hidden" asp-for="Id" />
+        <!-- INFORMATION -->
 
-            <abp-input asp-for="Input.Name" />
+        <h5 class="mb-3">
+            Role Information
+        </h5>
 
-            <div class="mb-3">
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" asp-for="Input.IsDefault" />
-                    <label class="form-check-label" asp-for="Input.IsDefault">Is Default Role</label>
+        <form method="post"
+              asp-page-handler="Information"
+              class="mb-5">
+
+            <input type="hidden"
+                   asp-for="Id" />
+
+            <abp-input asp-for="Information.Name" />
+
+            <div class="row">
+
+                <div class="col-md-6">
+
+                    <div class="form-check">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               asp-for="Information.IsDefault" />
+
+                        <label class="form-check-label"
+                               asp-for="Information.IsDefault">
+
+                            Is Default Role
+
+                        </label>
+
+                    </div>
+
                 </div>
-                <small class="text-muted">Role này sẽ được gán tự động cho user mới.</small>
+
+                <div class="col-md-6">
+
+                    <div class="form-check">
+
+                        <input class="form-check-input"
+                               type="checkbox"
+                               asp-for="Information.IsPublic" />
+
+                        <label class="form-check-label"
+                               asp-for="Information.IsPublic">
+
+                            Is Public
+
+                        </label>
+
+                    </div>
+
+                </div>
+
             </div>
 
-            <div class="mb-4">
-                <div class="form-check">
-                    <input type="checkbox" class="form-check-input" asp-for="Input.IsPublic" />
-                    <label class="form-check-label" asp-for="Input.IsPublic">Is Public</label>
-                </div>
-                <small class="text-muted">Người dùng có thể nhìn thấy role này.</small>
-            </div>
+            <div class="mt-3">
 
-            <div>
-                <abp-button button-type="Primary" type="submit">
-                    <i class="fa fa-save"></i> Update Role
+                <abp-button button-type="Primary"
+                            type="submit">
+
+                    Save Information
+
                 </abp-button>
-                
-                <a asp-page="./Index" class="btn btn-secondary">
-                    Cancel
-                </a>
+
             </div>
+
         </form>
+
+
+        <hr class="my-5" />
+
+
+        <!-- PERMISSIONS -->
+
+        <h5 class="mb-4">
+            Permissions
+        </h5>
+
+
+        <form method="post"
+              asp-page-handler="Permissions">
+
+            <input type="hidden"
+                   asp-for="Id" />
+
+            @if (Model.PermissionGroups.Any())
+            {
+                @foreach (var group in Model.PermissionGroups)
+                {
+                    <abp-card class="mb-4 shadow-sm">
+
+                        <abp-card-header>
+
+                            <div class="d-flex justify-content-between align-items-center">
+
+                                <strong>
+                                    @group.DisplayName
+                                </strong>
+
+                                <div class="form-check">
+
+                                    <input type="checkbox"
+                                           class="form-check-input permission-group-checkbox" />
+
+                                    <label class="form-check-label">
+
+                                        Select All
+
+                                    </label>
+
+                                </div>
+
+                            </div>
+
+                        </abp-card-header>
+
+                        <abp-card-body>
+
+                            <div class="row">
+
+                                @foreach (var permission in group.Permissions)
+                                {
+                                    <div class="col-md-6">
+
+                                        <div class="border rounded p-2 mb-2">
+
+                                            <div class="form-check">
+
+                                                <input class="form-check-input permission-item"
+                                                       type="checkbox"
+                                                       name="SelectedPermissions"
+                                                       value="@permission.Name"
+                                                       checked="@Model.SelectedPermissions.Contains(permission.Name)" />
+
+                                                <label class="form-check-label">
+
+                                                    <strong>
+                                                        @permission.DisplayName
+                                                    </strong>
+
+                                                    <br />
+
+                                                    <small class="text-muted">
+
+                                                        @permission.Name
+
+                                                    </small>
+
+                                                </label>
+
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+                                }
+
+                            </div>
+
+                        </abp-card-body>
+
+                    </abp-card>
+                }
+            }
+            else
+            {
+                <div class="alert alert-warning">
+
+                    No permissions found.
+
+                </div>
+            }
+
+            <div class="mt-4">
+
+                <abp-button button-type="Primary"
+                            type="submit">
+
+                    Save Permissions
+
+                </abp-button>
+
+            </div>
+
+        </form>
+
     </abp-card-body>
+
 </abp-card>
+
+
+@section scripts
+{
+    <script>
+
+        document.querySelectorAll(".permission-group-checkbox")
+            .forEach(groupCheckbox => {
+
+                groupCheckbox.addEventListener("change", function () {
+
+                    const card = this.closest(".card");
+
+                    const permissions = card.querySelectorAll(".permission-item");
+
+                    permissions.forEach(p => {
+                        p.checked = this.checked;
+                    });
+
+                });
+
+            });
+
+    </script>
+}
