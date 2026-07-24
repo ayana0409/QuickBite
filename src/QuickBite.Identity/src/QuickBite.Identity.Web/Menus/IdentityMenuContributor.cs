@@ -33,6 +33,17 @@ public class IdentityMenuContributor : IMenuContributor
             )
         );
 
+        context.Menu.Items.Insert(
+            1,
+            new ApplicationMenuItem(
+                IdentityMenus.Accounts,
+                l["Account"],
+                "~/accounts",
+                icon: "fas fa-home",
+                order: 1
+            )
+        );
+
         administration.SetSubItemOrder(IdentityMenuNames.GroupName, 2);
         administration.SetSubItemOrder(SettingManagementMenuNames.GroupName, 3);
 
