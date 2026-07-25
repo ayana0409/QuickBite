@@ -15,7 +15,30 @@
     <div class="card">
 
         <div class="card-body">
+            <form method="get" class="row mb-4">
 
+                <div class="col-md-4">
+
+                    <input type="text"
+                           name="Filter"
+                           value="@Model.Filter"
+                           class="form-control"
+                           placeholder="Search username or email..." />
+
+                </div>
+
+                <div class="col-md-2">
+
+                    <button type="submit"
+                            class="btn btn-primary">
+
+                        Search
+
+                    </button>
+
+                </div>
+
+            </form>
             <table class="table table-hover">
 
                 <thead>
@@ -72,7 +95,58 @@
                 </tbody>
 
             </table>
+            @if (Model.TotalPages > 1)
+            {
+                <nav>
 
+                    <ul class="pagination justify-content-center">
+
+                        <li class="page-item @(Model.CurrentPage == 1 ? "disabled" : "")">
+
+                            <a class="page-link"
+                               asp-page="./Index"
+                               asp-route-currentpage="@(Model.CurrentPage - 1)"
+                               asp-route-filter="@Model.Filter">
+
+                                Previous
+
+                            </a>
+
+                        </li>
+
+                        @for (int i = 1; i <= Model.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.CurrentPage ? "active" : "")">
+
+                                <a class="page-link"
+                                   asp-page="./Index"
+                                   asp-route-currentpage="@i"
+                                   asp-route-filter="@Model.Filter">
+
+                                    @i
+
+                                </a>
+
+                            </li>
+                        }
+
+                        <li class="page-item @(Model.CurrentPage == Model.TotalPages ? "disabled" : "")">
+
+                            <a class="page-link"
+                               asp-page="./Index"
+                               asp-route-currentpage="@(Model.CurrentPage + 1)"
+                               asp-route-filter="@Model.Filter">
+
+                                Next
+
+                            </a>
+
+                        </li>
+
+                    </ul>
+
+                </nav>
+            }
         </div>
 
     </div>

@@ -1,34 +1,49 @@
+using Microsoft.AspNetCore.Mvc;
+using QuickBite.Identity.Accounts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using Volo.Abp.Authorization;
 using Volo.Abp.Identity;
 
 public class IndexModel : AbpPageModel
 {
-    public List<IdentityUserDto> Users { get; set; } = [];
+    private readonly IAccountService _accountService;
 
-    private readonly IIdentityUserAppService _identityUserAppService;
-
-    public IndexModel(
-        IIdentityUserAppService identityUserAppService)
+    public IndexModel(IAccountService accountService)
     {
-        _identityUserAppService = identityUserAppService;
+        _accountService = accountService;
     }
+
+    [BindProperty(SupportsGet = true)]
+    public string? Filter { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public int CurrentPage { get; set; } = 1;
+
+    public const int PageSize = 5;
+
+    public long TotalCount { get; set; }
+    public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
+    public IEnumerable<IdentityUserDto> Users { get; set; } = [];
 
     public async Task<IActionResult> OnGetAsync()
     {
         try
         {
-            var result =
-                await _identityUserAppService.GetListAsync(
-                    new GetIdentityUsersInput()
-                );
+            var result = await _accountService.GetAll(
+                new GetIdentityUsersInput
+                {
+                    Filter = Filter,
+                    SkipCount = (CurrentPage - 1) * PageSize,
+                    MaxResultCount = PageSize,
+                    Sorting = nameof(IdentityUserDto.UserName)
+                });
 
-            Users = result.Items.ToList();
+            Users = result.Items;
+
+            TotalCount = result.TotalCount;
 
             return Page();
         }
@@ -36,12 +51,30 @@ public class IndexModel : AbpPageModel
         {
             return Redirect("/access-denied");
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            ModelState.AddModelError(String.Empty, "$\"An error occurred: {ex.Message}\"");
+            return Page();
+        }
     }
 
     public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
-        await _identityUserAppService.DeleteAsync(id);
+        try
+        {
+            await _accountService.DeleteUserAsync(id);
 
-        return RedirectToPage();
+            return RedirectToPage();
+        }
+        catch (AbpAuthorizationException)
+        {
+            return Redirect("/access-denied");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            return Redirect("/error");
+        }
     }
 }

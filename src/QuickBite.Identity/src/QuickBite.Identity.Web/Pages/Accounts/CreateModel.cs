@@ -1,21 +1,19 @@
+using Microsoft.AspNetCore.Mvc;
+using QuickBite.Identity.Accounts;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using Volo.Abp.Identity;
 using Volo.Abp.Validation;
 
 public class CreateModel : AbpPageModel
 {
-    private readonly IIdentityUserAppService _userService;
-    private readonly IIdentityRoleAppService _roleService;
+    private readonly IAccountService _accountService;
 
-    public CreateModel(IIdentityUserAppService userService, IIdentityRoleAppService roleService)
+    public CreateModel(IAccountService accountService)
     {
-        _userService = userService;
-        _roleService = roleService;
+        _accountService = accountService;
     }
 
     [BindProperty]
@@ -24,7 +22,7 @@ public class CreateModel : AbpPageModel
     [BindProperty]
     public List<string> SelectedRoles { get; set; } = new();
 
-    public List<IdentityRoleDto> AllRoles { get; set; } = new();
+    public IEnumerable<IdentityRoleDto> AllRoles { get; set; } = [];
 
     public async Task OnGetAsync()
     {
@@ -34,8 +32,7 @@ public class CreateModel : AbpPageModel
 
     private async Task LoadRolesAsync()
     {
-        var result = await _roleService.GetListAsync(new GetIdentityRolesInput());
-        AllRoles = result.Items.ToList();
+        AllRoles = await _accountService.GetRoleAsync();
     }
 
     public async Task<IActionResult> OnPostAsync()
@@ -49,16 +46,8 @@ public class CreateModel : AbpPageModel
         try
         {
             Input.IsActive = true;
-            var createdUser = await _userService.CreateAsync(Input);
-
-            if (SelectedRoles.Count != 0)
-            {
-                var roles = new IdentityUserUpdateRolesDto
-                {
-                    RoleNames = [.. SelectedRoles]
-                };
-                await _userService.UpdateRolesAsync(createdUser.Id, roles);
-            }
+            Input.RoleNames = [.. SelectedRoles];
+            await _accountService.CreateUserAsync(Input);
 
             Alerts.Success("Tạo tài khoản thành công.");
             return RedirectToPage("Index");

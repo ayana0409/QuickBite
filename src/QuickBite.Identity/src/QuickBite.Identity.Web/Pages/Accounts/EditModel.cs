@@ -1,8 +1,9 @@
+using Microsoft.AspNetCore.Mvc;
+using QuickBite.Identity.Accounts;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using Volo.Abp.Identity;
 using Volo.Abp.Validation;
@@ -11,13 +12,11 @@ namespace QuickBite.Identity.Web.Pages.Accounts;
 
 public class EditModel : AbpPageModel
 {
-    private readonly IIdentityUserAppService _userService;
-    private readonly IIdentityRoleAppService _roleService;
+    private readonly IAccountService _accountService;
 
-    public EditModel(IIdentityUserAppService userService, IIdentityRoleAppService roleService)
+    public EditModel(IAccountService accountService)
     {
-        _userService = userService;
-        _roleService = roleService;
+        _accountService = accountService;
     }
 
     [BindProperty(SupportsGet = true)]
@@ -29,7 +28,7 @@ public class EditModel : AbpPageModel
     [BindProperty]
     public List<string> SelectedRoles { get; set; } = new();
 
-    public List<IdentityRoleDto> AllRoles { get; set; } = new();
+    public IEnumerable<IdentityRoleDto> AllRoles { get; set; } = [];
 
     public async Task OnGetAsync()
     {
@@ -39,9 +38,9 @@ public class EditModel : AbpPageModel
 
     private async Task LoadUserAsync()
     {
-        var user = await _userService.GetAsync(Id);
+        var user = (await _accountService.GetUserAsync(Id));
 
-            Information = new IdentityUserUpdateDto
+        Information = new IdentityUserUpdateDto
         {
             UserName = user.UserName,
             Name = user.Name,
@@ -52,17 +51,12 @@ public class EditModel : AbpPageModel
             LockoutEnabled = user.LockoutEnabled
         };
 
-        var roles = await _userService.GetRolesAsync(Id);
-        SelectedRoles = roles.Items
-                            .Select(x => x.Name)
-                            .Where(name => name != null)
-                            .ToList()!;
+        SelectedRoles = (await _accountService.GetRoleAsync(Id)).ToList();
     }
 
     private async Task LoadRolesAsync()
     {
-        var result = await _roleService.GetListAsync(new GetIdentityRolesInput());
-        AllRoles = result.Items.ToList();
+        AllRoles = await _accountService.GetRoleAsync();
     }
 
     // ==================== INFORMATION ====================
@@ -73,7 +67,7 @@ public class EditModel : AbpPageModel
 
         try
         {
-            await _userService.UpdateAsync(Id, Information);
+            await _accountService.UpdateUserAsync(Id, Information);
             Alerts.Success("Cập nhật thông tin thành công.");
             return RedirectToPage(new { id = Id });
         }
@@ -86,7 +80,7 @@ public class EditModel : AbpPageModel
                     ModelState.AddModelError($"Information.{member}", error.ErrorMessage ?? "Error");
                 }
             }
-            await LoadRolesAsync(); // Giữ lại danh sách roles
+            await LoadRolesAsync();
             return Page();
         }
         catch (Exception ex)
@@ -102,10 +96,7 @@ public class EditModel : AbpPageModel
     {
         try
         {
-            await _userService.UpdateRolesAsync(Id, new IdentityUserUpdateRolesDto
-            {
-                RoleNames = [.. SelectedRoles]
-            });
+            await _accountService.UpdateUserRolesAsync(Id, SelectedRoles);
 
             Alerts.Success("Cập nhật vai trò thành công.");
             return RedirectToPage(new { id = Id });
