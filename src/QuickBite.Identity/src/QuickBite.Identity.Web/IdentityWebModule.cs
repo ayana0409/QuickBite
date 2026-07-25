@@ -140,7 +140,7 @@ public class IdentityWebModule : AbpModule
             options.Conventions.AuthorizeFolder("/");
 
             // Anonymous page
-            options.Conventions.AllowAnonymousToPage("/Account/Login");
+            options.Conventions.AllowAnonymousToPage("/Login");
             options.Conventions.AllowAnonymousToPage("/Account/Register");
             options.Conventions.AllowAnonymousToPage("/Account/ForgotPassword");
             options.Conventions.AllowAnonymousToPage("/AccessDenied");
@@ -148,7 +148,7 @@ public class IdentityWebModule : AbpModule
 
         context.Services.ConfigureApplicationCookie(options =>
         {
-            options.LoginPath = "/Account/Login";
+            options.LoginPath = "/Login";
             options.LogoutPath = "/Account/Logout";
             options.AccessDeniedPath = "/access-denied";
         });
