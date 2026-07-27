@@ -1,4 +1,8 @@
 src/QuickBite.Identity/src/QuickBite.Identity.DbMigrator/appsettings.json
 src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.json
 src/quick-bite.catalog/node_modules
+src/quick-bite.catalog/build
+src/quick-bite.catalog/dist
+src/quick-bite.catalog/.env
 .fake
+src/quick-bite.catalog/ca.pem
