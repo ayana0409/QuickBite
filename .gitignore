@@ -1,4 +1,4 @@
 src/QuickBite.Identity/src/QuickBite.Identity.DbMigrator/appsettings.json
 src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.json
-
+node_modules/
 .fake

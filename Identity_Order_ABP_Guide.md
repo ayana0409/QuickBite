@@ -56,7 +56,7 @@ services/
 | Framework | ABP Framework |
 | ORM | Entity Framework Core |
 | Authentication | OpenIddict |
-| Database | SQL Server |
+| Database | Postgre |
 | Cache | Redis |
 | Event Bus | Kafka |
 | Logging | Serilog |
