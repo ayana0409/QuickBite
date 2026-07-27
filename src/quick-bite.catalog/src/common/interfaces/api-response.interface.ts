@@ -1,8 +1,9 @@
-export class ApiResponse<T> {
-    success!: boolean;
-    message!: string;
+export interface ApiResponse<T> {
+    success: boolean;
+    statusCode: number;
+    message: string | string[];
     data?: T;
-    errors?: any;
-    timestamp!: string;
-    path!: string;
+    errors?: unknown;
+    timestamp: string;
+    path: string;
 }
