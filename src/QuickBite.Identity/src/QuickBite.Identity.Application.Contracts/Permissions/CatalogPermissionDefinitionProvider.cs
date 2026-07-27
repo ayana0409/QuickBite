@@ -4,16 +4,15 @@ using Volo.Abp.Localization;
 
 namespace QuickBite.Identity.Permissions;
 
-public class RestaurantPermissionDefinitionProvider
+public class CatalogPermissionDefinitionProvider
     : PermissionDefinitionProvider
 {
     public override void Define(
         IPermissionDefinitionContext context)
     {
-
         var group = context.AddGroup(
-            RestaurantPermissions.GroupName,
-            L("Permission:Restaurant")
+            CatalogPermissions.GroupName,
+            L("Permission:Catalog")
         );
 
 
@@ -22,31 +21,31 @@ public class RestaurantPermissionDefinitionProvider
         //------------------------------------------------
 
         var restaurants = group.AddPermission(
-            RestaurantPermissions.Restaurants,
+            CatalogPermissions.Restaurants,
             L("Permission:Restaurants")
         );
 
 
         restaurants.AddChild(
-            RestaurantPermissions.RestaurantsView,
+            CatalogPermissions.RestaurantsView,
             L("Permission:View")
         );
 
 
         restaurants.AddChild(
-            RestaurantPermissions.RestaurantsCreate,
+            CatalogPermissions.RestaurantsCreate,
             L("Permission:Create")
         );
 
 
         restaurants.AddChild(
-            RestaurantPermissions.RestaurantsUpdate,
+            CatalogPermissions.RestaurantsUpdate,
             L("Permission:Update")
         );
 
 
         restaurants.AddChild(
-            RestaurantPermissions.RestaurantsDelete,
+            CatalogPermissions.RestaurantsDelete,
             L("Permission:Delete")
         );
     }

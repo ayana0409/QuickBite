@@ -1,13 +1,9 @@
 namespace QuickBite.Identity.Permissions;
 
-public static class RestaurantPermissions
+public static class CatalogPermissions
 {
-    public const string GroupName = "Restaurant";
+    public const string GroupName = "Catalog";
 
-
-    //------------------------------------------------
-    // RESTAURANTS
-    //------------------------------------------------
 
     public const string Restaurants =
         GroupName + ".Restaurants";

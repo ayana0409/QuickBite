@@ -38,6 +38,7 @@ using Volo.Abp.UI.Navigation;
 using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using QuickBite.Identity.Claims;
 
 namespace QuickBite.Identity.Web;
 
@@ -107,7 +108,8 @@ public class IdentityWebModule : AbpModule
                 OpenIddictConstants.Scopes.Email,
                 OpenIddictConstants.Scopes.Phone,
                 OpenIddictConstants.Scopes.Roles,
-                "quickbite.api"
+                "quickbite.api",
+                "permissions"
             );
 
             if (!hostingEnvironment.IsDevelopment())
@@ -126,7 +128,9 @@ public class IdentityWebModule : AbpModule
     {
         var hostingEnvironment = context.Services.GetHostingEnvironment();
         var configuration = context.Services.GetConfiguration();
-
+        
+        context.Services.AddTransient<PermissionClaimsPrincipalContributor>();
+        
         ConfigureAuthentication(context);
         ConfigureUrls(configuration);
         ConfigureBundles();
@@ -164,6 +168,9 @@ public class IdentityWebModule : AbpModule
         context.Services.Configure<AbpClaimsPrincipalFactoryOptions>(options =>
         {
             options.IsDynamicClaimsEnabled = true;
+            options.Contributors.Add(
+                typeof(PermissionClaimsPrincipalContributor)
+            );
         });
 
         // context.Services.AddAuthentication()
