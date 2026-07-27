@@ -8,14 +8,19 @@ import {
   Patch,
   Post,
   Query,
+  UseGuards,
+  Request
 } from '@nestjs/common';
 
 import { RestaurantService } from './restaurant.service';
-
+import { Permissions } from '../auth/decorators/permissions.decorator';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
 import { UpdateRestaurantDto } from './dto/update-restaurant.dto';
 
 import { PaginationDto } from '../common/dto/pagination.dto';
+import { PermissionGuard } from '@/auth/guards/permission.guard';
+import { PermissionKeys } from '@/common/constants/permissions';
+import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 
 @Controller('restaurants')
 export class RestaurantController {
@@ -24,6 +29,8 @@ export class RestaurantController {
   ) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @Permissions(PermissionKeys.RESTAURANT_CREATE)
   create(
     @Body() createRestaurantDto: CreateRestaurantDto,
   ) {
@@ -33,6 +40,8 @@ export class RestaurantController {
   }
 
   @Get()
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @Permissions(PermissionKeys.RESTAURANT_READ)
   findAll(
     @Query() pagination: PaginationDto,
   ) {
@@ -42,8 +51,10 @@ export class RestaurantController {
   }
 
   @Get(':id')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @Permissions(PermissionKeys.RESTAURANT_READ)
   findOne(
-    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
   ) {
     return this.restaurantService.findOne(
       id,
@@ -51,6 +62,8 @@ export class RestaurantController {
   }
 
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @Permissions(PermissionKeys.RESTAURANT_UPDATE)
   update(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
     @Body() updateRestaurantDto: UpdateRestaurantDto,
@@ -62,6 +75,8 @@ export class RestaurantController {
   }
 
   @Delete(':id')
+  @UseGuards(JwtAuthGuard, PermissionGuard)
+  @Permissions(PermissionKeys.RESTAURANT_DELETE)
   remove(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ) {

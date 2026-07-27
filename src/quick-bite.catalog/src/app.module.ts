@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { join } from 'path';
 import { RestaurantModule } from './restaurant/restaurant.module';
 import { getRequired } from './common/helpers/get-config';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { getRequired } from './common/helpers/get-config';
       },
     }),
     RestaurantModule,
+    AuthModule,
     // ...other modules
   ],
   controllers: [AppController],
