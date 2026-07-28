@@ -8,6 +8,7 @@ import { join } from 'path';
 import { RestaurantModule } from './restaurant/restaurant.module';
 import { getRequired } from './common/helpers/get-config';
 import { AuthModule } from './auth/auth.module';
+import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
@@ -61,6 +62,7 @@ import { AuthModule } from './auth/auth.module';
     }),
     RestaurantModule,
     AuthModule,
+    CategoryModule,
     // ...other modules
   ],
   controllers: [AppController],

@@ -11,5 +11,17 @@ export const PermissionKeys = {
 
     RESTAURANT_READ:
         'Catalog.Restaurants.View',
+        
+    CATEGORY_CREATE:
+        'Catalog.Categories.Create',
+
+    CATEGORY_UPDATE:
+        'Catalog.Categories.Update',
+
+    CATEGORY_DELETE:
+        'Catalog.Categories.Delete',
+
+    CATEGORY_READ:
+        'Catalog.Categories.View',
 
 };

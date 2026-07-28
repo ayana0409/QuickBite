@@ -1,3 +1,4 @@
+import { Category } from '@/category/entities/category.entity';
 import {
     Entity,
     PrimaryGeneratedColumn,
@@ -5,6 +6,7 @@ import {
     CreateDateColumn,
     UpdateDateColumn,
     Index,
+    OneToMany,
 } from 'typeorm';
 
 @Entity("restaurants")
@@ -16,14 +18,12 @@ export class Restaurant {
     @Column("uuid")
     ownerId!: string;
 
-
     @Index({ unique: true })
     @Column()
     slug!: string;
 
     @Column()
     name!: string;
-
 
     @Column("jsonb")
     address!: {
@@ -37,12 +37,10 @@ export class Restaurant {
         };
     };
 
-
     @Column({
         default: "closed",
     })
     status!: string;
-
 
     @Column("jsonb", {
         default: () =>
@@ -53,11 +51,12 @@ export class Restaurant {
         count: number;
     };
 
-
     @CreateDateColumn()
     createdAt!: Date;
 
-
     @UpdateDateColumn()
     updatedAt!: Date;
+
+    @OneToMany(() => Category, (category) => category.restaurant)
+    categories!: Category[];
 }
