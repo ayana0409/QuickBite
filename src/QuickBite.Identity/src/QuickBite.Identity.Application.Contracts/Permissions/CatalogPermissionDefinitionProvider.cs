@@ -15,10 +15,7 @@ public class CatalogPermissionDefinitionProvider
             L("Permission:Catalog")
         );
 
-
-        //------------------------------------------------
-        // RESTAURANTS
-        //------------------------------------------------
+#region "Restaurant"
 
         var restaurants = group.AddPermission(
             CatalogPermissions.Restaurants,
@@ -48,6 +45,39 @@ public class CatalogPermissionDefinitionProvider
             CatalogPermissions.RestaurantsDelete,
             L("Permission:Delete")
         );
+#endregion
+       
+#region "Category"
+        var categories = group.AddPermission(
+            CatalogPermissions.Categories,
+            L("Permission:Categories")
+        );
+
+
+        categories.AddChild(
+            CatalogPermissions.CategoriesView,
+            L("Permission:View")
+        );
+
+
+        categories.AddChild(
+            CatalogPermissions.CategoriesCreate,
+            L("Permission:Create")
+        );
+
+
+        categories.AddChild(
+            CatalogPermissions.CategoriesUpdate,
+            L("Permission:Update")
+        );
+
+
+        categories.AddChild(
+            CatalogPermissions.CategoriesDelete,
+            L("Permission:Delete")
+        );
+#endregion
+
     }
 
 
