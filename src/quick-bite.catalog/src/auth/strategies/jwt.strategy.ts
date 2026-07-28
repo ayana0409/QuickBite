@@ -45,12 +45,6 @@ export class JwtStrategy extends PassportStrategy(
 
 
     validate(payload:any){
-
-        console.log(
-            "JWT PAYLOAD:",
-            payload
-        );
-
         return payload;
     }
 }
