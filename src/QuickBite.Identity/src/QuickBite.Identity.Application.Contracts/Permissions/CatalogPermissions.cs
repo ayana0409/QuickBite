@@ -18,6 +18,14 @@ public static class CatalogPermissions
     public const string CategoriesCreate = Categories + ".Create";
     public const string CategoriesUpdate = Categories + ".Update";
     public const string CategoriesDelete = Categories + ".Delete";
+    #endregion
+
+#region "Food Item"
+    public const string FoodItems = GroupName + ".FoodItems";
+    public const string FoodItemsView = FoodItems + ".View";
+    public const string FoodItemsCreate = FoodItems + ".Create";
+    public const string FoodItemsUpdate = FoodItems + ".Update";
+    public const string FoodItemsDelete = FoodItems + ".Delete";
 #endregion
 
 }

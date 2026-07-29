@@ -15,68 +15,92 @@ public class CatalogPermissionDefinitionProvider
             L("Permission:Catalog")
         );
 
-#region "Restaurant"
+        #region "Restaurant"
 
         var restaurants = group.AddPermission(
             CatalogPermissions.Restaurants,
             L("Permission:Restaurants")
         );
 
-
         restaurants.AddChild(
             CatalogPermissions.RestaurantsView,
             L("Permission:View")
         );
-
 
         restaurants.AddChild(
             CatalogPermissions.RestaurantsCreate,
             L("Permission:Create")
         );
 
-
         restaurants.AddChild(
             CatalogPermissions.RestaurantsUpdate,
             L("Permission:Update")
         );
 
-
         restaurants.AddChild(
             CatalogPermissions.RestaurantsDelete,
             L("Permission:Delete")
         );
-#endregion
+
+        #endregion
        
-#region "Category"
+        #region "Category"
+
         var categories = group.AddPermission(
             CatalogPermissions.Categories,
             L("Permission:Categories")
         );
-
 
         categories.AddChild(
             CatalogPermissions.CategoriesView,
             L("Permission:View")
         );
 
-
         categories.AddChild(
             CatalogPermissions.CategoriesCreate,
             L("Permission:Create")
         );
-
 
         categories.AddChild(
             CatalogPermissions.CategoriesUpdate,
             L("Permission:Update")
         );
 
-
         categories.AddChild(
             CatalogPermissions.CategoriesDelete,
             L("Permission:Delete")
         );
-#endregion
+
+        #endregion
+
+        #region "Food item"
+
+        var foodItems = group.AddPermission(
+            CatalogPermissions.FoodItems,
+            L("Permission:FoodItems")
+        );
+
+        foodItems.AddChild(
+            CatalogPermissions.FoodItemsView,
+            L("Permission:View")
+        );
+
+        foodItems.AddChild(
+            CatalogPermissions.FoodItemsCreate,
+            L("Permission:Create")
+        );
+
+        foodItems.AddChild(
+            CatalogPermissions.FoodItemsUpdate,
+            L("Permission:Update")
+        );
+
+        foodItems.AddChild(
+            CatalogPermissions.FoodItemsDelete,
+            L("Permission:Delete")
+        );
+
+        #endregion
 
     }
 
