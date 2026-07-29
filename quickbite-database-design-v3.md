@@ -263,7 +263,11 @@ CREATE TABLE inbox_messages (
   description: String,
   price: Number,
   currency: String,
+  images: [String],
   isAvailable: Boolean,
+  preparationTime: Number,
+  tags: [String],
+  totalSold: Number,
   variants: [ { name: String, priceDelta: Number } ],
   toppings: [ { name: String, price: Number } ]
 }

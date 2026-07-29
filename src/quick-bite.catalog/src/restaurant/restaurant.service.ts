@@ -72,13 +72,18 @@ export class RestaurantService {
   async findOne(
     id: string,
   ): Promise<Restaurant> {
+    const restaurant = await this.restaurantRepository
+      .createQueryBuilder("restaurant")
+      .leftJoinAndSelect("restaurant.categories", "category")
+      .select([
+        "restaurant.id",
+        "restaurant.name",
+        "category.id",
+        "category.name"
+      ])
+      .where("restaurant.id = :id", { id })
+      .getOne();
 
-    const restaurant =
-      await this.restaurantRepository.findOne({
-        where: {
-          id,
-        },
-      });
 
     if (!restaurant) {
       throw new NotFoundException(
