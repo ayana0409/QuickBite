@@ -9,6 +9,7 @@ import { RestaurantModule } from './restaurant/restaurant.module';
 import { getRequired } from './common/helpers/get-config';
 import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
+import { FoodItemModule } from './food-item/food-item.module';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { CategoryModule } from './category/category.module';
     RestaurantModule,
     AuthModule,
     CategoryModule,
+    FoodItemModule,
     // ...other modules
   ],
   controllers: [AppController],
