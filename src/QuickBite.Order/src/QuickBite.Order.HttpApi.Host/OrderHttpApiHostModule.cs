@@ -1,3 +1,4 @@
+using Confluent.Kafka;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
 using Microsoft.Extensions.Configuration;
@@ -19,6 +20,8 @@ using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.Shared;
 using Volo.Abp.AspNetCore.Serilog;
 using Volo.Abp.Autofac;
+using Volo.Abp.EventBus.Kafka;
+using Volo.Abp.Kafka;
 using Volo.Abp.Modularity;
 using Volo.Abp.Security.Claims;
 using Volo.Abp.Swashbuckle;
@@ -35,7 +38,8 @@ namespace QuickBite.Order;
     typeof(OrderEntityFrameworkCoreModule),
     typeof(AbpAspNetCoreMvcUiLeptonXLiteThemeModule),
     typeof(AbpAspNetCoreSerilogModule),
-    typeof(AbpSwashbuckleModule)
+    typeof(AbpSwashbuckleModule),
+    typeof(AbpEventBusKafkaModule)
 )]
 public class OrderHttpApiHostModule : AbpModule
 {
@@ -57,6 +61,7 @@ public class OrderHttpApiHostModule : AbpModule
         var configuration = context.Services.GetConfiguration();
         var hostingEnvironment = context.Services.GetHostingEnvironment();
 
+        ConfigureKafka();
         ConfigureAuthentication(context);
         ConfigureBundles();
         ConfigureUrls(configuration);
@@ -64,6 +69,40 @@ public class OrderHttpApiHostModule : AbpModule
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
         ConfigureSwaggerServices(context, configuration);
+
+    }
+
+
+    private void ConfigureKafka()
+    {
+
+        Configure<AbpKafkaOptions>(options =>
+        {
+            options.ConfigureConsumer = config =>
+            {
+                config.EnableAutoCommit = false;
+            };
+        });
+
+        Configure<AbpKafkaOptions>(options =>
+        {
+            options.ConfigureProducer = config =>
+            {
+                config.MessageTimeoutMs = 6000;
+
+                config.Acks = Acks.All;
+            };
+        });
+
+        Configure<AbpKafkaOptions>(options =>
+        {
+            options.ConfigureTopic = specification =>
+            {
+                specification.NumPartitions = 3;
+
+                specification.ReplicationFactor = 3;
+            };
+        });
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)

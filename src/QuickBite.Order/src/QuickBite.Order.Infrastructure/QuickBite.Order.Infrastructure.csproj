@@ -1,0 +1,17 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Kafka\Consumers\" />
+    <Folder Include="Kafka\Producers\" />
+    <Folder Include="MassTransit\Activities\" />
+    <Folder Include="MassTransit\Consumers\" />
+    <Folder Include="MassTransit\StateMachine\" />
+  </ItemGroup>
+
+</Project>

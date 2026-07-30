@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace QuickBite.Order.Migrations
 {
     /// <inheritdoc />
-    public partial class Initial : Migration
+    public partial class InitDb : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -180,6 +180,118 @@ namespace QuickBite.Order.Migrations
                 .Annotation("MySQL:Charset", "utf8mb4");
 
             migrationBuilder.CreateTable(
+                name: "InboxMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    EventId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    EventType = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false),
+                    Consumer = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
+                    Payload = table.Column<string>(type: "longtext", nullable: false),
+                    ProcessedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    ExtraProperties = table.Column<string>(type: "longtext", nullable: false),
+                    ConcurrencyStamp = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: false),
+                    CreationTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CreatorId = table.Column<Guid>(type: "char(36)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_InboxMessages", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "Orders",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    OrderCode = table.Column<string>(type: "varchar(24)", maxLength: 24, nullable: false),
+                    CustomerId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    RestaurantId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Status = table.Column<int>(type: "int", nullable: false),
+                    TotalAmount = table.Column<decimal>(type: "decimal(14,2)", precision: 14, scale: 2, nullable: false),
+                    Currency = table.Column<string>(type: "varchar(8)", maxLength: 8, nullable: false),
+                    DeliveryAddress_FullName = table.Column<string>(type: "longtext", nullable: false),
+                    DeliveryAddress_PhoneNumber = table.Column<string>(type: "longtext", nullable: false),
+                    DeliveryAddress_AddressLine = table.Column<string>(type: "longtext", nullable: false),
+                    DeliveryAddress_Ward = table.Column<string>(type: "longtext", nullable: false),
+                    DeliveryAddress_District = table.Column<string>(type: "longtext", nullable: false),
+                    DeliveryAddress_Province = table.Column<string>(type: "longtext", nullable: false),
+                    DeliveryAddress_Note = table.Column<string>(type: "longtext", nullable: false),
+                    CorrelationId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Version = table.Column<int>(type: "int", nullable: false),
+                    ExtraProperties = table.Column<string>(type: "longtext", nullable: false),
+                    ConcurrencyStamp = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: false),
+                    CreationTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CreatorId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    LastModificationTime = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    LastModifierId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
+                    DeleterId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    DeletionTime = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Orders", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "OrderSagaStates",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    CorrelationId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    OrderId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    CurrentState = table.Column<int>(type: "int", nullable: false),
+                    StockReserved = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    PaymentAuthorized = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    RestaurantAccepted = table.Column<bool>(type: "tinyint(1)", nullable: false),
+                    StepTimeoutAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    RestaurantAcceptDeadline = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    RetryCount = table.Column<int>(type: "int", nullable: false),
+                    ConcurrencyStamp = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: false),
+                    ExtraProperties = table.Column<string>(type: "longtext", nullable: false),
+                    CreationTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CreatorId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    LastModificationTime = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    LastModifierId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    IsDeleted = table.Column<bool>(type: "tinyint(1)", nullable: false, defaultValue: false),
+                    DeleterId = table.Column<Guid>(type: "char(36)", nullable: true),
+                    DeletionTime = table.Column<DateTime>(type: "datetime(6)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderSagaStates", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "OutboxMessages",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    EventId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    EventType = table.Column<string>(type: "varchar(128)", maxLength: 128, nullable: false),
+                    Topic = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
+                    PartitionKey = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
+                    CorrelationId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Payload = table.Column<string>(type: "longtext", nullable: false),
+                    Status = table.Column<string>(type: "varchar(255)", nullable: false),
+                    ProcessedAt = table.Column<DateTime>(type: "datetime(6)", nullable: true),
+                    RetryCount = table.Column<int>(type: "int", nullable: false),
+                    ExtraProperties = table.Column<string>(type: "longtext", nullable: false),
+                    ConcurrencyStamp = table.Column<string>(type: "varchar(40)", maxLength: 40, nullable: false),
+                    CreationTime = table.Column<DateTime>(type: "datetime(6)", nullable: false),
+                    CreatorId = table.Column<Guid>(type: "char(36)", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OutboxMessages", x => x.Id);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
                 name: "AbpAuditLogActions",
                 columns: table => new
                 {
@@ -226,6 +338,53 @@ namespace QuickBite.Order.Migrations
                         name: "FK_AbpEntityChanges_AbpAuditLogs_AuditLogId",
                         column: x => x.AuditLogId,
                         principalTable: "AbpAuditLogs",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "OrderItems",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    OrderId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    Sku = table.Column<string>(type: "varchar(64)", maxLength: 64, nullable: false),
+                    ItemName = table.Column<string>(type: "varchar(256)", maxLength: 256, nullable: false),
+                    Quantity = table.Column<int>(type: "int", nullable: false),
+                    UnitPrice = table.Column<decimal>(type: "decimal(14,2)", precision: 14, scale: 2, nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderItems", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OrderItems_Orders_OrderId",
+                        column: x => x.OrderId,
+                        principalTable: "Orders",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                })
+                .Annotation("MySQL:Charset", "utf8mb4");
+
+            migrationBuilder.CreateTable(
+                name: "OrderStatusHistories",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "char(36)", nullable: false),
+                    OrderId = table.Column<Guid>(type: "char(36)", nullable: false),
+                    FromStatus = table.Column<int>(type: "int", nullable: true),
+                    ToStatus = table.Column<int>(type: "int", nullable: false),
+                    Reason = table.Column<string>(type: "varchar(255)", maxLength: 255, nullable: true),
+                    ChangedBy = table.Column<int>(type: "int", nullable: false),
+                    ChangedAt = table.Column<DateTime>(type: "datetime(6)", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_OrderStatusHistories", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_OrderStatusHistories_Orders_OrderId",
+                        column: x => x.OrderId,
+                        principalTable: "Orders",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 })
@@ -329,6 +488,48 @@ namespace QuickBite.Order.Migrations
                 table: "AbpSettings",
                 columns: new[] { "Name", "ProviderName", "ProviderKey" },
                 unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrderItems_OrderId",
+                table: "OrderItems",
+                column: "OrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Orders_CustomerId",
+                table: "Orders",
+                column: "CustomerId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Orders_OrderCode",
+                table: "Orders",
+                column: "OrderCode",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Orders_RestaurantId",
+                table: "Orders",
+                column: "RestaurantId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrderSagaStates_CorrelationId",
+                table: "OrderSagaStates",
+                column: "CorrelationId",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrderSagaStates_RestaurantAcceptDeadline",
+                table: "OrderSagaStates",
+                column: "RestaurantAcceptDeadline");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OrderStatusHistories_OrderId",
+                table: "OrderStatusHistories",
+                column: "OrderId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_OutboxMessages_Status",
+                table: "OutboxMessages",
+                column: "Status");
         }
 
         /// <inheritdoc />
@@ -362,7 +563,25 @@ namespace QuickBite.Order.Migrations
                 name: "AbpSettings");
 
             migrationBuilder.DropTable(
+                name: "InboxMessages");
+
+            migrationBuilder.DropTable(
+                name: "OrderItems");
+
+            migrationBuilder.DropTable(
+                name: "OrderSagaStates");
+
+            migrationBuilder.DropTable(
+                name: "OrderStatusHistories");
+
+            migrationBuilder.DropTable(
+                name: "OutboxMessages");
+
+            migrationBuilder.DropTable(
                 name: "AbpEntityChanges");
+
+            migrationBuilder.DropTable(
+                name: "Orders");
 
             migrationBuilder.DropTable(
                 name: "AbpAuditLogs");
