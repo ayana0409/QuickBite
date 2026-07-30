@@ -1,0 +1,35 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/QuickBite.Order.Application.Contracts/QuickBite.Order.Application.Contracts.csproj" />
+    <Project Path="src/QuickBite.Order.Application/QuickBite.Order.Application.csproj" />
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    <Project Path="src/QuickBite.Order.DbMigrator/QuickBite.Order.DbMigrator.csproj" />
+    <Project Path="src/QuickBite.Order.Domain.Shared/QuickBite.Order.Domain.Shared.csproj" />
+    <Project Path="src/QuickBite.Order.Domain/QuickBite.Order.Domain.csproj" />
+    <Project Path="src/QuickBite.Order.EntityFrameworkCore/QuickBite.Order.EntityFrameworkCore.csproj" />
+    <Project Path="src/QuickBite.Order.HttpApi.Client/QuickBite.Order.HttpApi.Client.csproj" />
+    
+    <Project Path="src/QuickBite.Order.HttpApi.Host/QuickBite.Order.HttpApi.Host.csproj" />
+    <Project Path="src/QuickBite.Order.HttpApi/QuickBite.Order.HttpApi.csproj" />
+    
+    
+    
+  </Folder>
+  <Folder Name="/test/">
+    <Project Path="test/QuickBite.Order.Application.Tests/QuickBite.Order.Application.Tests.csproj" />
+    <Project Path="test/QuickBite.Order.Domain.Tests/QuickBite.Order.Domain.Tests.csproj" />
+    <Project Path="test/QuickBite.Order.EntityFrameworkCore.Tests/QuickBite.Order.EntityFrameworkCore.Tests.csproj" />
+    <Project Path="test/QuickBite.Order.HttpApi.Client.ConsoleTestApp/QuickBite.Order.HttpApi.Client.ConsoleTestApp.csproj" />
+    
+    <Project Path="test/QuickBite.Order.TestBase/QuickBite.Order.TestBase.csproj" />
+    
+  </Folder>
+</Solution>

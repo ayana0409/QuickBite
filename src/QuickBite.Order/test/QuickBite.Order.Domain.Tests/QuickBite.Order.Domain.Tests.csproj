@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\common.props" />
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <RootNamespace>QuickBite.Order</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\QuickBite.Order.Domain\QuickBite.Order.Domain.csproj" />
+    <ProjectReference Include="..\QuickBite.Order.TestBase\QuickBite.Order.TestBase.csproj" />
+  </ItemGroup>
+
+</Project>
