@@ -8,3 +8,4 @@ src/quick-bite.catalog/.env
 src/quick-bite.catalog/ca.pem
 src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
 src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
+src/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/appsettings.json
