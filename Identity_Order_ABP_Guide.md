@@ -145,7 +145,7 @@ Redis được sử dụng để cache:
 |-----------|-----------|
 | Framework | ABP Framework |
 | ORM | Entity Framework Core |
-| Database | PostgreSQL |
+| Database | MySQL |
 | Saga | MassTransit State Machine |
 | Message Broker | Kafka |
 | Pattern | Outbox + Inbox |
@@ -340,13 +340,13 @@ SQL Server
 Order:
 
 ```
-PostgreSQL
+MySQL
 ```
 
 Lý do:
 
 - SQL Server phù hợp với Identity và OpenIddict.
-- PostgreSQL có hiệu năng tốt cho transaction và event sourcing style workload.
+- MySQL có hiệu năng tốt cho transaction và event sourcing style workload.
 
 ---
 
@@ -402,8 +402,8 @@ Order Service:
 MassTransit
 MassTransit.Kafka
 MassTransit.EntityFrameworkCore
-Npgsql.EntityFrameworkCore.PostgreSQL
-Volo.Abp.EntityFrameworkCore.PostgreSQL
+Npgsql.EntityFrameworkCore.MySQL
+Volo.Abp.EntityFrameworkCore.MySQL
 ```
 
 ---
