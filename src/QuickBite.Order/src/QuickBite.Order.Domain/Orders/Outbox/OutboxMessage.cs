@@ -1,7 +1,7 @@
 ﻿using System;
 using Volo.Abp.Domain.Entities.Auditing;
 
-namespace QuickBite.Order.Outbox;
+namespace QuickBite.Order.Domain.Outbox;
 
 public class OutboxMessage : CreationAuditedAggregateRoot<Guid>
 {

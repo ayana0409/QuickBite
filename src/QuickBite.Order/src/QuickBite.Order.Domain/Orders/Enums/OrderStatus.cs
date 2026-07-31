@@ -1,8 +1,11 @@
-﻿namespace QuickBite.Order.Orders;
+﻿namespace QuickBite.Order.Domain.Enums;
 
 public enum OrderStatus
 {
     Pending,
+    WaitingInventory,
+    WaitingPayment,
+    WaitingStock,
     Confirmed,
     Preparing,
     Delivering,

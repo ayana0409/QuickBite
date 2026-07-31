@@ -1,8 +1,11 @@
-﻿using System;
+﻿using QuickBite.Order.Domain.Enums;
+using QuickBite.Order.Domain.Orders.Entities;
+using QuickBite.Order.Domain.Orders.ValueObjects;
+using System;
 using System.Collections.Generic;
 using Volo.Abp.Domain.Entities.Auditing;
 
-namespace QuickBite.Order.Orders;
+namespace QuickBite.Order.Domain.Order.AggregateRoots;
 
 public class Order : FullAuditedAggregateRoot<Guid>
 {
@@ -57,5 +60,25 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
         OrderItems = [];
         StatusHistories = [];
+    }
+
+    public void SetOrderCode(string orderCode)
+    {
+        OrderCode = orderCode;
+    }
+
+    public void Confirm()
+    {
+        Status = OrderStatus.Confirmed;
+    }
+
+    public void Cancel()
+    {
+        Status = OrderStatus.Cancelled;
+    }
+
+    public void UpdateStatus(OrderStatus status)
+    {
+        Status = status;
     }
 }

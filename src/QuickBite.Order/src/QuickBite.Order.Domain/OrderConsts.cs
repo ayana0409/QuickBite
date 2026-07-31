@@ -1,4 +1,4 @@
-﻿namespace QuickBite.Order;
+﻿namespace QuickBite.Order.Domain;
 
 public static class OrderConsts
 {

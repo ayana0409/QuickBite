@@ -1,7 +1,8 @@
-﻿using System;
+﻿using QuickBite.Order.Domain.Enums;
+using System;
 using Volo.Abp.Domain.Entities.Auditing;
 
-namespace QuickBite.Order.Orders;
+namespace QuickBite.Order.Domain.Orders.Saga;
 
 public class OrderSagaState : FullAuditedAggregateRoot<Guid>
 {

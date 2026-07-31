@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using QuickBite.Order.Domain;
 using QuickBite.Order.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;

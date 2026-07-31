@@ -2,5 +2,9 @@
 
 public static class OrderDomainErrorCodes
 {
-    /* You can add your business exception error codes here, as constants */
+    public const string OrderCannotBeNull = "Order:000001";
+
+    public const string InvalidOrderStatus = "Order:000002";
+
+    public const string CannotCancelCompletedOrder = "Order:000003";
 }

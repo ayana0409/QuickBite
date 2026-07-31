@@ -1,7 +1,7 @@
 ﻿using System;
 using Volo.Abp.Domain.Entities;
 
-namespace QuickBite.Order.Orders;
+namespace QuickBite.Order.Domain.Orders.Entities;
 
 public class OrderItem : Entity<Guid>
 {

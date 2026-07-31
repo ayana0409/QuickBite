@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using QuickBite.Order.Orders;
+using QuickBite.Order.Domain.Orders.Entities;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 public class OrderStatusHistoryConfiguration :

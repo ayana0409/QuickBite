@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using QuickBite.Order.Inbox;
+using QuickBite.Order.Domain.Inbox;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 public class InboxMessageConfiguration :

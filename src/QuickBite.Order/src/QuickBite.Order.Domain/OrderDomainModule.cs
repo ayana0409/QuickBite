@@ -10,7 +10,7 @@ using Volo.Abp.Modularity;
 using Volo.Abp.MultiTenancy;
 using Volo.Abp.SettingManagement;
 
-namespace QuickBite.Order;
+namespace QuickBite.Order.Domain;
 
 [DependsOn(
     typeof(OrderDomainSharedModule),

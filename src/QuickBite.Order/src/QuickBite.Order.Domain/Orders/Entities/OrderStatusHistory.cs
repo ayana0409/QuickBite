@@ -1,7 +1,8 @@
-﻿using System;
+﻿using QuickBite.Order.Domain.Enums;
+using System;
 using Volo.Abp.Domain.Entities;
 
-namespace QuickBite.Order.Orders;
+namespace QuickBite.Order.Domain.Orders.Entities;
 
 public class OrderStatusHistory : Entity<Guid>
 {

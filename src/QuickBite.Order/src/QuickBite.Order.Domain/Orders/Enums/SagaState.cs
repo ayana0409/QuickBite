@@ -1,4 +1,4 @@
-﻿namespace QuickBite.Order.Orders;
+﻿namespace QuickBite.Order.Domain.Enums;
 
 public enum SagaState
 {

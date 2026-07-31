@@ -1,13 +1,16 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using QuickBite.Order.Inbox;
-using QuickBite.Order.Orders;
-using QuickBite.Order.Outbox;
+using QuickBite.Order.Domain.Inbox;
+using QuickBite.Order.Domain.Orders.Entities;
+using QuickBite.Order.Domain.Orders.Saga;
+using QuickBite.Order.Domain.Outbox;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.Data;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.FeatureManagement.EntityFrameworkCore;
 using Volo.Abp.SettingManagement.EntityFrameworkCore;
+
+
 namespace QuickBite.Order.EntityFrameworkCore;
 
 [ConnectionStringName("Default")]
@@ -28,7 +31,7 @@ public class OrderDbContext :
      * More info: Replacing a DbContext of a module ensures that the related module
      * uses this DbContext on runtime. Otherwise, it will use its own DbContext class.
      */
-    public DbSet<Orders.Order> Orders { get; set; }
+    public DbSet<Domain.Order.AggregateRoots.Order> Orders { get; set; }
 
     public DbSet<OrderItem> OrderItems { get; set; }
 

@@ -1,6 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using QuickBite.Order.Outbox;
+using QuickBite.Order.Domain.Outbox;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 public class OutboxMessageConfiguration :

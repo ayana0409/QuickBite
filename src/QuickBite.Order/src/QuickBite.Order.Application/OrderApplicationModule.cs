@@ -2,6 +2,7 @@
 using Volo.Abp.Modularity;
 using Volo.Abp.SettingManagement;
 using Microsoft.Extensions.DependencyInjection;
+using QuickBite.Order.Domain;
 
 namespace QuickBite.Order;
 

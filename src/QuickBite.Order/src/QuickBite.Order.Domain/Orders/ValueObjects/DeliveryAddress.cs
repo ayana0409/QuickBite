@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using Volo.Abp.Domain.Values;
 
-namespace QuickBite.Order.Orders;
+namespace QuickBite.Order.Domain.Orders.ValueObjects;
 
 public class DeliveryAddress : ValueObject
 {
