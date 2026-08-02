@@ -1,16 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QuickBite.Order.Domain.Orders.Repositories;
 using QuickBite.Order.EntityFrameworkCore;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Volo.Abp.Domain.Repositories.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 
-using AggregateRoots = QuickBite.Order.Domain.Order.AggregateRoots.Order;
+using OrderEntity = QuickBite.Order.Domain.Orders.AggregateRoots.Order;
 namespace QuickBite.Order.Orders;
 
 public class OrderRepository :
-    EfCoreRepository<OrderDbContext, AggregateRoots, Guid>,
+    EfCoreRepository<OrderDbContext, OrderEntity, Guid>,
     IOrderRepository
 {
     public OrderRepository(

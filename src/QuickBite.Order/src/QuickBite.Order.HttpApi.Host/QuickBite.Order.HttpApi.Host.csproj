@@ -20,10 +20,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite" Version="4.1.0-preview*" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\QuickBite.Order.Application\QuickBite.Order.Application.csproj" />
     <ProjectReference Include="..\QuickBite.Order.EntityFrameworkCore\QuickBite.Order.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\QuickBite.Order.HttpApi\QuickBite.Order.HttpApi.csproj" />

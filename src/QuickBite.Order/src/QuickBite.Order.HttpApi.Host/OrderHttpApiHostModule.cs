@@ -12,13 +12,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Volo.Abp;
-using Volo.Abp.AspNetCore.MultiTenancy;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.Libs;
-using Volo.Abp.AspNetCore.Mvc.UI.Bundling;
-using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
-using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
-using Volo.Abp.AspNetCore.Mvc.UI.Theme.Shared;
 using Volo.Abp.AspNetCore.Serilog;
 using Volo.Abp.Autofac;
 using Volo.Abp.EventBus.Kafka;
@@ -34,10 +29,8 @@ namespace QuickBite.Order;
 [DependsOn(
     typeof(OrderHttpApiModule),
     typeof(AbpAutofacModule),
-    typeof(AbpAspNetCoreMultiTenancyModule),
     typeof(OrderApplicationModule),
     typeof(OrderEntityFrameworkCoreModule),
-    typeof(AbpAspNetCoreMvcUiLeptonXLiteThemeModule),
     typeof(AbpAspNetCoreSerilogModule),
     typeof(AbpSwashbuckleModule),
     typeof(AbpEventBusKafkaModule)
@@ -116,16 +109,16 @@ public class OrderHttpApiHostModule : AbpModule
 
     private void ConfigureBundles()
     {
-        Configure<AbpBundlingOptions>(options =>
-        {
-            options.StyleBundles.Configure(
-                LeptonXLiteThemeBundles.Styles.Global,
-                bundle =>
-                {
-                    bundle.AddFiles("/global-styles.css");
-                }
-            );
-        });
+        //Configure<AbpBundlingOptions>(options =>
+        //{
+        //    options.StyleBundles.Configure(
+        //        LeptonXLiteThemeBundles.Styles.Global,
+        //        bundle =>
+        //        {
+        //            bundle.AddFiles("/global-styles.css");
+        //        }
+        //    );
+        //});
     }
 
     private void ConfigureUrls(IConfiguration configuration)
@@ -228,7 +221,7 @@ public class OrderHttpApiHostModule : AbpModule
 
         if (!env.IsDevelopment())
         {
-            app.UseErrorPage();
+            //app.UseErrorPage();
         }
 
         app.UseCorrelationId();

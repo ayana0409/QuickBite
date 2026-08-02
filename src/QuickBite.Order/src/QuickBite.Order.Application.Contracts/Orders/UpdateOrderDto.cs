@@ -4,14 +4,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace QuickBite.Order.Orders;
 
-public class CreateOrderDto
+public class UpdateOrderDto
 {
-    [Required]
-    public Guid RestaurantId { get; set; }
-
-    [Required]
-    public Guid CustomerId { get; set; }
-
     [Required]
     public DeliveryAddressDto DeliveryAddress { get; set; } = default!;
 

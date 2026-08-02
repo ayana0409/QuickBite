@@ -1,6 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using QuickBite.Order.Domain.Order.AggregateRoots;
+using QuickBite.Order.Domain.Orders.AggregateRoots;
 using Volo.Abp.EntityFrameworkCore.Modeling;
 
 public class OrderConfiguration :
@@ -12,6 +12,8 @@ public class OrderConfiguration :
         builder.ToTable("Orders");
 
         builder.ConfigureByConvention();
+
+        builder.Navigation(x => x.OrderItems).AutoInclude();
 
         builder.Property(x => x.OrderCode)
             .IsRequired()

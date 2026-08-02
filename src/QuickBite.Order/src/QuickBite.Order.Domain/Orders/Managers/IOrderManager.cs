@@ -1,19 +1,27 @@
 ﻿using QuickBite.Order.Domain.Enums;
+using QuickBite.Order.Domain.Orders.Entities;
+using QuickBite.Order.Domain.Orders.ValueObjects;
+using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
-using AggregateRoots = QuickBite.Order.Domain.Order.AggregateRoots.Order;
 namespace QuickBite.Order.Domain.Orders.Managers;
 
 public interface IOrderManager
 {
-    Task<AggregateRoots> CreateAsync(AggregateRoots order);
+    Task<AggregateRoots.Order> CreateAsync(
+        Guid customerId,
+        Guid restaurantId,
+        DeliveryAddress deliveryAddress,
+        List<OrderItem> orderItems,
+        Guid? correlationId = null);
 
-    Task ConfirmAsync(AggregateRoots order);
+    Task ConfirmAsync(AggregateRoots.Order order);
 
-    Task CancelAsync(AggregateRoots order);
+    Task CancelAsync(AggregateRoots.Order order);
 
     Task UpdateStatusAsync(
-        AggregateRoots order,
+        AggregateRoots.Order order,
         OrderStatus status);
 
     string GenerateOrderCode();

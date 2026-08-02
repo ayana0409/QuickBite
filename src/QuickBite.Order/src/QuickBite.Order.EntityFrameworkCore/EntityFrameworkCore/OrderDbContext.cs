@@ -31,7 +31,7 @@ public class OrderDbContext :
      * More info: Replacing a DbContext of a module ensures that the related module
      * uses this DbContext on runtime. Otherwise, it will use its own DbContext class.
      */
-    public DbSet<Domain.Order.AggregateRoots.Order> Orders { get; set; }
+    public DbSet<Domain.Orders.AggregateRoots.Order> Orders { get; set; }
 
     public DbSet<OrderItem> OrderItems { get; set; }
 

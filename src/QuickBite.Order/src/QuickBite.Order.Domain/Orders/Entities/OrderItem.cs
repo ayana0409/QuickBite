@@ -22,17 +22,19 @@ public class OrderItem : Entity<Guid>
 
     public OrderItem(
         Guid id,
-        Guid orderId,
         string sku,
         string itemName,
         int quantity,
         decimal unitPrice)
         : base(id)
     {
-        OrderId = orderId;
         Sku = sku;
         ItemName = itemName;
         Quantity = quantity;
         UnitPrice = unitPrice;
+    }
+    public void SetOrderId(Guid orderId)
+    {
+        OrderId = orderId;
     }
 }

@@ -1,13 +1,15 @@
-﻿using Volo.Abp.FeatureManagement;
+﻿using Microsoft.Extensions.DependencyInjection;
+using QuickBite.Order.Domain;
+using Volo.Abp.FeatureManagement;
+using Volo.Abp.Mapperly;
 using Volo.Abp.Modularity;
 using Volo.Abp.SettingManagement;
-using Microsoft.Extensions.DependencyInjection;
-using QuickBite.Order.Domain;
 
 namespace QuickBite.Order;
 
 [DependsOn(
     typeof(OrderDomainModule),
+    typeof(AbpMapperlyModule),
     typeof(OrderApplicationContractsModule),
     typeof(AbpFeatureManagementApplicationModule),
     typeof(AbpSettingManagementApplicationModule)

@@ -1,4 +1,8 @@
+using QuickBite.Order.Domain.Orders.Entities;
+using QuickBite.Order.Domain.Orders.ValueObjects;
+using QuickBite.Order.Orders;
 using Riok.Mapperly.Abstractions;
+using System.Collections.Generic;
 using Volo.Abp.Mapperly;
 
 namespace QuickBite.Order;
@@ -9,4 +13,6 @@ public partial class OrderApplicationMappers
     /* You can configure your Mapperly mapping configuration here.
      * Alternatively, you can split your mapping configurations
      * into multiple mapper classes for a better organization. */
+
+    // Mappings for Order and related entities are handled in OrderMapper.cs
 }
