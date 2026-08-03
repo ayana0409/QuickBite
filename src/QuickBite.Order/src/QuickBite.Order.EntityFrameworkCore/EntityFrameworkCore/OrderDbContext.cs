@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using QuickBite.Order.Domain.Inbox;
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Orders.Saga;
@@ -7,15 +7,17 @@ using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.Data;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.DistributedEvents;
 using Volo.Abp.FeatureManagement.EntityFrameworkCore;
 using Volo.Abp.SettingManagement.EntityFrameworkCore;
-
 
 namespace QuickBite.Order.EntityFrameworkCore;
 
 [ConnectionStringName("Default")]
 public class OrderDbContext :
-    AbpDbContext<OrderDbContext>
+    AbpDbContext<OrderDbContext>,
+    IHasEventInbox,
+    IHasEventOutbox
 {
     /* Add DbSet properties for your Aggregate Roots / Entities here. */
 
@@ -42,6 +44,15 @@ public class OrderDbContext :
     public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     public DbSet<InboxMessage> InboxMessages { get; set; }
+
+    /// <summary>Local replica của FoodItem được đồng bộ từ Catalog service qua Kafka.</summary>
+    public DbSet<FoodItem> FoodItems { get; set; }
+
+    /// <summary>ABP Distributed Event Bus Inbox</summary>
+    public DbSet<IncomingEventRecord> IncomingEvents { get; set; }
+
+    /// <summary>ABP Distributed Event Bus Outbox</summary>
+    public DbSet<OutgoingEventRecord> OutgoingEvents { get; set; }
     #endregion
 
     public OrderDbContext(DbContextOptions<OrderDbContext> options)
@@ -60,6 +71,8 @@ public class OrderDbContext :
         builder.ConfigureBackgroundJobs();
         builder.ConfigureAuditLogging();
         builder.ConfigureFeatureManagement();
+        builder.ConfigureEventInbox();
+        builder.ConfigureEventOutbox();
 
         builder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
         /* Configure your own tables/entities inside here */

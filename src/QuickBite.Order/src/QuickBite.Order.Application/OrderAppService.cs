@@ -1,4 +1,6 @@
 using QuickBite.Order.Domain.Orders.Entities;
+using QuickBite.Order.Domain.Enums;
+using Volo.Abp.Domain.Entities;
 using QuickBite.Order.Domain.Orders.Managers;
 using QuickBite.Order.Domain.Orders.Repositories;
 using QuickBite.Order.Domain.Orders.ValueObjects;
@@ -6,7 +8,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using QuickBite.Order.Extensions;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Domain.Repositories;
 
 using OrderEntity = QuickBite.Order.Domain.Orders.AggregateRoots.Order;
 namespace QuickBite.Order.Orders;
@@ -17,13 +21,16 @@ public class OrderAppService :
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderManager _orderManager;
+    private readonly IRepository<FoodItem, Guid> _foodItemRepository;
 
     public OrderAppService(
         IOrderRepository orderRepository,
-        IOrderManager orderManager)
+        IOrderManager orderManager,
+        IRepository<FoodItem, Guid> foodItemRepository)
     {
         _orderRepository = orderRepository;
         _orderManager = orderManager;
+        _foodItemRepository = foodItemRepository;
     }
 
     public async Task<OrderDto> CreateAsync(CreateOrderDto input)
@@ -70,8 +77,46 @@ public class OrderAppService :
 
     public async Task<OrderDto> GetAsync(Guid id)
     {
-        var order = await _orderRepository.GetAsync(id, includeDetails: true);
-        return ObjectMapper.Map<OrderEntity, OrderDto>(order);
+        var orderQuery = await _orderRepository.GetQueryableAsync();
+        var foodQuery = await _foodItemRepository.GetQueryableAsync();
+
+        // Sử dụng IQueryable để JOIN dữ liệu ngay ở tầng Database (EF Core SQL)
+        var query = from o in orderQuery
+                    where o.Id == id
+                    select new
+                    {
+                        Order = o,
+                        ItemsWithFood = from oi in o.OrderItems
+                                        join fi in foodQuery on oi.Sku equals fi.Id.ToString() into fiJoin
+                                        from fi in fiJoin.DefaultIfEmpty() // LEFT JOIN
+                                        select new { OrderItem = oi, FoodItem = fi }
+                    };
+
+        var result = await AsyncExecuter.FirstOrDefaultAsync(query);
+        if (result == null)
+        {
+            throw new EntityNotFoundException(typeof(OrderEntity), id);
+        }
+
+        var orderDto = ObjectMapper.Map<OrderEntity, OrderDto>(result.Order);
+        
+        orderDto.Items = result.ItemsWithFood.Select(x => 
+        {
+            bool useLatestData = result.Order.Status == OrderStatus.Pending;
+
+            return new OrderItemDto
+            {
+                FoodItemId = Guid.Parse(x.OrderItem.Sku),
+                FoodName = (useLatestData && x.FoodItem != null) ? x.FoodItem.Name : x.OrderItem.ItemName,
+                Quantity = x.OrderItem.Quantity,
+                UnitPrice = (useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice,
+                TotalPrice = ((useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice) * x.OrderItem.Quantity
+            };
+        }).ToList();
+        
+        orderDto.TotalAmount = orderDto.Items.Sum(i => i.TotalPrice);
+
+        return orderDto;
     }
 
     public async Task<OrderDto> UpdateAsync(Guid id, UpdateOrderDto input)
@@ -119,9 +164,48 @@ public class OrderAppService :
     public async Task<List<OrderDto>> GetMyOrdersAsync()
     {
         var customerId = CurrentUser.Id ?? throw new UnauthorizedAccessException("User is not logged in");
-        var orders = await _orderRepository.GetListAsync(x => x.CustomerId == customerId, includeDetails: true);
         
-        return ObjectMapper.Map<List<OrderEntity>, List<OrderDto>>(orders);
+        var orderQuery = await _orderRepository.GetQueryableAsync();
+        var foodQuery = await _foodItemRepository.GetQueryableAsync();
+
+        // Sử dụng IQueryable để JOIN dữ liệu ngay ở tầng Database (EF Core SQL)
+        var query = from o in orderQuery
+                    where o.CustomerId == customerId
+                    select new
+                    {
+                        Order = o,
+                        ItemsWithFood = from oi in o.OrderItems
+                                        join fi in foodQuery on oi.Sku equals fi.Id.ToString() into fiJoin
+                                        from fi in fiJoin.DefaultIfEmpty() // LEFT JOIN
+                                        select new { OrderItem = oi, FoodItem = fi }
+                    };
+
+        var queryResult = await AsyncExecuter.ToListAsync(query);
+        var orderDtos = new List<OrderDto>();
+
+        foreach (var result in queryResult)
+        {
+            var orderDto = ObjectMapper.Map<OrderEntity, OrderDto>(result.Order);
+            
+            orderDto.Items = result.ItemsWithFood.Select(x => 
+            {
+                bool useLatestData = result.Order.Status == OrderStatus.Pending;
+
+                return new OrderItemDto
+                {
+                    FoodItemId = Guid.Parse(x.OrderItem.Sku),
+                    FoodName = (useLatestData && x.FoodItem != null) ? x.FoodItem.Name : x.OrderItem.ItemName,
+                    Quantity = x.OrderItem.Quantity,
+                    UnitPrice = (useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice,
+                    TotalPrice = ((useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice) * x.OrderItem.Quantity
+                };
+            }).ToList();
+            
+            orderDto.TotalAmount = orderDto.Items.Sum(i => i.TotalPrice);
+            orderDtos.Add(orderDto);
+        }
+
+        return orderDtos;
     }
 
     public async Task CancelAsync(Guid id)
@@ -133,17 +217,9 @@ public class OrderAppService :
         await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 
-    private Task<Dictionary<Guid, (string Name, decimal Price)>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)
+    private async Task<Dictionary<Guid, (string Name, decimal Price)>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)
     {
-        // TODO: In a real application, perform a SINGLE batch query to the Catalog/Food database/service:
-        // var foods = await _foodRepository.GetListAsync(x => foodItemIds.Contains(x.Id));
-        // return foods.ToDictionary(x => x.Id, x => (x.Name, x.Price));
-        
-        var dict = new Dictionary<Guid, (string Name, decimal Price)>();
-        foreach (var id in foodItemIds)
-        {
-            dict[id] = ($"Mock Food {id.ToString().Substring(0, 4)}", 50000m);
-        }
-        return Task.FromResult(dict);
+        var foodItems = await _foodItemRepository.GetListByIdsAsync(foodItemIds);
+        return foodItems.ToDictionary(x => x.Id, x => (x.Name, x.Price));
     }
 }

@@ -55,7 +55,7 @@ public class OrderHttpApiHostModule : AbpModule
         var configuration = context.Services.GetConfiguration();
         var hostingEnvironment = context.Services.GetHostingEnvironment();
 
-        ConfigureKafka();
+        ConfigureKafka(configuration);
         ConfigureAuthentication(context);
         ConfigureBundles();
         ConfigureUrls(configuration);
@@ -67,33 +67,41 @@ public class OrderHttpApiHostModule : AbpModule
     }
 
 
-    private void ConfigureKafka()
+    private void ConfigureKafka(IConfiguration configuration)
     {
+        var bootstrapServers = configuration["Kafka:Connections:Default"] ?? configuration["Kafka:Producer:BootstrapServers"];
+        var producerSection = configuration.GetSection("Kafka:Producer");
 
         Configure<AbpKafkaOptions>(options =>
         {
+            if (!string.IsNullOrEmpty(bootstrapServers))
+            {
+                var clientConfig = new Confluent.Kafka.ClientConfig { BootstrapServers = bootstrapServers };
+                if (Enum.TryParse<Confluent.Kafka.SecurityProtocol>(producerSection["SecurityProtocol"], out var sp)) clientConfig.SecurityProtocol = sp;
+                if (Enum.TryParse<Confluent.Kafka.SaslMechanism>(producerSection["SaslMechanism"], out var sm)) clientConfig.SaslMechanism = sm;
+                clientConfig.SaslUsername = producerSection["SaslUsername"];
+                clientConfig.SaslPassword = producerSection["SaslPassword"];
+                if (bool.TryParse(producerSection["EnableSslCertificateVerification"], out var verify)) clientConfig.EnableSslCertificateVerification = verify;
+
+                options.Connections["Default"] = clientConfig;
+                options.Connections["KafkaEventBus"] = clientConfig;
+            }
+
             options.ConfigureConsumer = config =>
             {
-                config.EnableAutoCommit = false;
+                configuration.GetSection("Kafka:Consumer").Bind(config);
+                if (!string.IsNullOrEmpty(bootstrapServers)) config.BootstrapServers = bootstrapServers;
             };
-        });
 
-        Configure<AbpKafkaOptions>(options =>
-        {
             options.ConfigureProducer = config =>
             {
-                config.MessageTimeoutMs = 6000;
-
-                config.Acks = Acks.All;
+                configuration.GetSection("Kafka:Producer").Bind(config);
+                if (!string.IsNullOrEmpty(bootstrapServers)) config.BootstrapServers = bootstrapServers;
             };
-        });
 
-        Configure<AbpKafkaOptions>(options =>
-        {
             options.ConfigureTopic = specification =>
             {
                 specification.NumPartitions = 3;
-
                 specification.ReplicationFactor = 3;
             };
         });

@@ -1,9 +1,11 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using QuickBite.Order.Domain;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
+using Volo.Abp.EntityFrameworkCore.DistributedEvents;
 using Volo.Abp.EntityFrameworkCore.MySQL;
+using Volo.Abp.EventBus.Distributed;
 using Volo.Abp.FeatureManagement.EntityFrameworkCore;
 using Volo.Abp.Modularity;
 using Volo.Abp.SettingManagement.EntityFrameworkCore;
@@ -41,5 +43,13 @@ public class OrderEntityFrameworkCoreModule : AbpModule
             options.UseMySQL();
         });
 
+        // Bật Inbox Pattern — ABP tự động lưu MessageId vào bảng AbpEventInboxes
+        // Khi Kafka gửi lại cùng 1 message, ABP kiểm tra bảng Inbox → tự động bỏ qua (Idempotent)
+        Configure<AbpDistributedEventBusOptions>(options =>
+        {
+            options.Inboxes.Configure(
+                config => { config.UseDbContext<OrderDbContext>(); }
+            );
+        });
     }
 }
