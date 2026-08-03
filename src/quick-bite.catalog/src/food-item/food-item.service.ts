@@ -1,10 +1,15 @@
 import {
   ConflictException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ClientKafka } from '@nestjs/microservices';
+import { lastValueFrom } from 'rxjs';
 
 import { FoodItem } from './entities/food-item.entity';
 import { Category } from '@/category/entities/category.entity';
@@ -19,8 +24,15 @@ import { UpdateFoodItemToppingsDto } from './dto/update-food-item-toppings.dto';
 import { PaginationDto } from '@/common/dto/pagination.dto';
 import { PaginationHelper } from '@/common/helpers/pagination.helper';
 
+import { FoodItemUpdatedEto } from './dto/food-item-updated.eto';
+
+const CATALOG_EVENTS_TOPIC = 'catalog-events';
+const FOOD_ITEM_SYNCED = 'food.item.synced';
+
 @Injectable()
-export class FoodItemService {
+export class FoodItemService implements OnModuleInit {
+  private readonly logger = new Logger(FoodItemService.name);
+
   constructor(
     @InjectRepository(FoodItem)
     private readonly foodItemRepository: Repository<FoodItem>,
@@ -30,7 +42,49 @@ export class FoodItemService {
 
     @InjectRepository(Restaurant)
     private readonly restaurantRepository: Repository<Restaurant>,
+
+    @Inject('KAFKA_CLIENT')
+    private readonly kafkaClient: ClientKafka,
   ) {}
+
+  async onModuleInit() {
+    try {
+      await this.kafkaClient.connect();
+      this.logger.log('[Kafka] Connected to Kafka broker successfully.');
+    } catch (error) {
+      this.logger.warn('[Kafka] Could not connect to Kafka broker. Events will fail until broker is available.');
+    }
+  }
+
+  private async emitFoodItemSynced(foodItem: FoodItem): Promise<void> {
+    const eto: FoodItemUpdatedEto = {
+      id: foodItem.id,
+      name: foodItem.name,
+      price: Number(foodItem.price),
+    };
+
+    const payload = {
+      eventName: FOOD_ITEM_SYNCED,
+      eto,
+    };
+
+    try {
+      await lastValueFrom(
+        this.kafkaClient.emit(CATALOG_EVENTS_TOPIC, {
+          key: foodItem.id,
+          value: payload,
+        }),
+      );
+      this.logger.log(
+        `[Kafka SUCCESS] Published '${FOOD_ITEM_SYNCED}' to topic '${CATALOG_EVENTS_TOPIC}': ${JSON.stringify(eto)}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `[Kafka ERROR] Failed to publish '${FOOD_ITEM_SYNCED}' for foodId=${foodItem.id}`,
+        error?.stack || error,
+      );
+    }
+  }
 
   async create(
     dto: CreateFoodItemDto,
@@ -88,9 +142,14 @@ export class FoodItemService {
         ...dto,
       });
 
-    return await this.foodItemRepository.save(
+    const saved = await this.foodItemRepository.save(
       foodItem,
     );
+
+    // Publish event to Order Service via Kafka
+    await this.emitFoodItemSynced(saved);
+
+    return saved;
   }
 
   async findAll(
@@ -209,9 +268,14 @@ export class FoodItemService {
 
     Object.assign(foodItem, dto);
 
-    return await this.foodItemRepository.save(
+    const updated = await this.foodItemRepository.save(
       foodItem,
     );
+
+    // Publish event to Order Service via Kafka
+    await this.emitFoodItemSynced(updated);
+
+    return updated;
   }
 
   async updateImages(
