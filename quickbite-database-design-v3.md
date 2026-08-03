@@ -142,6 +142,21 @@ CREATE TABLE order_items (
     unit_price  NUMERIC(14,2) NOT NULL
 );
 CREATE INDEX ix_order_items_order ON order_items(order_id);
+
+-- Bảng nội bộ được đồng bộ từ Catalog sang để tối ưu hiệu năng khi hiển thị thông tin món ăn trong Order
+CREATE TABLE food_items (
+    id          UUID PRIMARY KEY,             -- Đồng bộ từ Catalog.food_items.id
+    restaurant_id UUID NOT NULL,              -- Đồng bộ từ Catalog.restaurants.id
+    sku         VARCHAR(64) NOT NULL,
+    name        VARCHAR(256) NOT NULL,
+    price       NUMERIC(14,2) NOT NULL,
+    currency    VARCHAR(8) NOT NULL DEFAULT 'VND',
+    image_url   VARCHAR(1024) NULL,
+    is_available BOOLEAN NOT NULL DEFAULT true,
+    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_food_items_restaurant ON food_items(restaurant_id);
+CREATE INDEX ix_food_items_sku ON food_items(sku);
 ```
 
 ### 2.1. Saga state — mở rộng với bước `AwaitingRestaurantAcceptance`
