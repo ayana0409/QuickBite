@@ -26,6 +26,7 @@ export const STOCK_RELEASED = 'stock.released';
 // CATALOG SERVICE
 export const MENU_UPDATED = 'menu.updated';
 export const RESTAURANT_STATUS_CHANGED = 'restaurant.status.changed';
+export const FOOD_ITEM_SYNCED = 'food.item.synced';
 
 // NOTIFICATION SERVICE
 export const NOTIFICATION_CREATED = 'notification.created';
@@ -49,6 +50,7 @@ export const PAYMENT_EVENTS_TOPIC = 'payment-events';
 export const INVENTORY_EVENTS_TOPIC = 'inventory-events';
 export const DELIVERY_EVENTS_TOPIC = 'delivery-events';
 export const NOTIFICATION_EVENTS_TOPIC = 'notification-events';
+export const CATALOG_EVENTS_TOPIC = 'catalog-events';
 
 
 // =========================

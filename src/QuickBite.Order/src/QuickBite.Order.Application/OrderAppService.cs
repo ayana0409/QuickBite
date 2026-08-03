@@ -7,8 +7,10 @@ using QuickBite.Order.Domain.Orders.ValueObjects;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading.Tasks;
 using QuickBite.Order.Extensions;
+using QuickBite.Order.Domain.Shared.Event;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 
@@ -56,12 +58,47 @@ public class OrderAppService :
                 throw new Exception($"Food item with ID {item.FoodItemId} not found.");
             }
 
+            var variants = string.IsNullOrEmpty(foodInfo.Variants) 
+                ? new List<FoodVariantEto>() 
+                : JsonSerializer.Deserialize<List<FoodVariantEto>>(foodInfo.Variants);
+            
+            var toppings = string.IsNullOrEmpty(foodInfo.Toppings)
+                ? new List<FoodToppingEto>()
+                : JsonSerializer.Deserialize<List<FoodToppingEto>>(foodInfo.Toppings);
+
+            decimal finalPrice = foodInfo.Price;
+
+            if (!string.IsNullOrEmpty(item.SelectedVariantName))
+            {
+                var variant = variants?.FirstOrDefault(v => v.Name == item.SelectedVariantName);
+                if (variant != null)
+                {
+                    finalPrice += variant.PriceDelta;
+                }
+            }
+
+            if (item.SelectedToppings != null && item.SelectedToppings.Any())
+            {
+                foreach (var toppingName in item.SelectedToppings)
+                {
+                    var topping = toppings?.FirstOrDefault(t => t.Name == toppingName);
+                    if (topping != null)
+                    {
+                        finalPrice += topping.Price;
+                    }
+                }
+            }
+
+            var selectedToppingsJson = JsonSerializer.Serialize(item.SelectedToppings ?? new List<string>());
+
             orderItems.Add(new OrderItem(
                 GuidGenerator.Create(),
                 item.FoodItemId.ToString(),
                 foodInfo.Name,
                 item.Quantity,
-                foodInfo.Price));
+                finalPrice,
+                item.SelectedVariantName,
+                selectedToppingsJson));
         }
 
         var order = await _orderManager.CreateAsync(
@@ -103,14 +140,52 @@ public class OrderAppService :
         orderDto.Items = result.ItemsWithFood.Select(x => 
         {
             bool useLatestData = result.Order.Status == OrderStatus.Pending;
+            
+            decimal finalUnitPrice = x.OrderItem.UnitPrice;
+            
+            if (useLatestData && x.FoodItem != null)
+            {
+                finalUnitPrice = x.FoodItem.Price;
+                
+                var variants = string.IsNullOrEmpty(x.FoodItem.Variants) 
+                    ? new List<FoodVariantEto>() 
+                    : JsonSerializer.Deserialize<List<FoodVariantEto>>(x.FoodItem.Variants);
+                    
+                var toppings = string.IsNullOrEmpty(x.FoodItem.Toppings)
+                    ? new List<FoodToppingEto>()
+                    : JsonSerializer.Deserialize<List<FoodToppingEto>>(x.FoodItem.Toppings);
+                    
+                if (!string.IsNullOrEmpty(x.OrderItem.SelectedVariantName))
+                {
+                    var variant = variants?.FirstOrDefault(v => v.Name == x.OrderItem.SelectedVariantName);
+                    if (variant != null) finalUnitPrice += variant.PriceDelta;
+                }
+                
+                var selectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
+                    ? new List<string>() 
+                    : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings);
+                    
+                if (selectedToppings != null && selectedToppings.Any())
+                {
+                    foreach (var tName in selectedToppings)
+                    {
+                        var topping = toppings?.FirstOrDefault(t => t.Name == tName);
+                        if (topping != null) finalUnitPrice += topping.Price;
+                    }
+                }
+            }
 
             return new OrderItemDto
             {
                 FoodItemId = Guid.Parse(x.OrderItem.Sku),
                 FoodName = (useLatestData && x.FoodItem != null) ? x.FoodItem.Name : x.OrderItem.ItemName,
                 Quantity = x.OrderItem.Quantity,
-                UnitPrice = (useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice,
-                TotalPrice = ((useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice) * x.OrderItem.Quantity
+                UnitPrice = finalUnitPrice,
+                TotalPrice = finalUnitPrice * x.OrderItem.Quantity,
+                SelectedVariantName = x.OrderItem.SelectedVariantName,
+                SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
+                    ? new List<string>() 
+                    : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings)
             };
         }).ToList();
         
@@ -146,13 +221,48 @@ public class OrderAppService :
                 throw new Exception($"Food item with ID {item.FoodItemId} not found.");
             }
 
+            var variants = string.IsNullOrEmpty(foodInfo.Variants) 
+                ? new List<FoodVariantEto>() 
+                : JsonSerializer.Deserialize<List<FoodVariantEto>>(foodInfo.Variants);
+            
+            var toppings = string.IsNullOrEmpty(foodInfo.Toppings)
+                ? new List<FoodToppingEto>()
+                : JsonSerializer.Deserialize<List<FoodToppingEto>>(foodInfo.Toppings);
+
+            decimal finalPrice = foodInfo.Price;
+
+            if (!string.IsNullOrEmpty(item.SelectedVariantName))
+            {
+                var variant = variants?.FirstOrDefault(v => v.Name == item.SelectedVariantName);
+                if (variant != null)
+                {
+                    finalPrice += variant.PriceDelta;
+                }
+            }
+
+            if (item.SelectedToppings != null && item.SelectedToppings.Any())
+            {
+                foreach (var toppingName in item.SelectedToppings)
+                {
+                    var topping = toppings?.FirstOrDefault(t => t.Name == toppingName);
+                    if (topping != null)
+                    {
+                        finalPrice += topping.Price;
+                    }
+                }
+            }
+
+            var selectedToppingsJson = JsonSerializer.Serialize(item.SelectedToppings ?? new List<string>());
+
             var orderItem = new OrderItem(
                 GuidGenerator.Create(),
                 item.FoodItemId.ToString(),
                 foodInfo.Name,
                 item.Quantity,
-                foodInfo.Price);
-            
+                finalPrice,
+                item.SelectedVariantName,
+                selectedToppingsJson);
+
             order.AddItem(orderItem);
         }
 
@@ -190,14 +300,52 @@ public class OrderAppService :
             orderDto.Items = result.ItemsWithFood.Select(x => 
             {
                 bool useLatestData = result.Order.Status == OrderStatus.Pending;
+                
+                decimal finalUnitPrice = x.OrderItem.UnitPrice;
+                
+                if (useLatestData && x.FoodItem != null)
+                {
+                    finalUnitPrice = x.FoodItem.Price;
+                    
+                    var variants = string.IsNullOrEmpty(x.FoodItem.Variants) 
+                        ? new List<FoodVariantEto>() 
+                        : JsonSerializer.Deserialize<List<FoodVariantEto>>(x.FoodItem.Variants);
+                        
+                    var toppings = string.IsNullOrEmpty(x.FoodItem.Toppings)
+                        ? new List<FoodToppingEto>()
+                        : JsonSerializer.Deserialize<List<FoodToppingEto>>(x.FoodItem.Toppings);
+                        
+                    if (!string.IsNullOrEmpty(x.OrderItem.SelectedVariantName))
+                    {
+                        var variant = variants?.FirstOrDefault(v => v.Name == x.OrderItem.SelectedVariantName);
+                        if (variant != null) finalUnitPrice += variant.PriceDelta;
+                    }
+                    
+                    var selectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
+                        ? new List<string>() 
+                        : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings);
+                        
+                    if (selectedToppings != null && selectedToppings.Any())
+                    {
+                        foreach (var tName in selectedToppings)
+                        {
+                            var topping = toppings?.FirstOrDefault(t => t.Name == tName);
+                            if (topping != null) finalUnitPrice += topping.Price;
+                        }
+                    }
+                }
 
                 return new OrderItemDto
                 {
                     FoodItemId = Guid.Parse(x.OrderItem.Sku),
                     FoodName = (useLatestData && x.FoodItem != null) ? x.FoodItem.Name : x.OrderItem.ItemName,
                     Quantity = x.OrderItem.Quantity,
-                    UnitPrice = (useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice,
-                    TotalPrice = ((useLatestData && x.FoodItem != null) ? x.FoodItem.Price : x.OrderItem.UnitPrice) * x.OrderItem.Quantity
+                    UnitPrice = finalUnitPrice,
+                    TotalPrice = finalUnitPrice * x.OrderItem.Quantity,
+                    SelectedVariantName = x.OrderItem.SelectedVariantName,
+                    SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
+                        ? new List<string>() 
+                        : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings)
                 };
             }).ToList();
             
@@ -217,9 +365,9 @@ public class OrderAppService :
         await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 
-    private async Task<Dictionary<Guid, (string Name, decimal Price)>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)
+    private async Task<Dictionary<Guid, FoodItem>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)
     {
         var foodItems = await _foodItemRepository.GetListByIdsAsync(foodItemIds);
-        return foodItems.ToDictionary(x => x.Id, x => (x.Name, x.Price));
+        return foodItems.ToDictionary(x => x.Id, x => x);
     }
 }

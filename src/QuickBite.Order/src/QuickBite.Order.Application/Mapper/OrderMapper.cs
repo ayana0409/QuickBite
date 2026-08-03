@@ -5,6 +5,7 @@ using QuickBite.Order.Orders;
 using Riok.Mapperly.Abstractions;
 using Volo.Abp.Mapperly;
 using System;
+using System.Text.Json;
 
 namespace QuickBite.Order.Mappers;
 
@@ -21,12 +22,16 @@ public partial class OrderMapper : MapperBase<Domain.Orders.AggregateRoots.Order
     {
         var dto = MapOrderItemInternal(source);
         dto.TotalPrice = source.Quantity * source.UnitPrice;
+        dto.SelectedToppings = string.IsNullOrEmpty(source.SelectedToppings) 
+            ? new System.Collections.Generic.List<string>() 
+            : JsonSerializer.Deserialize<System.Collections.Generic.List<string>>(source.SelectedToppings);
         return dto;
     }
 
     [MapProperty(nameof(OrderItem.ItemName), nameof(OrderItemDto.FoodName))]
     [MapProperty(nameof(OrderItem.Sku), nameof(OrderItemDto.FoodItemId))]
     [MapperIgnoreTarget(nameof(OrderItemDto.TotalPrice))]
+    [MapperIgnoreTarget(nameof(OrderItemDto.SelectedToppings))]
     private partial OrderItemDto MapOrderItemInternal(OrderItem source);
 
     [MapProperty(nameof(DeliveryAddress.FullName), nameof(DeliveryAddressDto.ReceiverName))]

@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace QuickBite.Order.Orders;
@@ -17,4 +18,8 @@ public class OrderItemDto
     public decimal UnitPrice { get; set; }
 
     public decimal TotalPrice { get; set; }
+
+    public string? SelectedVariantName { get; set; }
+
+    public List<string> SelectedToppings { get; set; } = new();
 }

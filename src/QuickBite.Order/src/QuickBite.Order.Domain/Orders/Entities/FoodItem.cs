@@ -13,17 +13,25 @@ public class FoodItem : Entity<Guid>
 
     public decimal Price { get; private set; }
 
+    public string Variants { get; private set; } = "[]";
+
+    public string Toppings { get; private set; } = "[]";
+
     private FoodItem() { }
 
-    public FoodItem(Guid id, string name, decimal price) : base(id)
+    public FoodItem(Guid id, string name, decimal price, string variants, string toppings) : base(id)
     {
         Name = name;
         Price = price;
+        Variants = variants;
+        Toppings = toppings;
     }
 
-    public void UpdateInfo(string name, decimal price)
+    public void UpdateInfo(string name, decimal price, string variants, string toppings)
     {
         Name = name;
         Price = price;
+        Variants = variants;
+        Toppings = toppings;
     }
 }

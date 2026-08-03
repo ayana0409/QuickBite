@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Volo.Abp.EventBus;
 
 namespace QuickBite.Order.Domain.Shared.Event;
@@ -15,4 +16,8 @@ public class FoodItemUpdatedEto
     public string Name { get; set; }
 
     public decimal Price { get; set; }
+
+    public List<FoodVariantEto> Variants { get; set; } = new();
+    
+    public List<FoodToppingEto> Toppings { get; set; } = new();
 }

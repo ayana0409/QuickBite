@@ -1,4 +1,5 @@
 using System;
+using System.Text.Json;
 using System.Threading.Tasks;
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Shared.Event;
@@ -25,19 +26,22 @@ public class FoodItemUpdatedEventHandler
 
     public async Task HandleEventAsync(FoodItemUpdatedEto eventData)
     {
+        var variantsJson = JsonSerializer.Serialize(eventData.Variants ?? new());
+        var toppingsJson = JsonSerializer.Serialize(eventData.Toppings ?? new());
+
         // Kiểm tra FoodItem đã tồn tại trong DB local của Order service chưa
         var food = await _foodItemRepository.FindAsync(eventData.Id);
 
         if (food == null)
         {
             // Chưa có → Insert (đồng bộ món mới từ Catalog)
-            food = new FoodItem(eventData.Id, eventData.Name, eventData.Price);
+            food = new FoodItem(eventData.Id, eventData.Name, eventData.Price, variantsJson, toppingsJson);
             await _foodItemRepository.InsertAsync(food);
         }
         else
         {
             // Đã có → Update (đồng bộ thay đổi tên/giá từ Catalog)
-            food.UpdateInfo(eventData.Name, eventData.Price);
+            food.UpdateInfo(eventData.Name, eventData.Price, variantsJson, toppingsJson);
             await _foodItemRepository.UpdateAsync(food);
         }
     }
