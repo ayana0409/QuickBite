@@ -7,7 +7,7 @@ public class OrderItem : Entity<Guid>
 {
     public Guid OrderId { get; private set; }
 
-    public string Sku { get; private set; }
+    public Guid Sku { get; private set; }
 
     public string ItemName { get; private set; }
 
@@ -26,7 +26,7 @@ public class OrderItem : Entity<Guid>
 
     public OrderItem(
         Guid id,
-        string sku,
+        Guid sku,
         string itemName,
         int quantity,
         decimal unitPrice,

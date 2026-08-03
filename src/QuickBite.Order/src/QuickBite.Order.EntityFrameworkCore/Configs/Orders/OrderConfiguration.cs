@@ -13,8 +13,6 @@ public class OrderConfiguration :
 
         builder.ConfigureByConvention();
 
-        builder.Navigation(x => x.OrderItems).AutoInclude();
-
         builder.Property(x => x.OrderCode)
             .IsRequired()
             .HasMaxLength(24);

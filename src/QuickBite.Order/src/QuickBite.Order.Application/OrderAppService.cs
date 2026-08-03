@@ -72,7 +72,7 @@ public class OrderAppService :
 
             orderItems.Add(new OrderItem(
                 GuidGenerator.Create(),
-                item.FoodItemId.ToString(),
+                item.FoodItemId,
                 foodInfo.Name,
                 item.Quantity,
                 finalPrice,
@@ -109,7 +109,7 @@ public class OrderAppService :
                     {
                         Order = o,
                         ItemsWithFood = from oi in o.OrderItems
-                                        join fi in foodQuery on oi.Sku equals fi.Id.ToString() into fiJoin
+                                        join fi in foodQuery on oi.Sku equals fi.Id into fiJoin
                                         from fi in fiJoin.DefaultIfEmpty() // LEFT JOIN
                                         select new { OrderItem = oi, FoodItem = fi }
                     };
@@ -142,7 +142,7 @@ public class OrderAppService :
 
             return new OrderItemDto
             {
-                FoodItemId = Guid.Parse(x.OrderItem.Sku),
+                FoodItemId = x.OrderItem.Sku,
                 FoodName = (useLatestData && x.FoodItem != null) ? x.FoodItem.Name : x.OrderItem.ItemName,
                 Quantity = x.OrderItem.Quantity,
                 UnitPrice = finalUnitPrice,
@@ -199,7 +199,7 @@ public class OrderAppService :
 
             var orderItem = new OrderItem(
                 GuidGenerator.Create(),
-                item.FoodItemId.ToString(),
+                item.FoodItemId,
                 foodInfo.Name,
                 item.Quantity,
                 finalPrice,
@@ -239,7 +239,7 @@ public class OrderAppService :
                     {
                         Order = o,
                         ItemsWithFood = from oi in o.OrderItems
-                                        join fi in foodQuery on oi.Sku equals fi.Id.ToString() into fiJoin
+                                        join fi in foodQuery on oi.Sku equals fi.Id into fiJoin
                                         from fi in fiJoin.DefaultIfEmpty() // LEFT JOIN
                                         select new { OrderItem = oi, FoodItem = fi }
                     };
@@ -268,7 +268,7 @@ public class OrderAppService :
 
                 return new OrderItemDto
                 {
-                    FoodItemId = Guid.Parse(x.OrderItem.Sku),
+                    FoodItemId = x.OrderItem.Sku,
                     FoodName = (useLatestData && x.FoodItem != null) ? x.FoodItem.Name : x.OrderItem.ItemName,
                     Quantity = x.OrderItem.Quantity,
                     UnitPrice = finalUnitPrice,

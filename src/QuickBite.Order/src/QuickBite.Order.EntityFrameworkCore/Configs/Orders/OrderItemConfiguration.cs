@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using QuickBite.Order.Domain.Orders.Entities;
 using Volo.Abp.EntityFrameworkCore.Modeling;
@@ -14,7 +14,6 @@ public class OrderItemConfiguration :
         builder.ConfigureByConvention();
 
         builder.Property(x => x.Sku)
-            .HasMaxLength(64)
             .IsRequired();
 
         builder.Property(x => x.ItemName)
