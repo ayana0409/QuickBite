@@ -23,6 +23,7 @@ using Volo.Abp.Security.Claims;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
+using QuickBite.Order.Middleware;
 
 namespace QuickBite.Order;
 
@@ -233,6 +234,7 @@ public class OrderHttpApiHostModule : AbpModule
         }
 
         app.UseCorrelationId();
+        app.UseMiddleware<ResponseWrapperMiddleware>();
         app.MapAbpStaticAssets();
         app.UseRouting();
         app.UseCors();

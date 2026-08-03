@@ -1,5 +1,7 @@
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Enums;
+using Volo.Abp;
+using Volo.Abp.Authorization;
 using Volo.Abp.Domain.Entities;
 using QuickBite.Order.Domain.Orders.Managers;
 using QuickBite.Order.Domain.Orders.Repositories;
@@ -35,8 +37,12 @@ public class OrderAppService :
         _foodItemRepository = foodItemRepository;
     }
 
+    /// <summary>
+    /// Creates a new order.
+    /// </summary>
     public async Task<OrderDto> CreateAsync(CreateOrderDto input)
     {
+        // 1. Initialize the delivery address value object.
         var deliveryAddress = new DeliveryAddress(
             input.DeliveryAddress.ReceiverName,
             input.DeliveryAddress.PhoneNumber,
@@ -47,48 +53,21 @@ public class OrderAppService :
             input.DeliveryAddress.Note ?? string.Empty
         );
 
+        // 2. Fetch food item details from the replica repository.
         var foodIds = input.Items.Select(x => x.FoodItemId).Distinct().ToList();
         var foodInfoDict = await GetFoodInfosAsync(foodIds);
 
+        // 3. Process each selected order item, validating options and calculating prices.
         var orderItems = new List<OrderItem>();
         foreach (var item in input.Items)
         {
             if (!foodInfoDict.TryGetValue(item.FoodItemId, out var foodInfo))
             {
-                throw new Exception($"Food item with ID {item.FoodItemId} not found.");
+                // Throw EntityNotFoundException if the food item replica does not exist.
+                throw new EntityNotFoundException(typeof(FoodItem), item.FoodItemId);
             }
 
-            var variants = string.IsNullOrEmpty(foodInfo.Variants) 
-                ? new List<FoodVariantEto>() 
-                : JsonSerializer.Deserialize<List<FoodVariantEto>>(foodInfo.Variants);
-            
-            var toppings = string.IsNullOrEmpty(foodInfo.Toppings)
-                ? new List<FoodToppingEto>()
-                : JsonSerializer.Deserialize<List<FoodToppingEto>>(foodInfo.Toppings);
-
-            decimal finalPrice = foodInfo.Price;
-
-            if (!string.IsNullOrEmpty(item.SelectedVariantName))
-            {
-                var variant = variants?.FirstOrDefault(v => v.Name == item.SelectedVariantName);
-                if (variant != null)
-                {
-                    finalPrice += variant.PriceDelta;
-                }
-            }
-
-            if (item.SelectedToppings != null && item.SelectedToppings.Any())
-            {
-                foreach (var toppingName in item.SelectedToppings)
-                {
-                    var topping = toppings?.FirstOrDefault(t => t.Name == toppingName);
-                    if (topping != null)
-                    {
-                        finalPrice += topping.Price;
-                    }
-                }
-            }
-
+            decimal finalPrice = foodInfo.CalculatePrice(item.SelectedVariantName, item.SelectedToppings);
             var selectedToppingsJson = JsonSerializer.Serialize(item.SelectedToppings ?? new List<string>());
 
             orderItems.Add(new OrderItem(
@@ -101,23 +80,29 @@ public class OrderAppService :
                 selectedToppingsJson));
         }
 
+        // 4. Delegate the order creation process to the Domain Manager.
         var order = await _orderManager.CreateAsync(
             input.CustomerId,
             input.RestaurantId,
             deliveryAddress,
             orderItems);
 
+        // 5. Insert the order aggregate root into database and save.
         await _orderRepository.InsertAsync(order, autoSave: true);
 
+        // 6. Map the domain aggregate root to the response DTO.
         return ObjectMapper.Map<OrderEntity, OrderDto>(order);
     }
 
+    /// <summary>
+    /// Retrieves a specific order by ID, dynamically computing pricing if the order is still pending.
+    /// </summary>
     public async Task<OrderDto> GetAsync(Guid id)
     {
         var orderQuery = await _orderRepository.GetQueryableAsync();
         var foodQuery = await _foodItemRepository.GetQueryableAsync();
 
-        // Sử dụng IQueryable để JOIN dữ liệu ngay ở tầng Database (EF Core SQL)
+        // Perform EF Core LEFT JOIN to fetch OrderItems along with FoodItems in a single query database call.
         var query = from o in orderQuery
                     where o.Id == id
                     select new
@@ -132,47 +117,27 @@ public class OrderAppService :
         var result = await AsyncExecuter.FirstOrDefaultAsync(query);
         if (result == null)
         {
+            // Throw EntityNotFoundException if the order doesn't exist.
             throw new EntityNotFoundException(typeof(OrderEntity), id);
         }
 
+        // Map the main order properties.
         var orderDto = ObjectMapper.Map<OrderEntity, OrderDto>(result.Order);
         
+        // Populate and calculate final values for the DTO items.
         orderDto.Items = result.ItemsWithFood.Select(x => 
         {
+            // Only update prices with the latest catalog values if the order status is still Pending.
             bool useLatestData = result.Order.Status == OrderStatus.Pending;
             
             decimal finalUnitPrice = x.OrderItem.UnitPrice;
             
             if (useLatestData && x.FoodItem != null)
             {
-                finalUnitPrice = x.FoodItem.Price;
-                
-                var variants = string.IsNullOrEmpty(x.FoodItem.Variants) 
-                    ? new List<FoodVariantEto>() 
-                    : JsonSerializer.Deserialize<List<FoodVariantEto>>(x.FoodItem.Variants);
-                    
-                var toppings = string.IsNullOrEmpty(x.FoodItem.Toppings)
-                    ? new List<FoodToppingEto>()
-                    : JsonSerializer.Deserialize<List<FoodToppingEto>>(x.FoodItem.Toppings);
-                    
-                if (!string.IsNullOrEmpty(x.OrderItem.SelectedVariantName))
-                {
-                    var variant = variants?.FirstOrDefault(v => v.Name == x.OrderItem.SelectedVariantName);
-                    if (variant != null) finalUnitPrice += variant.PriceDelta;
-                }
-                
-                var selectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
+                var selectedToppingsList = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
                     ? new List<string>() 
-                    : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings);
-                    
-                if (selectedToppings != null && selectedToppings.Any())
-                {
-                    foreach (var tName in selectedToppings)
-                    {
-                        var topping = toppings?.FirstOrDefault(t => t.Name == tName);
-                        if (topping != null) finalUnitPrice += topping.Price;
-                    }
-                }
+                    : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings) ?? new List<string>();
+                finalUnitPrice = x.FoodItem.CalculatePrice(x.OrderItem.SelectedVariantName, selectedToppingsList);
             }
 
             return new OrderItemDto
@@ -184,8 +149,8 @@ public class OrderAppService :
                 TotalPrice = finalUnitPrice * x.OrderItem.Quantity,
                 SelectedVariantName = x.OrderItem.SelectedVariantName,
                 SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
-                    ? new List<string>() 
-                    : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings)
+                    ? [] 
+                    : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings) ?? []
             };
         }).ToList();
         
@@ -194,10 +159,15 @@ public class OrderAppService :
         return orderDto;
     }
 
+    /// <summary>
+    /// Updates an existing order's address and order items.
+    /// </summary>
     public async Task<OrderDto> UpdateAsync(Guid id, UpdateOrderDto input)
     {
+        // 1. Fetch the existing order including details. Will throw EntityNotFoundException if missing.
         var order = await _orderRepository.GetAsync(id, includeDetails: true);
 
+        // 2. Validate and set the new delivery address value object.
         var deliveryAddress = new DeliveryAddress(
             input.DeliveryAddress.ReceiverName,
             input.DeliveryAddress.PhoneNumber,
@@ -211,47 +181,20 @@ public class OrderAppService :
         order.SetDeliveryAddress(deliveryAddress);
         order.ClearItems();
 
+        // 3. Fetch latest food item definitions for the updated items.
         var foodIds = input.Items.Select(x => x.FoodItemId).Distinct().ToList();
         var foodInfoDict = await GetFoodInfosAsync(foodIds);
 
+        // 4. Validate and re-calculate pricing for updated order items.
         foreach (var item in input.Items)
         {
             if (!foodInfoDict.TryGetValue(item.FoodItemId, out var foodInfo))
             {
-                throw new Exception($"Food item with ID {item.FoodItemId} not found.");
+                // Throw EntityNotFoundException if the food item replica does not exist.
+                throw new EntityNotFoundException(typeof(FoodItem), item.FoodItemId);
             }
 
-            var variants = string.IsNullOrEmpty(foodInfo.Variants) 
-                ? new List<FoodVariantEto>() 
-                : JsonSerializer.Deserialize<List<FoodVariantEto>>(foodInfo.Variants);
-            
-            var toppings = string.IsNullOrEmpty(foodInfo.Toppings)
-                ? new List<FoodToppingEto>()
-                : JsonSerializer.Deserialize<List<FoodToppingEto>>(foodInfo.Toppings);
-
-            decimal finalPrice = foodInfo.Price;
-
-            if (!string.IsNullOrEmpty(item.SelectedVariantName))
-            {
-                var variant = variants?.FirstOrDefault(v => v.Name == item.SelectedVariantName);
-                if (variant != null)
-                {
-                    finalPrice += variant.PriceDelta;
-                }
-            }
-
-            if (item.SelectedToppings != null && item.SelectedToppings.Any())
-            {
-                foreach (var toppingName in item.SelectedToppings)
-                {
-                    var topping = toppings?.FirstOrDefault(t => t.Name == toppingName);
-                    if (topping != null)
-                    {
-                        finalPrice += topping.Price;
-                    }
-                }
-            }
-
+            decimal finalPrice = foodInfo.CalculatePrice(item.SelectedVariantName, item.SelectedToppings);
             var selectedToppingsJson = JsonSerializer.Serialize(item.SelectedToppings ?? new List<string>());
 
             var orderItem = new OrderItem(
@@ -266,19 +209,30 @@ public class OrderAppService :
             order.AddItem(orderItem);
         }
 
+        // 5. Save the updated aggregate root.
         await _orderRepository.UpdateAsync(order, autoSave: true);
 
+        // 6. Return the mapped DTO.
         return ObjectMapper.Map<OrderEntity, OrderDto>(order);
     }
 
+    /// <summary>
+    /// Retrieves all orders belonging to the currently authenticated user.
+    /// </summary>
     public async Task<List<OrderDto>> GetMyOrdersAsync()
     {
-        var customerId = CurrentUser.Id ?? throw new UnauthorizedAccessException("User is not logged in");
+        // 1. Ensure the user is authenticated.
+        var customerId = CurrentUser.Id;
+        if (customerId == null)
+        {
+            // Throw AbpAuthorizationException if the user is unauthenticated.
+            throw new AbpAuthorizationException("User must be logged in to view their orders.");
+        }
         
         var orderQuery = await _orderRepository.GetQueryableAsync();
         var foodQuery = await _foodItemRepository.GetQueryableAsync();
 
-        // Sử dụng IQueryable để JOIN dữ liệu ngay ở tầng Database (EF Core SQL)
+        // 2. Perform DB joins to load matching orders along with their items and food metadata.
         var query = from o in orderQuery
                     where o.CustomerId == customerId
                     select new
@@ -293,6 +247,7 @@ public class OrderAppService :
         var queryResult = await AsyncExecuter.ToListAsync(query);
         var orderDtos = new List<OrderDto>();
 
+        // 3. Construct response DTOs, dynamically recalculating pricing for pending orders.
         foreach (var result in queryResult)
         {
             var orderDto = ObjectMapper.Map<OrderEntity, OrderDto>(result.Order);
@@ -305,34 +260,10 @@ public class OrderAppService :
                 
                 if (useLatestData && x.FoodItem != null)
                 {
-                    finalUnitPrice = x.FoodItem.Price;
-                    
-                    var variants = string.IsNullOrEmpty(x.FoodItem.Variants) 
-                        ? new List<FoodVariantEto>() 
-                        : JsonSerializer.Deserialize<List<FoodVariantEto>>(x.FoodItem.Variants);
-                        
-                    var toppings = string.IsNullOrEmpty(x.FoodItem.Toppings)
-                        ? new List<FoodToppingEto>()
-                        : JsonSerializer.Deserialize<List<FoodToppingEto>>(x.FoodItem.Toppings);
-                        
-                    if (!string.IsNullOrEmpty(x.OrderItem.SelectedVariantName))
-                    {
-                        var variant = variants?.FirstOrDefault(v => v.Name == x.OrderItem.SelectedVariantName);
-                        if (variant != null) finalUnitPrice += variant.PriceDelta;
-                    }
-                    
-                    var selectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
+                    var selectedToppingsList = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
                         ? new List<string>() 
-                        : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings);
-                        
-                    if (selectedToppings != null && selectedToppings.Any())
-                    {
-                        foreach (var tName in selectedToppings)
-                        {
-                            var topping = toppings?.FirstOrDefault(t => t.Name == tName);
-                            if (topping != null) finalUnitPrice += topping.Price;
-                        }
-                    }
+                        : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings) ?? new List<string>();
+                    finalUnitPrice = x.FoodItem.CalculatePrice(x.OrderItem.SelectedVariantName, selectedToppingsList);
                 }
 
                 return new OrderItemDto
@@ -356,18 +287,28 @@ public class OrderAppService :
         return orderDtos;
     }
 
+    /// <summary>
+    /// Cancels a specific order.
+    /// </summary>
     public async Task CancelAsync(Guid id)
     {
+        // 1. Fetch the order from the database. Will throw EntityNotFoundException if missing.
         var order = await _orderRepository.GetAsync(id);
         
+        // 2. Delegate the cancellation business logic to the Domain Manager.
         await _orderManager.CancelAsync(order);
         
+        // 3. Persist changes.
         await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 
+    /// <summary>
+    /// Helper method to fetch FoodItem replicas.
+    /// </summary>
     private async Task<Dictionary<Guid, FoodItem>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)
     {
         var foodItems = await _foodItemRepository.GetListByIdsAsync(foodItemIds);
         return foodItems.ToDictionary(x => x.Id, x => x);
     }
 }
+

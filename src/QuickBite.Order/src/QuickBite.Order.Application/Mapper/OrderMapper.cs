@@ -22,17 +22,20 @@ public partial class OrderMapper : MapperBase<Domain.Orders.AggregateRoots.Order
     {
         var dto = MapOrderItemInternal(source);
         dto.TotalPrice = source.Quantity * source.UnitPrice;
-        dto.SelectedToppings = string.IsNullOrEmpty(source.SelectedToppings) 
-            ? new System.Collections.Generic.List<string>() 
-            : JsonSerializer.Deserialize<System.Collections.Generic.List<string>>(source.SelectedToppings);
         return dto;
     }
 
     [MapProperty(nameof(OrderItem.ItemName), nameof(OrderItemDto.FoodName))]
     [MapProperty(nameof(OrderItem.Sku), nameof(OrderItemDto.FoodItemId))]
     [MapperIgnoreTarget(nameof(OrderItemDto.TotalPrice))]
-    [MapperIgnoreTarget(nameof(OrderItemDto.SelectedToppings))]
     private partial OrderItemDto MapOrderItemInternal(OrderItem source);
+
+    private System.Collections.Generic.List<string> MapSelectedToppings(string source)
+    {
+        return string.IsNullOrEmpty(source) 
+            ? new System.Collections.Generic.List<string>() 
+            : JsonSerializer.Deserialize<System.Collections.Generic.List<string>>(source) ?? new System.Collections.Generic.List<string>();
+    }
 
     [MapProperty(nameof(DeliveryAddress.FullName), nameof(DeliveryAddressDto.ReceiverName))]
     public partial DeliveryAddressDto MapDeliveryAddress(DeliveryAddress source);
