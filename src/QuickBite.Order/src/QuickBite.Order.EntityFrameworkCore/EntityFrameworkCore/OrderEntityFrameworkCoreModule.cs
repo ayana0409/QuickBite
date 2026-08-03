@@ -43,10 +43,14 @@ public class OrderEntityFrameworkCoreModule : AbpModule
             options.UseMySQL();
         });
 
-        // Bật Inbox Pattern — ABP tự động lưu MessageId vào bảng AbpEventInboxes
-        // Khi Kafka gửi lại cùng 1 message, ABP kiểm tra bảng Inbox → tự động bỏ qua (Idempotent)
+        // Enable native ABP Framework Outbox & Inbox patterns.
+        // ABP automatically persists events into OutgoingEventRecord and IncomingEventRecord tables within the same DbTransaction.
+        // ABP background worker automatically publishes to Kafka and verifies Idempotency when consuming events.
         Configure<AbpDistributedEventBusOptions>(options =>
         {
+            options.Outboxes.Configure(
+                config => { config.UseDbContext<OrderDbContext>(); }
+            );
             options.Inboxes.Configure(
                 config => { config.UseDbContext<OrderDbContext>(); }
             );

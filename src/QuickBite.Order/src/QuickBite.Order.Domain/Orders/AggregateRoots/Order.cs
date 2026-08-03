@@ -40,8 +40,8 @@ public class Order : FullAuditedAggregateRoot<Guid>
     }
 
     /// <summary>
-    /// Factory constructor – chỉ nhận thông tin bắt buộc lúc tạo đơn.
-    /// Status mặc định = Pending, TotalAmount = 0, sẽ được tính lại khi AddItem.
+    /// Factory constructor – receives required initial creation parameters.
+    /// Default Status = Pending, TotalAmount = 0, will be computed when items are added.
     /// </summary>
     public Order(
         Guid id,
@@ -59,7 +59,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
         Status = OrderStatus.Pending;
         Version = 0;
         TotalAmount = 0;
-        Currency = "VND"; // hoặc lấy từ config / value object sau này
+        Currency = "VND";
 
         OrderItems = new List<OrderItem>();
         StatusHistories = new List<OrderStatusHistory>();
@@ -74,7 +74,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
         if (string.IsNullOrWhiteSpace(orderCode))
             throw new BusinessException("OrderCodeCannotBeEmpty");
 
-        // Chỉ cho set 1 lần
+        // Can only be set once
         if (!string.IsNullOrEmpty(OrderCode))
             throw new BusinessException("OrderCodeAlreadySet");
 
@@ -85,7 +85,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
     {
         Check.NotNull(item, nameof(item));
 
-        // Chỉ cho thêm item khi còn Pending
+        // Can only add items when Pending
         if (Status != OrderStatus.Pending)
             throw new BusinessException("CannotAddItemWhenOrderNotPending");
 
@@ -127,9 +127,9 @@ public class Order : FullAuditedAggregateRoot<Guid>
     }
 
     /// <summary>
-    /// Transition có kiểm soát. Chỉ dùng cho các trạng thái trung gian
+    /// Controlled status transition. Only used for intermediate states
     /// (WaitingPayment, WaitingStock, Preparing, Delivering...).
-    /// Không dùng để Confirm / Cancel (đã có method riêng).
+    /// Do not use for Confirm / Cancel (use dedicated methods).
     /// </summary>
     public void UpdateStatus(OrderStatus newStatus)
     {
@@ -162,7 +162,6 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
     private void AddStatusHistory(OrderStatus status, string note)
     {
-        // Giả sử OrderStatusHistory có constructor phù hợp
         StatusHistories.Add(new OrderStatusHistory(
             Guid.NewGuid(),
             Id,
@@ -174,7 +173,6 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
     private void EnsureCanConfirm()
     {
-        // Theo logic trong Manager hiện tại
         if (Status != OrderStatus.WaitingPayment &&
             Status != OrderStatus.WaitingStock)
         {
@@ -191,12 +189,12 @@ public class Order : FullAuditedAggregateRoot<Guid>
                 OrderDomainErrorCodes.CannotCancelCompletedOrder);
         }
 
-        // Có thể bổ sung thêm: không cho cancel khi đang Delivering...
+        // Additional rules: prevent cancellation when Delivering...
     }
 
     private void EnsureValidTransition(OrderStatus newStatus)
     {
-        // Ví dụ rule đơn giản – bạn có thể mở rộng state machine sau
+        // Simple state machine validation
         var allowed = Status switch
         {
             OrderStatus.Pending => new[]
@@ -221,7 +219,6 @@ public class Order : FullAuditedAggregateRoot<Guid>
                 OrderStatus.Preparing,
                 OrderStatus.Cancelled
             },
-            // ... các stage khác
             _ => Array.Empty<OrderStatus>()
         };
 

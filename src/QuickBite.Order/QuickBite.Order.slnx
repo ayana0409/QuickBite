@@ -9,6 +9,7 @@
     <Project Path="src/QuickBite.Order.HttpApi.Client/QuickBite.Order.HttpApi.Client.csproj" />
     <Project Path="src/QuickBite.Order.HttpApi.Host/QuickBite.Order.HttpApi.Host.csproj" />
     <Project Path="src/QuickBite.Order.HttpApi/QuickBite.Order.HttpApi.csproj" />
+    <Project Path="src/QuickBite.Order.Infrastructure/QuickBite.Order.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/test/">
     <Project Path="test/QuickBite.Order.Application.Tests/QuickBite.Order.Application.Tests.csproj" />

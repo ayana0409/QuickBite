@@ -29,7 +29,7 @@ import { FoodItemModule } from './food-item/food-item.module';
         const password = getRequired<string>(config, 'DB_PASSWORD');
         const database = getRequired<string>(config, 'DB_DATABASE');
 
-        // chọn pattern entity phù hợp với runtime
+        // select entity pattern suitable for runtime
         const isCompiled = __dirname.includes('dist') || process.env.NODE_ENV === 'production';
         const entities = isCompiled
           ? [join(__dirname, '..', '**', '*.entity.js')]
@@ -46,7 +46,7 @@ import { FoodItemModule } from './food-item/food-item.module';
             throw new Error(`DB SSL enabled but CA file not found at ${caPath}`);
           }
           const ca = fs.readFileSync(caPath).toString();
-          // dùng extra.ssl để chắc chắn driver pg nhận được CA
+          // use extra.ssl to ensure pg driver receives CA
           extra = { ssl: { ca, rejectUnauthorized: true } };
         }
 

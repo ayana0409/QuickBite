@@ -15,6 +15,7 @@ using QuickBite.Order.Extensions;
 using QuickBite.Order.Domain.Shared.Event;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
+using Volo.Abp.EventBus.Distributed;
 
 using OrderEntity = QuickBite.Order.Domain.Orders.AggregateRoots.Order;
 namespace QuickBite.Order.Orders;
@@ -26,15 +27,18 @@ public class OrderAppService :
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderManager _orderManager;
     private readonly IRepository<FoodItem, Guid> _foodItemRepository;
+    private readonly IDistributedEventBus _distributedEventBus;
 
     public OrderAppService(
         IOrderRepository orderRepository,
         IOrderManager orderManager,
-        IRepository<FoodItem, Guid> foodItemRepository)
+        IRepository<FoodItem, Guid> foodItemRepository,
+        IDistributedEventBus distributedEventBus)
     {
         _orderRepository = orderRepository;
         _orderManager = orderManager;
         _foodItemRepository = foodItemRepository;
+        _distributedEventBus = distributedEventBus;
     }
 
     /// <summary>
@@ -87,10 +91,35 @@ public class OrderAppService :
             deliveryAddress,
             orderItems);
 
-        // 5. Insert the order aggregate root into database and save.
+        // 5. Publish order created event using ABP Distributed Event Bus (native Outbox handles DB transaction).
+        var orderCreatedEto = new OrderCreatedEto
+        {
+            EventId = GuidGenerator.Create(),
+            OrderId = order.Id,
+            OrderCode = order.OrderCode,
+            CustomerId = order.CustomerId,
+            RestaurantId = order.RestaurantId,
+            TotalAmount = order.TotalAmount,
+            Currency = order.Currency,
+            CorrelationId = order.CorrelationId,
+            OccurredAt = DateTime.UtcNow,
+            Items = order.OrderItems.Select(x => new OrderItemEto
+            {
+                FoodItemId = x.Sku,
+                ItemName = x.ItemName,
+                Quantity = x.Quantity,
+                UnitPrice = x.UnitPrice,
+                SelectedVariantName = x.SelectedVariantName,
+                SelectedToppings = x.SelectedToppings
+            }).ToList()
+        };
+
+        await _distributedEventBus.PublishAsync(orderCreatedEto);
+
+        // 6. Insert the order aggregate root into database and save.
         await _orderRepository.InsertAsync(order, autoSave: true);
 
-        // 6. Map the domain aggregate root to the response DTO.
+        // 7. Map the domain aggregate root to the response DTO.
         return ObjectMapper.Map<OrderEntity, OrderDto>(order);
     }
 
@@ -298,7 +327,19 @@ public class OrderAppService :
         // 2. Delegate the cancellation business logic to the Domain Manager.
         await _orderManager.CancelAsync(order);
         
-        // 3. Persist changes.
+        // 3. Publish order cancelled event using ABP Distributed Event Bus (native Outbox).
+        var orderCancelledEto = new OrderCancelledEto
+        {
+            EventId = GuidGenerator.Create(),
+            OrderId = order.Id,
+            Reason = "User cancelled",
+            CorrelationId = order.CorrelationId,
+            OccurredAt = DateTime.UtcNow
+        };
+
+        await _distributedEventBus.PublishAsync(orderCancelledEto);
+
+        // 4. Persist changes.
         await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 

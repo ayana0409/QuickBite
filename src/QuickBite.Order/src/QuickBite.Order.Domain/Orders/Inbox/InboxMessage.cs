@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Volo.Abp.Domain.Entities.Auditing;
 
 namespace QuickBite.Order.Domain.Inbox;
@@ -17,6 +17,20 @@ public class InboxMessage : CreationAuditedAggregateRoot<Guid>
 
     private InboxMessage()
     {
+    }
 
+    public InboxMessage(
+        Guid id,
+        Guid eventId,
+        string eventType,
+        string consumer,
+        string payload)
+        : base(id)
+    {
+        EventId = eventId;
+        EventType = eventType;
+        Consumer = consumer;
+        Payload = payload;
+        ProcessedAt = DateTime.UtcNow;
     }
 }

@@ -5,8 +5,8 @@ using Volo.Abp.EventBus;
 namespace QuickBite.Order.Domain.Shared.Event;
 
 /// <summary>
-/// Event Transfer Object nhận từ Kafka khi Catalog service tạo/cập nhật FoodItem.
-/// EventName phải khớp với value emit từ NestJS: "food.item.synced" trong topic "catalog-events".
+/// Event Transfer Object received from Kafka when Catalog service creates/updates a FoodItem.
+/// EventName must match the value emitted from NestJS: "food.item.synced" in topic "catalog-events".
 /// </summary>
 [EventName("food.item.synced")]
 public class FoodItemUpdatedEto

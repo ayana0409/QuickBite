@@ -25,6 +25,8 @@ using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
 using QuickBite.Order.Middleware;
 
+using QuickBite.Order.Infrastructure;
+
 namespace QuickBite.Order;
 
 [DependsOn(
@@ -32,6 +34,7 @@ namespace QuickBite.Order;
     typeof(AbpAutofacModule),
     typeof(OrderApplicationModule),
     typeof(OrderEntityFrameworkCoreModule),
+    typeof(OrderInfrastructureModule),
     typeof(AbpAspNetCoreSerilogModule),
     typeof(AbpSwashbuckleModule),
     typeof(AbpEventBusKafkaModule)

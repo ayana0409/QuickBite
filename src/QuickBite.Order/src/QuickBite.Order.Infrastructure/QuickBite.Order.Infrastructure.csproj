@@ -1,17 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\..\common.props" />
 
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <RootNamespace>QuickBite.Order.Infrastructure</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Kafka\Consumers\" />
-    <Folder Include="Kafka\Producers\" />
-    <Folder Include="MassTransit\Activities\" />
-    <Folder Include="MassTransit\Consumers\" />
-    <Folder Include="MassTransit\StateMachine\" />
+    <ProjectReference Include="..\QuickBite.Order.Domain\QuickBite.Order.Domain.csproj" />
+    <ProjectReference Include="..\QuickBite.Order.Domain.Shared\QuickBite.Order.Domain.Shared.csproj" />
+    <PackageReference Include="Volo.Abp.BackgroundWorkers" Version="10.0.0" />
+    <PackageReference Include="Volo.Abp.EventBus.Kafka" Version="10.0.0" />
+    <PackageReference Include="Confluent.Kafka" Version="2.11.1" />
   </ItemGroup>
 
 </Project>

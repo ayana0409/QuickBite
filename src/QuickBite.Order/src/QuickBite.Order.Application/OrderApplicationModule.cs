@@ -22,7 +22,7 @@ public class OrderApplicationModule : AbpModule
     {
         context.Services.AddMapperlyObjectMapper<OrderApplicationModule>();
 
-        // Đăng ký event handler để ABP biết subscribe "food.item.synced" từ Kafka
+        // Register event handler so ABP subscribes to "food.item.synced" from Kafka
         Configure<AbpDistributedEventBusOptions>(options =>
         {
             options.Handlers.Add<FoodItemUpdatedEventHandler>();

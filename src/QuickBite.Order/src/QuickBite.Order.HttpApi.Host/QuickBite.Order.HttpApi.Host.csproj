@@ -23,6 +23,7 @@
     <ProjectReference Include="..\QuickBite.Order.Application\QuickBite.Order.Application.csproj" />
     <ProjectReference Include="..\QuickBite.Order.EntityFrameworkCore\QuickBite.Order.EntityFrameworkCore.csproj" />
     <ProjectReference Include="..\QuickBite.Order.HttpApi\QuickBite.Order.HttpApi.csproj" />
+    <ProjectReference Include="..\QuickBite.Order.Infrastructure\QuickBite.Order.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

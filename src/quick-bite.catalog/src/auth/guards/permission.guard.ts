@@ -31,7 +31,7 @@ export class PermissionGuard implements CanActivate {
             );
 
 
-        // Endpoint không yêu cầu permission
+        // Endpoint does not require permission
         if (!requiredPermissions) {
             return true;
         }

@@ -45,7 +45,7 @@ public class OrderDbContext :
 
     public DbSet<InboxMessage> InboxMessages { get; set; }
 
-    /// <summary>Local replica của FoodItem được đồng bộ từ Catalog service qua Kafka.</summary>
+    /// <summary>Local FoodItem replica synchronized from Catalog service via Kafka.</summary>
     public DbSet<FoodItem> FoodItems { get; set; }
 
     /// <summary>ABP Distributed Event Bus Inbox</summary>

@@ -10,9 +10,8 @@ using Volo.Abp.EventBus.Distributed;
 namespace QuickBite.Order.Handlers;
 
 /// <summary>
-/// Kafka consumer: lắng nghe event "food.item.synced" từ topic "catalog-events".
-/// ABP Inbox Pattern đảm bảo handler này KHÔNG bao giờ bị gọi 2 lần cho cùng một message,
-/// ngay cả khi Kafka gửi lại do at-least-once delivery.
+/// Kafka consumer: listens to "food.item.synced" event from "catalog-events" topic.
+/// ABP Native Inbox Pattern ensures this handler is NEVER called twice for the same message (idempotent).
 /// </summary>
 public class FoodItemUpdatedEventHandler
     : IDistributedEventHandler<FoodItemUpdatedEto>, ITransientDependency
@@ -29,18 +28,18 @@ public class FoodItemUpdatedEventHandler
         var variantsJson = JsonSerializer.Serialize(eventData.Variants ?? new());
         var toppingsJson = JsonSerializer.Serialize(eventData.Toppings ?? new());
 
-        // Kiểm tra FoodItem đã tồn tại trong DB local của Order service chưa
+        // Check if FoodItem exists in the Order service local DB replica
         var food = await _foodItemRepository.FindAsync(eventData.Id);
 
         if (food == null)
         {
-            // Chưa có → Insert (đồng bộ món mới từ Catalog)
+            // Not exists → Insert (synchronize new food item from Catalog)
             food = new FoodItem(eventData.Id, eventData.Name, eventData.Price, variantsJson, toppingsJson);
             await _foodItemRepository.InsertAsync(food);
         }
         else
         {
-            // Đã có → Update (đồng bộ thay đổi tên/giá từ Catalog)
+            // Exists → Update (synchronize updated name/price from Catalog)
             food.UpdateInfo(eventData.Name, eventData.Price, variantsJson, toppingsJson);
             await _foodItemRepository.UpdateAsync(food);
         }

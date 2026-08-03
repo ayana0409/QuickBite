@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -39,13 +39,13 @@ public class OrderDbMigrationService : ITransientDependency
         }
 
         Logger.LogInformation("Started database migrations...");
-        // gọi tất cả migrator đã đăng ký (ví dụ EntityFrameworkCoreOrderDbSchemaMigrator)
+        // execute all registered migrators (e.g. EntityFrameworkCoreOrderDbSchemaMigrator)
         foreach (var migrator in _dbSchemaMigrators)
         {
             await migrator.MigrateAsync();
         }
 
-        // seed dữ liệu mặc định (roles, settings…)
+        // seed default data (roles, settings...)
         await _dataSeeder.SeedAsync();
         Logger.LogInformation("You can safely end this process...");
     }
