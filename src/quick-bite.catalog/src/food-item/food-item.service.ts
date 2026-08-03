@@ -61,6 +61,8 @@ export class FoodItemService implements OnModuleInit {
       id: foodItem.id,
       name: foodItem.name,
       price: Number(foodItem.price),
+      variants: foodItem.variants || [],
+      toppings: foodItem.toppings || [],
     };
 
     const payload = {
