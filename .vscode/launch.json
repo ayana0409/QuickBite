@@ -9,7 +9,17 @@
             "type": "dotnet",
             "request": "launch",
             "projectPath": "${workspaceFolder}/src/QuickBite.Identity/src/QuickBite.Identity.Web/QuickBite.Identity.Web.csproj"
+        },
+        {
+            "name": "Debug Catalog Service (NestJS)",
+            "type": "node",
+            "request": "launch",
+            "cwd": "${workspaceFolder}/src/quick-bite.catalog",
+            "runtimeExecutable": "npm",
+            "runtimeArgs": ["run", "start:debug"],
+            "console": "integratedTerminal",
+            "restart": true,
+            "port": 9229
         }
-
     ]
 }
