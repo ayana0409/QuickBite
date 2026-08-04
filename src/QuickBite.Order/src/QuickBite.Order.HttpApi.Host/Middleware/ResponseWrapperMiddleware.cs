@@ -139,14 +139,50 @@ namespace QuickBite.Order.Middleware
             catch (Exception ex)
             {
                 context.Response.Body = originalBodyStream;
-                
-                context.Response.StatusCode = 500;
+
+                int statusCode = 500;
+                string message = ex.Message;
+                object? errors = ex.StackTrace;
+
+                if (ex is Volo.Abp.Authorization.AbpAuthorizationException)
+                {
+                    statusCode = context.User?.Identity?.IsAuthenticated == true ? 403 : 401;
+                    message = statusCode == 401
+                        ? "Unauthorized. Authentication is required."
+                        : "Forbidden. You do not have permission for this action.";
+                    errors = null;
+                }
+                else if (ex is UnauthorizedAccessException)
+                {
+                    statusCode = 401;
+                    message = "Unauthorized. Authentication is required.";
+                    errors = null;
+                }
+                else if (ex is Volo.Abp.Domain.Entities.EntityNotFoundException)
+                {
+                    statusCode = 404;
+                    message = ex.Message;
+                    errors = null;
+                }
+                else if (ex is Volo.Abp.BusinessException || ex is Volo.Abp.UserFriendlyException)
+                {
+                    statusCode = 400;
+                    message = ex.Message;
+                    errors = null;
+                }
+                else if (ex is Volo.Abp.ExceptionHandling.IHasHttpStatusCode httpStatusEx)
+                {
+                    statusCode = (int)httpStatusEx.HttpStatusCode;
+                    errors = null;
+                }
+
+                context.Response.StatusCode = statusCode;
                 var wrappedResponse = new
                 {
                     success = false,
-                    statusCode = 500,
-                    message = ex.Message,
-                    errors = ex.StackTrace,
+                    statusCode = statusCode,
+                    message = message,
+                    errors = errors,
                     timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                     path = context.Request.Path.Value
                 };

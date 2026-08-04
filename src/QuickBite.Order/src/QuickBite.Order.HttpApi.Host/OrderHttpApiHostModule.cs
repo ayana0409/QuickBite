@@ -26,6 +26,7 @@ using Volo.Abp.VirtualFileSystem;
 using QuickBite.Order.Middleware;
 
 using QuickBite.Order.Infrastructure;
+using QuickBite.Order.Infrastructure.Kafka;
 
 namespace QuickBite.Order;
 

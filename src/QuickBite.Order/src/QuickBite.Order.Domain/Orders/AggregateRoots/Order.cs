@@ -56,7 +56,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
         DeliveryAddress = Check.NotNull(deliveryAddress, nameof(deliveryAddress));
         CorrelationId = correlationId ?? Guid.NewGuid();
 
-        Status = OrderStatus.Pending;
+        Status = OrderStatus.Draft;
         Version = 0;
         TotalAmount = 0;
         Currency = "VND";
@@ -64,7 +64,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
         OrderItems = new List<OrderItem>();
         StatusHistories = new List<OrderStatusHistory>();
 
-        AddStatusHistory(OrderStatus.Pending, "Order created");
+        AddStatusHistory(OrderStatus.Draft, "Order created in draft status");
     }
 
     #region Domain behaviors
@@ -81,13 +81,23 @@ public class Order : FullAuditedAggregateRoot<Guid>
         OrderCode = orderCode;
     }
 
+    public void Submit()
+    {
+        if (Status != OrderStatus.Draft)
+            throw new BusinessException("CannotSubmitOrderNotDraft");
+
+        if (!OrderItems.Any())
+            throw new BusinessException("CannotSubmitEmptyOrder");
+
+        ChangeStatus(OrderStatus.Pending, "Order submitted by customer");
+    }
+
     public void AddItem(OrderItem item)
     {
         Check.NotNull(item, nameof(item));
 
-        // Can only add items when Pending
-        if (Status != OrderStatus.Pending)
-            throw new BusinessException("CannotAddItemWhenOrderNotPending");
+        if (Status != OrderStatus.Draft && Status != OrderStatus.Pending)
+            throw new BusinessException("CannotAddItemWhenOrderNotDraftOrPending");
 
         item.SetOrderId(Id);
         OrderItems.Add(item);
@@ -97,8 +107,8 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
     public void ClearItems()
     {
-        if (Status != OrderStatus.Pending)
-            throw new BusinessException("CannotUpdateOrderNotPending");
+        if (Status != OrderStatus.Draft && Status != OrderStatus.Pending)
+            throw new BusinessException("CannotUpdateOrderNotDraftOrPending");
 
         OrderItems.Clear();
         RecalculateTotalAmount();
@@ -106,8 +116,8 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
     public void SetDeliveryAddress(DeliveryAddress deliveryAddress)
     {
-        if (Status != OrderStatus.Pending)
-            throw new BusinessException("CannotUpdateOrderNotPending");
+        if (Status != OrderStatus.Draft && Status != OrderStatus.Pending)
+            throw new BusinessException("CannotUpdateOrderNotDraftOrPending");
 
         DeliveryAddress = Check.NotNull(deliveryAddress, nameof(deliveryAddress));
     }
@@ -197,6 +207,11 @@ public class Order : FullAuditedAggregateRoot<Guid>
         // Simple state machine validation
         var allowed = Status switch
         {
+            OrderStatus.Draft => new[]
+            {
+                OrderStatus.Pending,
+                OrderStatus.Cancelled
+            },
             OrderStatus.Pending => new[]
             {
                 OrderStatus.WaitingPayment,

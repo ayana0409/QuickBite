@@ -16,10 +16,12 @@ using QuickBite.Order.Domain.Shared.Event;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Distributed;
+using Microsoft.AspNetCore.Authorization;
 
 using OrderEntity = QuickBite.Order.Domain.Orders.AggregateRoots.Order;
 namespace QuickBite.Order.Orders;
 
+// [Authorize]
 public class OrderAppService :
     ApplicationService,
     IOrderAppService
@@ -91,8 +93,23 @@ public class OrderAppService :
             deliveryAddress,
             orderItems);
 
-        // 5. Publish order created event using ABP Distributed Event Bus (native Outbox handles DB transaction).
-        var orderCreatedEto = new OrderCreatedEto
+        // 5. Insert the order aggregate root into database (in Draft state).
+        await _orderRepository.InsertAsync(order, autoSave: true);
+
+        // 6. Map the domain aggregate root to the response DTO.
+        return ObjectMapper.Map<OrderEntity, OrderDto>(order);
+    }
+
+    /// <summary>
+    /// Submits a draft order, transitioning its status to Pending and publishing OrderSubmittedEto to start the Saga.
+    /// </summary>
+    public async Task SubmitAsync(Guid id)
+    {
+        var order = await _orderRepository.GetAsync(id, includeDetails: true);
+
+        order.Submit();
+
+        var orderSubmittedEto = new OrderSubmittedEto
         {
             EventId = GuidGenerator.Create(),
             OrderId = order.Id,
@@ -114,13 +131,8 @@ public class OrderAppService :
             }).ToList()
         };
 
-        await _distributedEventBus.PublishAsync(orderCreatedEto);
-
-        // 6. Insert the order aggregate root into database and save.
-        await _orderRepository.InsertAsync(order, autoSave: true);
-
-        // 7. Map the domain aggregate root to the response DTO.
-        return ObjectMapper.Map<OrderEntity, OrderDto>(order);
+        await _distributedEventBus.PublishAsync(orderSubmittedEto);
+        await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 
     /// <summary>

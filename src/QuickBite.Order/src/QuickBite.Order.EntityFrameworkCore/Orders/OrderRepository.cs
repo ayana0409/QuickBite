@@ -20,6 +20,13 @@ public class OrderRepository :
     {
     }
 
+    public override async Task<IQueryable<OrderEntity>> WithDetailsAsync()
+    {
+        return (await GetQueryableAsync())
+            .Include(x => x.OrderItems)
+            .Include(x => x.StatusHistories);
+    }
+
     public async Task<bool> IsOrderCodeExistsAsync(
         string orderCode)
     {

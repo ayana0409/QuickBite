@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using QuickBite.Order.Domain;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
@@ -49,11 +50,18 @@ public class OrderEntityFrameworkCoreModule : AbpModule
         Configure<AbpDistributedEventBusOptions>(options =>
         {
             options.Outboxes.Configure(
-                config => { config.UseDbContext<OrderDbContext>(); }
+                config => { 
+                    config.UseDbContext<OrderDbContext>(); 
+                    config.ImplementationType = typeof(MyDbContextEventOutbox<OrderDbContext>);
+                }
             );
             options.Inboxes.Configure(
                 config => { config.UseDbContext<OrderDbContext>(); }
             );
         });
+
+        context.Services.Replace(Microsoft.Extensions.DependencyInjection.ServiceDescriptor.Transient<DbContextEventOutbox<OrderDbContext>, MyDbContextEventOutbox<OrderDbContext>>());
+        context.Services.Replace(Microsoft.Extensions.DependencyInjection.ServiceDescriptor.Transient<IEventOutbox, MyDbContextEventOutbox<OrderDbContext>>());
+        context.Services.AddTransient<MyDbContextEventOutbox<OrderDbContext>>();
     }
 }
