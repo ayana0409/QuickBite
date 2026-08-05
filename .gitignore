@@ -7,11 +7,30 @@ src/quick-bite.catalog/.env
 .fake
 src/quick-bite.catalog/ca.pem
 src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
-src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
 src/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/appsettings.json
-src/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
 
 # Coverage reports
 coverage
 **/coverage
+
+# Java / Maven / Spring Boot (quick-bite-inventory)
+src/quick-bite-inventory/target/
+src/quick-bite-inventory/HELP.md
+src/quick-bite-inventory/.mvn/wrapper/maven-wrapper.jar
+src/quick-bite-inventory/src/main/resources/application.properties
+**/target/
+
+# IDEs & Editor files
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.classpath
+.project
+.settings/
+.apt_generated
+.factorypath
+.springBeans
+.sts4-cache
 

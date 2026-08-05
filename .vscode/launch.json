@@ -20,6 +20,21 @@
             "console": "integratedTerminal",
             "restart": true,
             "port": 9229
+        },
+        {
+            "type": "java",
+            "name": "Debug Inventory Service (Spring Boot)",
+            "request": "launch",
+            "mainClass": "com.quickbite.inventory.InventoryApplication",
+            "projectName": "inventory",
+            "cwd": "${workspaceFolder}/src/quick-bite-inventory"
+        },
+        {
+            "type": "java",
+            "name": "Attach to Inventory Service (Remote Debug 5005)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5005
         }
     ]
 }
