@@ -22,15 +22,15 @@ public class FulfillmentEventProducer {
     private String fulfillmentTopic;
 
     public void sendStockReserved(StockReservedEvent event) {
-        sendEvent(event.getOrderId(), event);
+        sendEvent(event.getOrderId() != null ? event.getOrderId().toString() : null, event);
     }
 
     public void sendStockRejected(StockRejectedEvent event) {
-        sendEvent(event.getOrderId(), event);
+        sendEvent(event.getOrderId() != null ? event.getOrderId().toString() : null, event);
     }
 
     public void sendStockReleased(StockReleasedEvent event) {
-        sendEvent(event.getOrderId(), event);
+        sendEvent(event.getOrderId() != null ? event.getOrderId().toString() : null, event);
     }
 
     private void sendEvent(String key, Object event) {

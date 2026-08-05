@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v1/inventory")
@@ -28,10 +29,10 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getAllInventoryItems());
     }
 
-    @GetMapping("/{productId}")
-    @Operation(summary = "Lấy thông tin tồn kho theo Product ID", description = "Trả về chi tiết tồn kho của 1 sản phẩm theo mã productId.")
-    public ResponseEntity<InventoryItemResponse> getByProductId(@PathVariable String productId) {
-        return ResponseEntity.ok(inventoryService.getByProductId(productId));
+    @GetMapping("/{foodItemId}")
+    @Operation(summary = "Lấy thông tin tồn kho theo Food Item ID", description = "Trả về chi tiết tồn kho của 1 sản phẩm theo mã foodItemId.")
+    public ResponseEntity<InventoryItemResponse> getByFoodItemId(@PathVariable UUID foodItemId) {
+        return ResponseEntity.ok(inventoryService.getByFoodItemId(foodItemId));
     }
 
     @PostMapping
@@ -48,10 +49,10 @@ public class InventoryController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/{productId}")
+    @DeleteMapping("/{foodItemId}")
     @Operation(summary = "Xóa mặt hàng khỏi kho", description = "Xóa thông tin quản lý kho của một sản phẩm.")
-    public ResponseEntity<Void> deleteByProductId(@PathVariable String productId) {
-        inventoryService.deleteItemByProductId(productId);
+    public ResponseEntity<Void> deleteByFoodItemId(@PathVariable UUID foodItemId) {
+        inventoryService.deleteItemByFoodItemId(foodItemId);
         return ResponseEntity.noContent().build();
     }
 }

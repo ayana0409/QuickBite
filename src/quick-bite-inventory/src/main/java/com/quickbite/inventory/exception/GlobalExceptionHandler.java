@@ -57,6 +57,26 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(response);
     }
 
+    @ExceptionHandler(org.springframework.http.converter.HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Object>> handleHttpMessageNotReadableException(org.springframework.http.converter.HttpMessageNotReadableException ex, HttpServletRequest request) {
+        log.warn("Malformed JSON or unreadable HTTP message [{}]: {}", request.getRequestURI(), ex.getMessage());
+        
+        String detailMessage = ex.getMostSpecificCause().getMessage();
+        if (detailMessage != null && detailMessage.contains("\n")) {
+            // Lấy dòng đầu tiên để tránh in ra cả stacktrace lồng bên trong message của Jackson
+            detailMessage = detailMessage.split("\n")[0];
+        }
+        if (detailMessage == null) detailMessage = "JSON parse error or malformed request body.";
+
+        ApiResponse<Object> response = ApiResponse.error(
+                detailMessage,
+                HttpStatus.BAD_REQUEST.value(),
+                null,
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGenericException(Exception ex, HttpServletRequest request) {
         log.error("Unhandled exception at [{}]: {}", request.getRequestURI(), ex.getMessage(), ex);

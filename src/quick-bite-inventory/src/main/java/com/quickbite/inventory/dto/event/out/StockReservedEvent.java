@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -13,13 +14,20 @@ import java.time.LocalDateTime;
 @Builder
 public class StockReservedEvent {
     @Builder.Default
+    private UUID eventId = UUID.randomUUID();
+
+    @Builder.Default
     private String eventType = "stock.reserved";
-    private String orderId;
-    private String productId;
+
+    private UUID orderId;
+    private UUID foodItemId;
     private Integer quantity;
+
     @Builder.Default
     private String status = "SUCCESS";
-    private String correlationId;
+
+    private UUID correlationId;
+
     @Builder.Default
     private LocalDateTime occurredAt = LocalDateTime.now();
 }

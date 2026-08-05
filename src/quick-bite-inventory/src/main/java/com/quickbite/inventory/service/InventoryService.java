@@ -5,6 +5,7 @@ import com.quickbite.inventory.dto.request.StockAdjustmentRequest;
 import com.quickbite.inventory.dto.response.InventoryItemResponse;
 
 import java.util.List;
+import java.util.UUID;
 
 public interface InventoryService {
 
@@ -14,12 +15,12 @@ public interface InventoryService {
     List<InventoryItemResponse> getAllInventoryItems();
 
     /**
-     * Get inventory item by Product ID.
+     * Get inventory item by Food Item ID.
      */
-    InventoryItemResponse getByProductId(String productId);
+    InventoryItemResponse getByFoodItemId(UUID foodItemId);
 
     /**
-     * Create new or set absolute stock for a product (Nhập kho).
+     * Create new or set absolute stock for a food item (Nhập kho).
      */
     InventoryItemResponse createOrUpdateItem(CreateOrUpdateInventoryRequest request);
 
@@ -29,23 +30,22 @@ public interface InventoryService {
     InventoryItemResponse adjustStock(StockAdjustmentRequest request);
 
     /**
-     * Delete item by Product ID.
+     * Delete item by Food Item ID.
      */
-    void deleteItemByProductId(String productId);
+    void deleteItemByFoodItemId(UUID foodItemId);
 
     /**
-     * Reserve stock for an order (Saga Step 1).
-     * @return true if reserved successfully, false if insufficient stock or product not found.
+     * Reserve stock for an order and save result to Outbox (Saga Step 1).
      */
-    boolean reserveStock(String orderId, String productId, int quantity);
+    boolean reserveStock(UUID orderId, UUID foodItemId, int quantity, UUID correlationId, UUID eventId);
 
     /**
-     * Release reserved stock for an order (Saga Compensation Step).
+     * Release reserved stock for an order and save result to Outbox (Saga Compensation Step).
      */
-    boolean releaseReservedStock(String orderId, String productId, int quantity);
+    boolean releaseReservedStock(UUID orderId, UUID foodItemId, int quantity, UUID correlationId, UUID eventId);
 
     /**
      * Confirm final deduction of stock when order is completed.
      */
-    boolean confirmStockDeduction(String orderId, String productId, int quantity);
+    boolean confirmStockDeduction(UUID orderId, UUID foodItemId, int quantity, UUID eventId);
 }

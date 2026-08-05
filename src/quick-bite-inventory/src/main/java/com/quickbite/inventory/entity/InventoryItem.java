@@ -13,7 +13,7 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "inventory_items", indexes = {
-    @Index(name = "idx_inventory_product_id", columnList = "product_id", unique = true)
+    @Index(name = "idx_inventory_food_item_id", columnList = "food_item_id", unique = true)
 })
 @Data
 @NoArgsConstructor
@@ -25,8 +25,8 @@ public class InventoryItem {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "product_id", nullable = false, unique = true)
-    private String productId;
+    @Column(name = "food_item_id", nullable = false, unique = true)
+    private UUID foodItemId;
 
     @Column(name = "quantity", nullable = false)
     @Builder.Default
@@ -63,7 +63,7 @@ public class InventoryItem {
      */
     public void reserveStock(int reqQty) {
         if (!hasEnoughStock(reqQty)) {
-            throw new IllegalStateException("Insufficient available stock for product: " + productId);
+            throw new IllegalStateException("Insufficient available stock for food item: " + foodItemId);
         }
         this.reservedQuantity = (this.reservedQuantity != null ? this.reservedQuantity : 0) + reqQty;
     }

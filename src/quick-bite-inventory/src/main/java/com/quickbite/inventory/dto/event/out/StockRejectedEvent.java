@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @NoArgsConstructor
@@ -13,14 +14,21 @@ import java.time.LocalDateTime;
 @Builder
 public class StockRejectedEvent {
     @Builder.Default
+    private UUID eventId = UUID.randomUUID();
+
+    @Builder.Default
     private String eventType = "stock.rejected";
-    private String orderId;
-    private String productId;
+
+    private UUID orderId;
+    private UUID foodItemId;
     private Integer quantity;
+
     @Builder.Default
     private String status = "OUT_OF_STOCK";
+
     private String reason;
-    private String correlationId;
+    private UUID correlationId;
+
     @Builder.Default
     private LocalDateTime occurredAt = LocalDateTime.now();
 }

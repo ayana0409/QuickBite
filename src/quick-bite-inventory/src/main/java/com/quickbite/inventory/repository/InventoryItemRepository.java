@@ -15,14 +15,14 @@ import java.util.UUID;
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, UUID> {
 
     /**
-     * Find item by Product ID.
+     * Find item by Food Item ID.
      */
-    Optional<InventoryItem> findByProductId(String productId);
+    Optional<InventoryItem> findByFoodItemId(UUID foodItemId);
 
     /**
-     * Find item by Product ID with pessimistic write lock for thread-safe stock reservation under high concurrency.
+     * Find item by Food Item ID with pessimistic write lock for thread-safe stock reservation under high concurrency.
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT i FROM InventoryItem i WHERE i.productId = :productId")
-    Optional<InventoryItem> findByProductIdWithLock(@Param("productId") String productId);
+    @Query("SELECT i FROM InventoryItem i WHERE i.foodItemId = :foodItemId")
+    Optional<InventoryItem> findByFoodItemIdWithLock(@Param("foodItemId") UUID foodItemId);
 }

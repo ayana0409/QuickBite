@@ -2,15 +2,13 @@ package com.quickbite.inventory.kafka.consumer;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.quickbite.inventory.dto.event.out.StockRejectedEvent;
-import com.quickbite.inventory.dto.event.out.StockReleasedEvent;
-import com.quickbite.inventory.dto.event.out.StockReservedEvent;
-import com.quickbite.inventory.kafka.producer.FulfillmentEventProducer;
 import com.quickbite.inventory.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
@@ -18,7 +16,6 @@ import org.springframework.stereotype.Component;
 public class OrderEventConsumer {
 
     private final InventoryService inventoryService;
-    private final FulfillmentEventProducer fulfillmentEventProducer;
     private final ObjectMapper objectMapper;
 
     @KafkaListener(
@@ -31,30 +28,42 @@ public class OrderEventConsumer {
             JsonNode rootNode = objectMapper.readTree(message);
 
             String eventType = rootNode.has("eventType") ? rootNode.get("eventType").asText() : "";
-            String orderId = rootNode.has("orderId") ? rootNode.get("orderId").asText() : "";
-            String productId = rootNode.has("productId") ? rootNode.get("productId").asText() : "";
+            UUID eventId = parseUuid(rootNode, "eventId");
+            UUID orderId = parseUuid(rootNode, "orderId");
+            UUID foodItemId = parseUuid(rootNode, "foodItemId");
+            if (foodItemId == null) {
+                foodItemId = parseUuid(rootNode, "productId");
+            }
             int quantity = rootNode.has("quantity") ? rootNode.get("quantity").asInt() : 1;
-            String correlationId = rootNode.has("correlationId") ? rootNode.get("correlationId").asText() : orderId;
+            UUID correlationId = parseUuid(rootNode, "correlationId");
+            if (correlationId == null) {
+                correlationId = orderId;
+            }
 
-            log.info("[Kafka Consumer] Processing event: '{}', OrderId: '{}', ProductId: '{}', Qty: {}",
-                    eventType, orderId, productId, quantity);
+            log.info("[Kafka Consumer] Processing event: '{}', OrderId: '{}', FoodItemId: '{}', Qty: {}",
+                    eventType, orderId, foodItemId, quantity);
+
+            if (orderId == null || foodItemId == null) {
+                log.warn("[Kafka Consumer] Missing orderId or foodItemId. Cannot process order event.");
+                return;
+            }
 
             switch (eventType) {
                 case "saga.stock.reservation.requested":
                 case "order.created":
                 case "ORDER_CREATED":
-                    processStockReservation(orderId, productId, quantity, correlationId);
+                    inventoryService.reserveStock(orderId, foodItemId, quantity, correlationId, eventId);
                     break;
 
                 case "saga.stock.release.requested":
                 case "order.cancelled":
                 case "ORDER_CANCELLED":
-                    processStockRelease(orderId, productId, quantity, correlationId);
+                    inventoryService.releaseReservedStock(orderId, foodItemId, quantity, correlationId, eventId);
                     break;
 
                 case "order.confirmed":
                 case "ORDER_CONFIRMED":
-                    processConfirmStockDeduction(orderId, productId, quantity);
+                    inventoryService.confirmStockDeduction(orderId, foodItemId, quantity, eventId);
                     break;
 
                 default:
@@ -67,48 +76,14 @@ public class OrderEventConsumer {
         }
     }
 
-    private void processStockReservation(String orderId, String productId, int quantity, String correlationId) {
-        boolean reserved = inventoryService.reserveStock(orderId, productId, quantity);
-
-        if (reserved) {
-            StockReservedEvent event = StockReservedEvent.builder()
-                    .orderId(orderId)
-                    .productId(productId)
-                    .quantity(quantity)
-                    .status("SUCCESS")
-                    .correlationId(correlationId)
-                    .build();
-
-            fulfillmentEventProducer.sendStockReserved(event);
-        } else {
-            StockRejectedEvent event = StockRejectedEvent.builder()
-                    .orderId(orderId)
-                    .productId(productId)
-                    .quantity(quantity)
-                    .status("OUT_OF_STOCK")
-                    .reason("Insufficient inventory stock or product not found")
-                    .correlationId(correlationId)
-                    .build();
-
-            fulfillmentEventProducer.sendStockRejected(event);
+    private UUID parseUuid(JsonNode node, String fieldName) {
+        if (node.has(fieldName) && !node.get(fieldName).isNull()) {
+            try {
+                return UUID.fromString(node.get(fieldName).asText());
+            } catch (Exception e) {
+                log.warn("Invalid UUID format for field '{}': {}", fieldName, node.get(fieldName).asText());
+            }
         }
-    }
-
-    private void processStockRelease(String orderId, String productId, int quantity, String correlationId) {
-        boolean released = inventoryService.releaseReservedStock(orderId, productId, quantity);
-
-        StockReleasedEvent event = StockReleasedEvent.builder()
-                .orderId(orderId)
-                .productId(productId)
-                .quantity(quantity)
-                .status(released ? "RELEASED" : "NOT_FOUND")
-                .correlationId(correlationId)
-                .build();
-
-        fulfillmentEventProducer.sendStockReleased(event);
-    }
-
-    private void processConfirmStockDeduction(String orderId, String productId, int quantity) {
-        inventoryService.confirmStockDeduction(orderId, productId, quantity);
+        return null;
     }
 }

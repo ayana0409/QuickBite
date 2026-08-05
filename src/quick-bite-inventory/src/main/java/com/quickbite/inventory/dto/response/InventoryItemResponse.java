@@ -14,7 +14,7 @@ import java.util.UUID;
 @Builder
 public class InventoryItemResponse {
     private UUID id;
-    private String productId;
+    private UUID foodItemId;
     private Integer quantity;
     private Integer reservedQuantity;
     private Integer availableQuantity;
