@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using MassTransit;
 using QuickBite.Order.Domain.Shared.Event;
 
@@ -42,6 +44,10 @@ public class OrderStateMachine : MassTransitStateMachine<OrderSagaStateInstance>
                     context.Saga.CustomerId = context.Message.CustomerId;
                     context.Saga.TotalAmount = context.Message.TotalAmount;
                     context.Saga.SubmittedAt = context.Message.OccurredAt;
+                    if (context.Message.Items != null)
+                    {
+                        context.Saga.ItemsJson = JsonSerializer.Serialize(context.Message.Items);
+                    }
                 })
                 .Publish(context => new StockReservationRequestedEto
                 {
@@ -81,7 +87,8 @@ public class OrderStateMachine : MassTransitStateMachine<OrderSagaStateInstance>
                     OrderId = context.Saga.OrderId,
                     CorrelationId = context.Saga.CorrelationId,
                     Reason = context.Message.Reason ?? "Stock reservation rejected by inventory",
-                    OccurredAt = DateTime.UtcNow
+                    OccurredAt = DateTime.UtcNow,
+                    Items = string.IsNullOrEmpty(context.Saga.ItemsJson) ? new() : JsonSerializer.Deserialize<List<OrderItemEto>>(context.Saga.ItemsJson)
                 })
                 .Finalize()
         );
@@ -95,7 +102,8 @@ public class OrderStateMachine : MassTransitStateMachine<OrderSagaStateInstance>
                     EventId = Guid.NewGuid(),
                     OrderId = context.Saga.OrderId,
                     CorrelationId = context.Saga.CorrelationId,
-                    OccurredAt = DateTime.UtcNow
+                    OccurredAt = DateTime.UtcNow,
+                    Items = string.IsNullOrEmpty(context.Saga.ItemsJson) ? new() : JsonSerializer.Deserialize<List<OrderItemEto>>(context.Saga.ItemsJson)
                 })
                 .TransitionTo(Confirmed)
                 .Finalize(),
@@ -108,7 +116,8 @@ public class OrderStateMachine : MassTransitStateMachine<OrderSagaStateInstance>
                     OrderId = context.Saga.OrderId,
                     CorrelationId = context.Saga.CorrelationId,
                     Reason = context.Message.Reason ?? "Payment authorization failed",
-                    OccurredAt = DateTime.UtcNow
+                    OccurredAt = DateTime.UtcNow,
+                    Items = string.IsNullOrEmpty(context.Saga.ItemsJson) ? new() : JsonSerializer.Deserialize<List<OrderItemEto>>(context.Saga.ItemsJson)
                 })
                 .Publish(context => new OrderCancelledEto
                 {
@@ -116,7 +125,8 @@ public class OrderStateMachine : MassTransitStateMachine<OrderSagaStateInstance>
                     OrderId = context.Saga.OrderId,
                     CorrelationId = context.Saga.CorrelationId,
                     Reason = context.Message.Reason ?? "Payment authorization failed",
-                    OccurredAt = DateTime.UtcNow
+                    OccurredAt = DateTime.UtcNow,
+                    Items = string.IsNullOrEmpty(context.Saga.ItemsJson) ? new() : JsonSerializer.Deserialize<List<OrderItemEto>>(context.Saga.ItemsJson)
                 })
                 .Finalize()
         );

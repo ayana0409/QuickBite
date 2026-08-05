@@ -12,6 +12,7 @@ public class OrderSagaStateInstanceMap : SagaClassMap<OrderSagaStateInstance>
 
         entity.Property(x => x.CurrentState).HasMaxLength(64);
         entity.Property(x => x.TotalAmount).HasPrecision(18, 2);
+        entity.Property(x => x.ItemsJson).HasColumnType("longtext");
 
         entity.Property(x => x.Version).IsRowVersion();
     }

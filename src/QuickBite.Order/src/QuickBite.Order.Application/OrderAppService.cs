@@ -346,7 +346,16 @@ public class OrderAppService :
             OrderId = order.Id,
             Reason = "User cancelled",
             CorrelationId = order.CorrelationId,
-            OccurredAt = DateTime.UtcNow
+            OccurredAt = DateTime.UtcNow,
+            Items = order.OrderItems.Select(x => new OrderItemEto
+            {
+                FoodItemId = x.Sku,
+                ItemName = x.ItemName,
+                Quantity = x.Quantity,
+                UnitPrice = x.UnitPrice,
+                SelectedVariantName = x.SelectedVariantName,
+                SelectedToppings = x.SelectedToppings
+            }).ToList()
         };
 
         await _distributedEventBus.PublishAsync(orderCancelledEto);

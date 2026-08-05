@@ -24,5 +24,7 @@ public class OrderSagaStateInstance : SagaStateMachineInstance, ISagaVersion
 
     public DateTime? SubmittedAt { get; set; }
 
+    public string ItemsJson { get; set; } = string.Empty;
+
     public int Version { get; set; }
 }

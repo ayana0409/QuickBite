@@ -13,4 +13,6 @@ public class OrderConfirmedEto
     public Guid CorrelationId { get; set; }
 
     public DateTime OccurredAt { get; set; } = DateTime.UtcNow;
+
+    public System.Collections.Generic.List<OrderItemEto> Items { get; set; } = new();
 }

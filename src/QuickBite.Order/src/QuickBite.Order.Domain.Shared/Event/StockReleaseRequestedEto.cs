@@ -19,4 +19,6 @@ public class StockReleaseRequestedEto
     public string Reason { get; set; }
 
     public DateTime OccurredAt { get; set; }
+
+    public System.Collections.Generic.List<OrderItemEto> Items { get; set; } = new();
 }
