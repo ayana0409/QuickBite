@@ -33,7 +33,8 @@ public class OutboxScheduler {
 
         for (OutboxMessage message : pendingMessages) {
             try {
-                String key = message.getEventId().toString();
+                // ABP Framework expects the Event Name as the Kafka key for routing
+                String key = message.getEventType();
                 log.info("[Outbox Scheduler] Publishing event '{}' [ID: {}] to topic '{}'",
                         message.getEventType(), message.getEventId(), message.getTopic());
 
