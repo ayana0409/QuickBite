@@ -110,6 +110,14 @@ public class OrderHttpApiHostModule : AbpModule
                 specification.ReplicationFactor = 3;
             };
         });
+
+        Configure<Volo.Abp.EventBus.Kafka.AbpKafkaEventBusOptions>(options =>
+        {
+            options.TopicName = configuration["Kafka:EventBus:TopicName"] ?? "order-events";
+            options.GroupId = configuration["Kafka:EventBus:GroupId"] ?? "order-service-group";
+            options.ConnectionName = "KafkaEventBus";
+        });
+
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)
