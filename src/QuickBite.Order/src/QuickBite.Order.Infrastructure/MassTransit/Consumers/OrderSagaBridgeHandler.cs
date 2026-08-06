@@ -52,6 +52,26 @@ public class OrderSagaBridgeHandler :
 
     public async Task HandleEventAsync(StockReservedEto eventData)
     {
+        var order = await _orderRepository.FindAsync(eventData.OrderId);
+        if (order != null)
+        {
+            await _orderManager.UpdateStatusAsync(order, OrderStatus.WaitingPayment);
+            await _orderRepository.UpdateAsync(order, autoSave: true);
+
+            var orderWaitingPaymentEto = new OrderWaitingPaymentEto
+            {
+                EventId = Guid.NewGuid(),
+                OrderId = order.Id,
+                OrderCode = order.OrderCode,
+                CustomerId = order.CustomerId,
+                TotalAmount = order.TotalAmount,
+                Currency = order.Currency,
+                CorrelationId = order.CorrelationId,
+                OccurredAt = DateTime.UtcNow
+            };
+            await _distributedEventBus.PublishAsync(orderWaitingPaymentEto);
+        }
+
         await _publishEndpoint.Publish(eventData);
     }
 
