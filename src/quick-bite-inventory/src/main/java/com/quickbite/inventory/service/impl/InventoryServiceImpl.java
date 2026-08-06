@@ -190,6 +190,86 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
+    public boolean reserveStockBatch(UUID orderId, java.util.Map<UUID, Integer> items, UUID correlationId, UUID eventId) {
+        if (eventId != null && inboxMessageRepository.existsById(eventId)) {
+            log.info("[Inbox Pattern] Order event ID: {} already processed. Skipping reserve stock batch.", eventId);
+            return true;
+        }
+
+        log.info("[Saga Reserve Batch] Request to reserve stock for OrderId: {}. Items: {}", orderId, items.size());
+
+        // Sort keys to prevent deadlocks during locking
+        List<UUID> sortedFoodItemIds = items.keySet().stream().sorted().collect(Collectors.toList());
+
+        // 1. Validate ALL items exist and have enough stock
+        for (UUID foodItemId : sortedFoodItemIds) {
+            int quantity = items.get(foodItemId);
+
+            Optional<InventoryFoodItem> foodItemOpt = inventoryFoodItemRepository.findById(foodItemId);
+            if (foodItemOpt.isEmpty() || !foodItemOpt.get().isAvailable()) {
+                String reason = foodItemOpt.isEmpty()
+                        ? "Food item not found in catalog replica: " + foodItemId
+                        : "Food item is currently unavailable: " + foodItemId;
+                log.warn("[Saga Reserve Batch] REJECTED - {}", reason);
+                saveRejectedEvent(orderId, foodItemId, quantity, reason, correlationId);
+                recordInbox(eventId, "order.stock.reservation.requested.batch");
+                return false;
+            }
+
+            Optional<InventoryItem> optionalItem = inventoryItemRepository.findByFoodItemIdWithLock(foodItemId);
+            if (optionalItem.isEmpty() || !optionalItem.get().hasEnoughStock(quantity)) {
+                int avail = optionalItem.map(InventoryItem::getAvailableQuantity).orElse(0);
+                String reason = "Insufficient available stock for item " + foodItemId + ". Available: " + avail + ", Requested: " + quantity;
+                log.warn("[Saga Reserve Batch] REJECTED - {}", reason);
+                saveRejectedEvent(orderId, foodItemId, quantity, reason, correlationId);
+                recordInbox(eventId, "order.stock.reservation.requested.batch");
+                return false;
+            }
+        }
+
+        // 2. All items valid, reserve all
+        for (UUID foodItemId : sortedFoodItemIds) {
+            int quantity = items.get(foodItemId);
+            InventoryItem item = inventoryItemRepository.findByFoodItemIdWithLock(foodItemId).get();
+            item.reserveStock(quantity);
+            inventoryItemRepository.save(item);
+        }
+
+        // 3. Save SUCCESS Outbox Event for the whole order
+        saveOutboxEvent(
+                UUID.randomUUID(),
+                "stock.reserved",
+                StockReservedEvent.builder()
+                        .eventId(UUID.randomUUID())
+                        .orderId(orderId)
+                        .correlationId(correlationId)
+                        .status("SUCCESS")
+                        .build()
+        );
+
+        recordInbox(eventId, "order.stock.reservation.requested.batch");
+        log.info("[Saga Reserve Batch] SUCCESS - Reserved all {} items for order: {}", items.size(), orderId);
+        return true;
+    }
+
+    private void saveRejectedEvent(UUID orderId, UUID foodItemId, int quantity, String reason, UUID correlationId) {
+        saveOutboxEvent(
+                UUID.randomUUID(),
+                "stock.rejected",
+                StockRejectedEvent.builder()
+                        .eventId(UUID.randomUUID())
+                        .orderId(orderId)
+                        .foodItemId(foodItemId)
+                        .quantity(quantity)
+                        .status("OUT_OF_STOCK")
+                        .reason(reason)
+                        .correlationId(correlationId)
+                        .build()
+        );
+    }
+
+    @Override
+    @Transactional
     public boolean releaseReservedStock(UUID orderId, UUID foodItemId, int quantity, UUID correlationId, UUID eventId) {
         if (eventId != null && inboxMessageRepository.existsById(eventId)) {
             log.info("[Inbox Pattern] Order event ID: {} already processed. Skipping release stock.", eventId);

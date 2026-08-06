@@ -82,6 +82,7 @@ public class OrderEventConsumer {
                 case "order.created":
                 case "ORDER_CREATED":
                     JsonNode itemsNode = rootNode.has("items") ? rootNode.get("items") : payloadNode.get("items");
+                    java.util.Map<UUID, Integer> orderItems = new java.util.HashMap<>();
                     if (itemsNode != null && itemsNode.isArray()) {
                         for (JsonNode itemNode : itemsNode) {
                             UUID foodItemId = parseUuid(itemNode, "foodItemId");
@@ -90,12 +91,7 @@ public class OrderEventConsumer {
                             int quantity = itemNode.has("quantity") ? itemNode.get("quantity").asInt() : 1;
 
                             if (foodItemId != null) {
-                                // Create unique eventId for each item to support Inbox idempotency per item
-                                UUID itemEventId = UUID
-                                        .nameUUIDFromBytes((eventId.toString() + "-" + foodItemId.toString())
-                                                .getBytes(StandardCharsets.UTF_8));
-                                inventoryService.reserveStock(orderId, foodItemId, quantity, correlationId,
-                                        itemEventId);
+                                orderItems.put(foodItemId, orderItems.getOrDefault(foodItemId, 0) + quantity);
                             }
                         }
                     } else {
@@ -103,11 +99,14 @@ public class OrderEventConsumer {
                         UUID singleFoodItemId = parseUuid(rootNode, "foodItemId");
                         int singleQuantity = rootNode.has("quantity") ? rootNode.get("quantity").asInt() : 1;
                         if (singleFoodItemId != null) {
-                            inventoryService.reserveStock(orderId, singleFoodItemId, singleQuantity, correlationId,
-                                    eventId);
-                        } else {
-                            log.warn("[Kafka Consumer] No items found to reserve stock for OrderId: {}", orderId);
+                            orderItems.put(singleFoodItemId, singleQuantity);
                         }
+                    }
+
+                    if (!orderItems.isEmpty()) {
+                        inventoryService.reserveStockBatch(orderId, orderItems, correlationId, eventId);
+                    } else {
+                        log.warn("[Kafka Consumer] No items found to reserve stock for OrderId: {}", orderId);
                     }
                     break;
 

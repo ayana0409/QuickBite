@@ -347,33 +347,50 @@ public class OrderAppService :
     public async Task CancelAsync(Guid id)
     {
         // 1. Fetch the order from the database. Will throw EntityNotFoundException if missing.
-        var order = await _orderRepository.GetAsync(id);
+        var order = await _orderRepository.GetAsync(id, includeDetails: true);
 
-        // 2. Delegate the cancellation business logic to the Domain Manager.
+        // 2. Save the status before cancellation to decide if we should notify Inventory.
+        var statusBeforeCancel = order.Status;
+
+        // 3. Delegate the cancellation business logic to the Domain Manager.
         await _orderManager.CancelAsync(order);
 
-        // 3. Publish order cancelled event using ABP Distributed Event Bus (native Outbox).
-        var orderCancelledEto = new OrderCancelledEto
+        // 4. Only publish OrderCancelledEto if the order was in a processing state that may have reserved stock.
+        // Draft orders have never submitted to the Saga, so Inventory has no stock to release.
+        var statusesWithReservedStock = new[]
         {
-            EventId = GuidGenerator.Create(),
-            OrderId = order.Id,
-            Reason = "User cancelled",
-            CorrelationId = order.CorrelationId,
-            OccurredAt = DateTime.UtcNow,
-            Items = order.OrderItems.Select(x => new OrderItemEto
-            {
-                FoodItemId = x.Sku,
-                ItemName = x.ItemName,
-                Quantity = x.Quantity,
-                UnitPrice = x.UnitPrice,
-                SelectedVariantName = x.SelectedVariantName ?? string.Empty,
-                SelectedToppings = x.SelectedToppings
-            }).ToList()
+            OrderStatus.Pending,
+            OrderStatus.WaitingInventory,
+            OrderStatus.WaitingStock,
+            OrderStatus.WaitingPayment,
+            OrderStatus.Confirmed,
+            OrderStatus.Preparing,
         };
 
-        await _distributedEventBus.PublishAsync(orderCancelledEto);
+        if (Array.Exists(statusesWithReservedStock, s => s == statusBeforeCancel))
+        {
+            var orderCancelledEto = new OrderCancelledEto
+            {
+                EventId = GuidGenerator.Create(),
+                OrderId = order.Id,
+                Reason = "User cancelled",
+                CorrelationId = order.CorrelationId,
+                OccurredAt = DateTime.UtcNow,
+                Items = order.OrderItems.Select(x => new OrderItemEto
+                {
+                    FoodItemId = x.Sku,
+                    ItemName = x.ItemName,
+                    Quantity = x.Quantity,
+                    UnitPrice = x.UnitPrice,
+                    SelectedVariantName = x.SelectedVariantName ?? string.Empty,
+                    SelectedToppings = x.SelectedToppings
+                }).ToList()
+            };
 
-        // 4. Persist changes.
+            await _distributedEventBus.PublishAsync(orderCancelledEto);
+        }
+
+        // 5. Persist changes.
         await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 

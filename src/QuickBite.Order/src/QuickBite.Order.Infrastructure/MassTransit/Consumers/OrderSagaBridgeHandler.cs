@@ -1,6 +1,8 @@
 using System;
 using System.Threading.Tasks;
 using MassTransit;
+using Microsoft.Extensions.Logging;
+using QuickBite.Order.Domain.Enums;
 using QuickBite.Order.Domain.Orders.Managers;
 using QuickBite.Order.Domain.Orders.Repositories;
 using QuickBite.Order.Domain.Shared.Event;
@@ -27,17 +29,20 @@ public class OrderSagaBridgeHandler :
     private readonly IOrderRepository _orderRepository;
     private readonly IOrderManager _orderManager;
     private readonly IDistributedEventBus _distributedEventBus;
+    private readonly ILogger<OrderSagaBridgeHandler> _logger;
 
     public OrderSagaBridgeHandler(
         IPublishEndpoint publishEndpoint,
         IOrderRepository orderRepository,
         IOrderManager orderManager,
-        IDistributedEventBus distributedEventBus)
+        IDistributedEventBus distributedEventBus,
+        ILogger<OrderSagaBridgeHandler> logger)
     {
         _publishEndpoint = publishEndpoint;
         _orderRepository = orderRepository;
         _orderManager = orderManager;
         _distributedEventBus = distributedEventBus;
+        _logger = logger;
     }
 
     public async Task HandleEventAsync(OrderSubmittedEto eventData)
@@ -55,6 +60,28 @@ public class OrderSagaBridgeHandler :
         var order = await _orderRepository.FindAsync(eventData.OrderId);
         if (order != null)
         {
+            // Only revert if order is still in a revertible processing state.
+            // Prevent stale outbox stock.rejected messages from reverting an order
+            // that has already progressed further (e.g., stock reserved, payment authorized).
+            var revertibleStatuses = new[]
+            {
+                OrderStatus.Pending,
+                OrderStatus.WaitingInventory,
+                OrderStatus.WaitingStock,
+            };
+
+            if (!Array.Exists(revertibleStatuses, s => s == order.Status))
+            {
+                _logger.LogWarning(
+                    "[StockRejected] Skipping revert for OrderId: {OrderId}. Current status '{Status}' is not revertible. " +
+                    "This may be a stale event from a previous attempt.",
+                    order.Id, order.Status);
+
+                // Still forward to MassTransit so Saga state machine can handle/ignore properly
+                await _publishEndpoint.Publish(eventData);
+                return;
+            }
+
             string reason = !string.IsNullOrWhiteSpace(eventData.Reason)
                 ? eventData.Reason
                 : "Sản phẩm trong kho không đủ đáp ứng (Stock rejected).";

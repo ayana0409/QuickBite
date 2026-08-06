@@ -34,7 +34,7 @@ public class OrderInfrastructureModule : AbpModule
             x.AddRider(rider =>
             {
                 rider.AddConsumer<CatalogEventConsumer>();
-                rider.AddConsumer<FulfillmentEventConsumer>();
+                rider.AddConsumer<FulfillmentRawConsumer>();
 
                 rider.UsingKafka((ctx, k) =>
                 {
@@ -80,16 +80,13 @@ public class OrderInfrastructureModule : AbpModule
                         e.ConfigureConsumer<CatalogEventConsumer>(ctx);
                     });
 
-                    k.TopicEndpoint<StockRejectedEto>("fulfillment-events", "order-service-fulfillment-stock-rejected-consumer", e =>
+                    // Single consumer group for all fulfillment-events messages.
+                    // The raw consumer reads the "eventType" field and routes accordingly,
+                    // preventing stock.reserved from being deserialized as StockRejectedEto.
+                    k.TopicEndpoint<FulfillmentRawMessage>("fulfillment-events", "order-service-fulfillment-consumer", e =>
                     {
                         e.UseRawJsonSerializer();
-                        e.ConfigureConsumer<FulfillmentEventConsumer>(ctx);
-                    });
-
-                    k.TopicEndpoint<StockReservedEto>("fulfillment-events", "order-service-fulfillment-stock-reserved-consumer", e =>
-                    {
-                        e.UseRawJsonSerializer();
-                        e.ConfigureConsumer<FulfillmentEventConsumer>(ctx);
+                        e.ConfigureConsumer<FulfillmentRawConsumer>(ctx);
                     });
                 });
             });

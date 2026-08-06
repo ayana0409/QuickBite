@@ -40,6 +40,11 @@ public interface InventoryService {
     boolean reserveStock(UUID orderId, UUID foodItemId, int quantity, UUID correlationId, UUID eventId);
 
     /**
+     * Reserve stock for multiple items in an order (All or Nothing).
+     */
+    boolean reserveStockBatch(UUID orderId, java.util.Map<UUID, Integer> items, UUID correlationId, UUID eventId);
+
+    /**
      * Release reserved stock for an order and save result to Outbox (Saga Compensation Step).
      */
     boolean releaseReservedStock(UUID orderId, UUID foodItemId, int quantity, UUID correlationId, UUID eventId);
