@@ -64,7 +64,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
         OrderItems = new List<OrderItem>();
         StatusHistories = new List<OrderStatusHistory>();
 
-        AddStatusHistory(OrderStatus.Draft, "Order created in draft status");
+        AddStatusHistory(null, OrderStatus.Draft, "Order created in draft status");
     }
 
     #region Domain behaviors
@@ -212,18 +212,19 @@ public class Order : FullAuditedAggregateRoot<Guid>
         if (Status == newStatus)
             return;
 
+        var oldStatus = Status;
         Status = newStatus;
         Version++;
-        AddStatusHistory(newStatus, note);
+        AddStatusHistory(oldStatus, newStatus, note);
     }
 
-    private void AddStatusHistory(OrderStatus status, string note)
+    private void AddStatusHistory(OrderStatus? fromStatus, OrderStatus toStatus, string note)
     {
         StatusHistories.Add(new OrderStatusHistory(
             Guid.NewGuid(),
             Id,
-            this.Status,
-            status,
+            fromStatus,
+            toStatus,
             note,
             ChangedBy.System));
     }

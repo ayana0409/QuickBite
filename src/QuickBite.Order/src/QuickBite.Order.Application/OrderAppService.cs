@@ -263,7 +263,7 @@ public class OrderAppService :
     {
         var order = await _orderRepository.GetAsync(id, includeDetails: true);
 
-        await _orderManager.UpdateStatusAsync(order, input.Status);
+        order.UpdateStatus(input.Status);
 
         await _orderRepository.UpdateAsync(order, autoSave: true);
 
@@ -353,7 +353,7 @@ public class OrderAppService :
         var statusBeforeCancel = order.Status;
 
         // 3. Delegate the cancellation business logic to the Domain Manager.
-        await _orderManager.CancelAsync(order);
+        order.Cancel();
 
         // 4. Only publish OrderCancelledEto if the order was in a processing state that may have reserved stock.
         // Draft orders have never submitted to the Saga, so Inventory has no stock to release.

@@ -1,4 +1,5 @@
-﻿using Volo.Abp.Modularity;
+using Volo.Abp.Modularity;
+using QuickBite.Order.Domain;
 
 namespace QuickBite.Order;
 

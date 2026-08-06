@@ -2,6 +2,7 @@ using System.Threading.Tasks;
 using MassTransit;
 using Microsoft.Extensions.Logging;
 using QuickBite.Order.Domain.Shared.Event;
+using QuickBite.Order.Domain.Shared.Event.External;
 using Volo.Abp.EventBus.Local;
 
 namespace QuickBite.Order.Infrastructure.MassTransit.Consumers;

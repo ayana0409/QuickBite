@@ -16,17 +16,5 @@ public interface IOrderManager
         List<OrderItem> orderItems,
         Guid? correlationId = null);
 
-    Task ConfirmAsync(AggregateRoots.Order order);
-
-    Task CancelAsync(AggregateRoots.Order order);
-
-    Task UpdateStatusAsync(
-        AggregateRoots.Order order,
-        OrderStatus status);
-
-    Task RevertToDraftAsync(
-        AggregateRoots.Order order,
-        string reason);
-
     string GenerateOrderCode();
 }

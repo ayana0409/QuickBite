@@ -45,30 +45,6 @@ public class OrderManager : DomainService, IOrderManager
         return await Task.FromResult(order);
     }
 
-    public Task ConfirmAsync(AggregateRoots order)
-    {
-        order.Confirm();
-        return Task.CompletedTask;
-    }
-
-    public Task CancelAsync(AggregateRoots order)
-    {
-        order.Cancel();
-        return Task.CompletedTask;
-    }
-
-    public Task UpdateStatusAsync(AggregateRoots order, OrderStatus status)
-    {
-        order.UpdateStatus(status);
-        return Task.CompletedTask;
-    }
-
-    public Task RevertToDraftAsync(AggregateRoots order, string reason)
-    {
-        order.RevertToDraft(reason);
-        return Task.CompletedTask;
-    }
-
     public string GenerateOrderCode()
     {
         return $"QB-{DateTime.UtcNow:yyyyMMddHHmmss}-{Random.Shared.Next(1000, 9999)}";

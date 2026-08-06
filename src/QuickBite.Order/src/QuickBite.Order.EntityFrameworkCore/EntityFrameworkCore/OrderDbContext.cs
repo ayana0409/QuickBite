@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using QuickBite.Order.Domain.Inbox;
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Orders.Saga;
-using QuickBite.Order.Domain.Outbox;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.BackgroundJobs.EntityFrameworkCore;
 using Volo.Abp.Data;
@@ -41,7 +40,6 @@ public class OrderDbContext :
 
     public DbSet<OrderSagaState> OrderSagaStates { get; set; }
 
-    public DbSet<OutboxMessage> OutboxMessages { get; set; }
 
     public DbSet<InboxMessage> InboxMessages { get; set; }
 

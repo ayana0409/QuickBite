@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json;
 using MassTransit;
 using QuickBite.Order.Domain.Shared.Event;
+using QuickBite.Order.Domain.Shared.Event.External;
 
 namespace QuickBite.Order.Infrastructure.MassTransit.StateMachine;
 

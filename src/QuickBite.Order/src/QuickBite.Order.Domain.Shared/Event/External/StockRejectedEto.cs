@@ -2,7 +2,7 @@ using System;
 using System.Text.Json.Serialization;
 using Volo.Abp.EventBus;
 
-namespace QuickBite.Order.Domain.Shared.Event;
+namespace QuickBite.Order.Domain.Shared.Event.External;
 
 /// <summary>
 /// Event emitted by Inventory Service when stock is insufficient.

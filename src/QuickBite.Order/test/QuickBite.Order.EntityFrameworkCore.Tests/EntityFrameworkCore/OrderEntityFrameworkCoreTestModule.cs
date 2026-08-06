@@ -1,4 +1,4 @@
-﻿using Microsoft.Data.Sqlite;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
@@ -8,7 +8,7 @@ using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.Sqlite;
 using Volo.Abp.FeatureManagement;
 using Volo.Abp.Modularity;
-using Volo.Abp.PermissionManagement;
+
 using Volo.Abp.SettingManagement;
 using Volo.Abp.Uow;
 
@@ -30,11 +30,7 @@ public class OrderEntityFrameworkCoreTestModule : AbpModule
             options.SaveStaticFeaturesToDatabase = false;
             options.IsDynamicFeatureStoreEnabled = false;
         });
-        Configure<PermissionManagementOptions>(options =>
-        {
-            options.SaveStaticPermissionsToDatabase = false;
-            options.IsDynamicPermissionStoreEnabled = false;
-        });
+
         Configure<SettingManagementOptions>(options =>
         {
             options.SaveStaticSettingsToDatabase = false;
