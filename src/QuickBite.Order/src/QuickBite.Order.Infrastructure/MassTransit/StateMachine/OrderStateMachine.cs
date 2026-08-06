@@ -81,15 +81,7 @@ public class OrderStateMachine : MassTransitStateMachine<OrderSagaStateInstance>
                 .TransitionTo(AuthorizingPayment),
 
             When(StockRejected)
-                .Publish(context => new OrderCancelledEto
-                {
-                    EventId = Guid.NewGuid(),
-                    OrderId = context.Saga.OrderId,
-                    CorrelationId = context.Saga.CorrelationId,
-                    Reason = context.Message.Reason ?? "Stock reservation rejected by inventory",
-                    OccurredAt = DateTime.UtcNow,
-                    Items = string.IsNullOrEmpty(context.Saga.ItemsJson) ? new() : JsonSerializer.Deserialize<List<OrderItemEto>>(context.Saga.ItemsJson)
-                })
+                .Then(context => context.Saga.StockReserved = false)
                 .Finalize()
         );
 

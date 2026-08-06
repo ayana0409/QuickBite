@@ -126,7 +126,7 @@ public class OrderAppService :
                 ItemName = x.ItemName,
                 Quantity = x.Quantity,
                 UnitPrice = x.UnitPrice,
-                SelectedVariantName = x.SelectedVariantName,
+                SelectedVariantName = x.SelectedVariantName ?? string.Empty,
                 SelectedToppings = x.SelectedToppings
             }).ToList()
         };
@@ -164,19 +164,19 @@ public class OrderAppService :
 
         // Map the main order properties.
         var orderDto = ObjectMapper.Map<OrderEntity, OrderDto>(result.Order);
-        
+
         // Populate and calculate final values for the DTO items.
-        orderDto.Items = result.ItemsWithFood.Select(x => 
+        orderDto.Items = result.ItemsWithFood.Select(x =>
         {
             // Only update prices with the latest catalog values if the order status is still Pending.
             bool useLatestData = result.Order.Status == OrderStatus.Pending;
-            
+
             decimal finalUnitPrice = x.OrderItem.UnitPrice;
-            
+
             if (useLatestData && x.FoodItem != null)
             {
-                var selectedToppingsList = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
-                    ? new List<string>() 
+                var selectedToppingsList = string.IsNullOrEmpty(x.OrderItem.SelectedToppings)
+                    ? new List<string>()
                     : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings) ?? new List<string>();
                 finalUnitPrice = x.FoodItem.CalculatePrice(x.OrderItem.SelectedVariantName, selectedToppingsList);
             }
@@ -189,26 +189,26 @@ public class OrderAppService :
                 UnitPrice = finalUnitPrice,
                 TotalPrice = finalUnitPrice * x.OrderItem.Quantity,
                 SelectedVariantName = x.OrderItem.SelectedVariantName,
-                SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
-                    ? [] 
+                SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings)
+                    ? []
                     : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings) ?? []
             };
         }).ToList();
-        
+
         orderDto.TotalAmount = orderDto.Items.Sum(i => i.TotalPrice);
 
         return orderDto;
     }
 
     /// <summary>
-    /// Updates an existing order's address and order items.
+    /// Updates an existing order's address and order items. Only permitted when order is in Draft status.
     /// </summary>
     public async Task<OrderDto> UpdateAsync(Guid id, UpdateOrderDto input)
     {
         // 1. Fetch the existing order including details. Will throw EntityNotFoundException if missing.
         var order = await _orderRepository.GetAsync(id, includeDetails: true);
 
-        // 2. Validate and set the new delivery address value object.
+        // 2. Validate and build the new delivery address value object.
         var deliveryAddress = new DeliveryAddress(
             input.DeliveryAddress.ReceiverName,
             input.DeliveryAddress.PhoneNumber,
@@ -219,14 +219,12 @@ public class OrderAppService :
             input.DeliveryAddress.Note ?? string.Empty
         );
 
-        order.SetDeliveryAddress(deliveryAddress);
-        order.ClearItems();
-
         // 3. Fetch latest food item definitions for the updated items.
         var foodIds = input.Items.Select(x => x.FoodItemId).Distinct().ToList();
         var foodInfoDict = await GetFoodInfosAsync(foodIds);
 
         // 4. Validate and re-calculate pricing for updated order items.
+        var orderItems = new List<OrderItem>();
         foreach (var item in input.Items)
         {
             if (!foodInfoDict.TryGetValue(item.FoodItemId, out var foodInfo))
@@ -238,22 +236,37 @@ public class OrderAppService :
             decimal finalPrice = foodInfo.CalculatePrice(item.SelectedVariantName, item.SelectedToppings);
             var selectedToppingsJson = JsonSerializer.Serialize(item.SelectedToppings ?? new List<string>());
 
-            var orderItem = new OrderItem(
+            orderItems.Add(new OrderItem(
                 GuidGenerator.Create(),
                 item.FoodItemId,
                 foodInfo.Name,
                 item.Quantity,
                 finalPrice,
                 item.SelectedVariantName,
-                selectedToppingsJson);
-
-            order.AddItem(orderItem);
+                selectedToppingsJson));
         }
 
-        // 5. Save the updated aggregate root.
+        // 5. Delegate address and items update to the aggregate root (which enforces Draft-only invariant).
+        order.UpdateDetails(deliveryAddress, orderItems);
+
+        // 6. Save the updated aggregate root.
         await _orderRepository.UpdateAsync(order, autoSave: true);
 
-        // 6. Return the mapped DTO.
+        // 7. Return the mapped DTO.
+        return ObjectMapper.Map<OrderEntity, OrderDto>(order);
+    }
+
+    /// <summary>
+    /// Updates an existing order's status (for processing orders).
+    /// </summary>
+    public async Task<OrderDto> UpdateStatusAsync(Guid id, UpdateOrderStatusDto input)
+    {
+        var order = await _orderRepository.GetAsync(id, includeDetails: true);
+
+        await _orderManager.UpdateStatusAsync(order, input.Status);
+
+        await _orderRepository.UpdateAsync(order, autoSave: true);
+
         return ObjectMapper.Map<OrderEntity, OrderDto>(order);
     }
 
@@ -269,7 +282,7 @@ public class OrderAppService :
             // Throw AbpAuthorizationException if the user is unauthenticated.
             throw new AbpAuthorizationException("User must be logged in to view their orders.");
         }
-        
+
         var orderQuery = await _orderRepository.GetQueryableAsync();
         var foodQuery = await _foodItemRepository.GetQueryableAsync();
 
@@ -292,17 +305,17 @@ public class OrderAppService :
         foreach (var result in queryResult)
         {
             var orderDto = ObjectMapper.Map<OrderEntity, OrderDto>(result.Order);
-            
-            orderDto.Items = result.ItemsWithFood.Select(x => 
+
+            orderDto.Items = result.ItemsWithFood.Select(x =>
             {
                 bool useLatestData = result.Order.Status == OrderStatus.Pending;
-                
+
                 decimal finalUnitPrice = x.OrderItem.UnitPrice;
-                
+
                 if (useLatestData && x.FoodItem != null)
                 {
-                    var selectedToppingsList = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
-                        ? new List<string>() 
+                    var selectedToppingsList = string.IsNullOrEmpty(x.OrderItem.SelectedToppings)
+                        ? new List<string>()
                         : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings) ?? new List<string>();
                     finalUnitPrice = x.FoodItem.CalculatePrice(x.OrderItem.SelectedVariantName, selectedToppingsList);
                 }
@@ -315,12 +328,12 @@ public class OrderAppService :
                     UnitPrice = finalUnitPrice,
                     TotalPrice = finalUnitPrice * x.OrderItem.Quantity,
                     SelectedVariantName = x.OrderItem.SelectedVariantName,
-                    SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings) 
-                        ? new List<string>() 
+                    SelectedToppings = string.IsNullOrEmpty(x.OrderItem.SelectedToppings)
+                        ? new List<string>()
                         : JsonSerializer.Deserialize<List<string>>(x.OrderItem.SelectedToppings)
                 };
             }).ToList();
-            
+
             orderDto.TotalAmount = orderDto.Items.Sum(i => i.TotalPrice);
             orderDtos.Add(orderDto);
         }
@@ -335,10 +348,10 @@ public class OrderAppService :
     {
         // 1. Fetch the order from the database. Will throw EntityNotFoundException if missing.
         var order = await _orderRepository.GetAsync(id);
-        
+
         // 2. Delegate the cancellation business logic to the Domain Manager.
         await _orderManager.CancelAsync(order);
-        
+
         // 3. Publish order cancelled event using ABP Distributed Event Bus (native Outbox).
         var orderCancelledEto = new OrderCancelledEto
         {
@@ -353,7 +366,7 @@ public class OrderAppService :
                 ItemName = x.ItemName,
                 Quantity = x.Quantity,
                 UnitPrice = x.UnitPrice,
-                SelectedVariantName = x.SelectedVariantName,
+                SelectedVariantName = x.SelectedVariantName ?? string.Empty,
                 SelectedToppings = x.SelectedToppings
             }).ToList()
         };

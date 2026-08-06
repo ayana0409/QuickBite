@@ -1,4 +1,4 @@
-﻿using QuickBite.Order.Domain.Enums;
+using QuickBite.Order.Domain.Enums;
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Orders.ValueObjects;
 using System;
@@ -23,6 +23,10 @@ public interface IOrderManager
     Task UpdateStatusAsync(
         AggregateRoots.Order order,
         OrderStatus status);
+
+    Task RevertToDraftAsync(
+        AggregateRoots.Order order,
+        string reason);
 
     string GenerateOrderCode();
 }

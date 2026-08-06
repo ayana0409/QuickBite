@@ -34,6 +34,7 @@ public class OrderInfrastructureModule : AbpModule
             x.AddRider(rider =>
             {
                 rider.AddConsumer<CatalogEventConsumer>();
+                rider.AddConsumer<FulfillmentEventConsumer>();
 
                 rider.UsingKafka((ctx, k) =>
                 {
@@ -77,6 +78,18 @@ public class OrderInfrastructureModule : AbpModule
                     {
                         e.UseRawJsonSerializer();
                         e.ConfigureConsumer<CatalogEventConsumer>(ctx);
+                    });
+
+                    k.TopicEndpoint<StockRejectedEto>("fulfillment-events", "order-service-fulfillment-stock-rejected-consumer", e =>
+                    {
+                        e.UseRawJsonSerializer();
+                        e.ConfigureConsumer<FulfillmentEventConsumer>(ctx);
+                    });
+
+                    k.TopicEndpoint<StockReservedEto>("fulfillment-events", "order-service-fulfillment-stock-reserved-consumer", e =>
+                    {
+                        e.UseRawJsonSerializer();
+                        e.ConfigureConsumer<FulfillmentEventConsumer>(ctx);
                     });
                 });
             });

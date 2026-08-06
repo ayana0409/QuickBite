@@ -4,6 +4,12 @@
     "AppName": "Order",
     "Menu:Home": "Trang chủ",
     "Welcome": "Chào mừng bạn",
-    "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io."
+    "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io.",
+    "Order:000001": "Đơn hàng không được để trống.",
+    "Order:000002": "Trạng thái đơn hàng không hợp lệ cho thao tác này.",
+    "Order:000003": "Không thể hủy đơn hàng đã hoàn thành.",
+    "Order:000004": "Không thể chỉnh sửa thông tin đơn hàng khi đơn đã vào quy trình xử lý. Chỉ được chỉnh sửa khi đơn ở trạng thái Nháp (Draft).",
+    "Order:000005": "Không thể gửi đơn hàng không ở trạng thái Nháp (Draft).",
+    "Order:000006": "Không thể gửi đơn hàng chưa có sản phẩm nào."
   }
 }

@@ -1,4 +1,4 @@
-﻿using QuickBite.Order.Domain.Enums;
+using QuickBite.Order.Domain.Enums;
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Orders.Managers;
 using QuickBite.Order.Domain.Orders.Repositories;
@@ -60,6 +60,12 @@ public class OrderManager : DomainService, IOrderManager
     public Task UpdateStatusAsync(AggregateRoots order, OrderStatus status)
     {
         order.UpdateStatus(status);
+        return Task.CompletedTask;
+    }
+
+    public Task RevertToDraftAsync(AggregateRoots order, string reason)
+    {
+        order.RevertToDraft(reason);
         return Task.CompletedTask;
     }
 

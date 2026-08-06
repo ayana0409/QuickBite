@@ -4,6 +4,12 @@
     "AppName": "Order",
     "Menu:Home": "Home",
     "Welcome": "Welcome",
-    "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io."
+    "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io.",
+    "Order:000001": "Order cannot be null.",
+    "Order:000002": "Invalid order status for this operation.",
+    "Order:000003": "Cannot cancel completed order.",
+    "Order:000004": "Cannot update order details once the order has entered processing state. Updates are only allowed when order is in Draft status.",
+    "Order:000005": "Cannot submit an order that is not in Draft status.",
+    "Order:000006": "Cannot submit an empty order."
   }
 }
