@@ -13,11 +13,18 @@ src/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/appsettings.json
 coverage
 **/coverage
 
-# Java / Maven / Spring Boot (quick-bite-inventory)
+# Java / Maven / Spring Boot (quick-bite-inventory & quick-bite-payment)
 src/quick-bite-inventory/target/
 src/quick-bite-inventory/HELP.md
 src/quick-bite-inventory/.mvn/wrapper/maven-wrapper.jar
 src/quick-bite-inventory/src/main/resources/application.properties
+src/quick-bite-inventory/src/main/resources/ca.pem
+
+src/quick-bite-payment/target/
+src/quick-bite-payment/HELP.md
+src/quick-bite-payment/.mvn/wrapper/maven-wrapper.jar
+src/quick-bite-payment/src/main/resources/application.properties
+src/quick-bite-payment/src/main/resources/ca.pem
 **/target/
 
 # IDEs & Editor files
@@ -35,3 +42,4 @@ src/quick-bite-inventory/src/main/resources/application.properties
 .sts4-cache
 
 src/quick-bite-inventory/src/main/resources/ca.pem
+src/quick-bite-payment/.mvn/wrapper/maven-wrapper.properties
