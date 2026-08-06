@@ -11,7 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class MockPaymentAdapter implements PaymentGatewayPort {
 
-    @Value("${app.payment.frontend-sandbox-url:http://localhost:3000/sandbox-payment}")
+    @Value("${app.payment.frontend-sandbox-url}")
     private String sandboxUrl;
 
     @Override

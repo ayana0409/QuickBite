@@ -22,6 +22,7 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
 
     private final PaymentPersistencePort persistencePort;
     private final PaymentGatewayPort gatewayPort;
+    private final com.quickbite.payment.application.port.out.PaymentEventPublisherPort eventPublisherPort;
 
     @Override
     @Transactional
@@ -74,6 +75,14 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
             payment.markAsFailed(reason != null && !reason.isBlank() ? reason : "Payment failed by customer simulation");
         }
 
-        return persistencePort.save(payment);
+        Payment savedPayment = persistencePort.save(payment);
+
+        if (success) {
+            eventPublisherPort.publishPaymentCompleted(savedPayment);
+        } else {
+            eventPublisherPort.publishPaymentFailed(savedPayment);
+        }
+
+        return savedPayment;
     }
 }

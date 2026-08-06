@@ -29,6 +29,9 @@ class PaymentApplicationServiceTest {
     @Mock
     private PaymentGatewayPort gatewayPort;
 
+    @Mock
+    private com.quickbite.payment.application.port.out.PaymentEventPublisherPort eventPublisherPort;
+
     @InjectMocks
     private PaymentApplicationService service;
 
