@@ -60,7 +60,7 @@
             "mainClass": "com.quickbite.inventory.InventoryApplication",
             "projectName": "inventory",
             "cwd": "${workspaceFolder}/src/quick-bite-inventory",
-            "console": "internalConsole"
+            "console": "integratedTerminal"
         },
         {
             "type": "java",
@@ -76,7 +76,7 @@
             "mainClass": "com.quickbite.payment.PaymentApplication",
             "projectName": "payment",
             "cwd": "${workspaceFolder}/src/quick-bite-payment",
-            "console": "internalConsole"
+            "console": "integratedTerminal"
         },
         {
             "type": "java",
