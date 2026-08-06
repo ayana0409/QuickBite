@@ -320,8 +320,8 @@ CREATE TABLE payments (
     status          VARCHAR(24) NOT NULL DEFAULT 'Pending',
                     -- Pending/Authorized/Captured/Failed/Voided/Refunded/PartiallyRefunded
     attempt_type    VARCHAR(16) NOT NULL DEFAULT 'Payment',   -- "Payment" | "Refund"
-    payment_method  VARCHAR(24) NOT NULL,               -- "COD" | "VNPay" | "MoMo" | "QRBanking" | "Stripe" | "PayPal"
-    gateway         VARCHAR(32) NULL,                   -- NULL nếu payment_method = "COD"; có giá trị nếu qua cổng thanh toán
+    payment_method  VARCHAR(24) NOT NULL,               -- "MOCK_PAYMENT" | "COD" | "CREDIT_CARD" | "MOMO" | "VNPay"
+    gateway         VARCHAR(32) NULL,                   -- "MockGateway" (Demo Sandbox) | "MoMo" | "VNPay" | NULL (COD)
     gateway_ref     VARCHAR(128) NULL,
     failure_reason  VARCHAR(256) NULL,
     version         INT NOT NULL DEFAULT 0,

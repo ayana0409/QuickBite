@@ -186,20 +186,21 @@ Consumer phải kiểm tra EventId trước khi xử lý để đảm bảo idem
 
 ---
 
-## Payment Gateway
+## Payment Gateway (Mock Gateway & Port Adapter)
 
-Khuyến nghị thiết kế theo Port & Adapter:
+Khuyến nghị thiết kế theo **Port & Adapter (Hexagonal Architecture)**. Đối với môi trường Demo/Portfolio, hệ thống sử dụng **MockPaymentAdapter** (Sandbox UI) để người dùng thử nghiệm kịch bản thanh toán (Thành công / Thất bại) mà không dính tới pháp lý hoặc chi phí thực tế.
 
 ```
-PaymentGateway
+PaymentGatewayPort (Interface)
     |
-    +--- VNPayAdapter
-    +--- MoMoAdapter
-    +--- StripeAdapter
-    +--- SandboxAdapter
+    +--- MockPaymentAdapter (Mặc định cho Demo - Sandbox UI)
+    +--- MoMoAdapter (Mở rộng tương lai)
+    +--- VNPayAdapter (Mở rộng tương lai)
+    +--- StripeAdapter (Mở rộng tương lai)
 ```
 
-Giúp dễ dàng thay đổi cổng thanh toán trong tương lai.
+Giúp dễ dàng thay đổi hoặc mở rộng cổng thanh toán thực tế trong tương lai mà không ảnh hưởng tới Business Logic.
+
 
 ---
 

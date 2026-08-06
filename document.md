@@ -216,44 +216,47 @@ src/
 └── kafka/            # Consumer: đồng bộ availability 
 ``` 
 
-**Tech:** NestJS, MongoDB (Mongoose), GraphQL hoặc REST, Redis cache. 
-**Vì sao MongoDB:** dữ liệu menu dạng document, schema linh hoạt (topping, biến thể món). 
-**Event phát ra:** `menu.updated`, `restaurant.status.changed`. 
+
+**Vì sao MongoDB:** dữ liệu menu dạng document, schema linh hoạt (topping, biến thể món). 
+**Event phát ra:** `menu.updated`, `restaurant.status.changed`. 
 
 --- 
 
-### 5.4. Payment Service (Spring Boot) 
+### 5.4. Payment Service (Spring Boot)
 
-**Trách nhiệm:** Uỷ quyền (authorize), thu tiền (capture), hoàn tiền (refund/void) — bước trong Saga. 
+**Trách nhiệm:** Uỷ quyền (authorize), thu tiền (capture), hoàn tiền (refund/void) — bước trong Saga. Triển khai **Mock Payment Gateway** (Sandbox UI) phục vụ môi trường Demo để mô phỏng kịch bản thanh toán thành công/thất bại mà không bị vướng rào cản pháp lý hoặc chi phí thực tế.
 
-**Kiến trúc nội bộ (Hexagonal / Clean):** 
-``` 
-src/main/java/com/quickbite/payment/ 
-├── domain/ 
-│   ├── model/Payment.java 
-│   └── service/PaymentDomainService.java 
-├── application/ 
-│   ├── PaymentUseCase.java 
-│   └── port/{in,out}/ 
-├── adapter/ 
-│   ├── in/kafka/OrderEventConsumer.java 
-│   ├── in/web/PaymentController.java
-│   └── out/{persistence,gateway}/     # PostgreSQL, cổng thanh toán 
-└── config/ 
-``` 
+**Kiến trúc nội bộ (Hexagonal / Clean Architecture - Port & Adapter):**
+```
+src/main/java/com/quickbite/payment/
+├── domain/
+│   ├── model/Payment.java
+│   └── model/{PaymentStatus, PaymentMethod}.java
+├── application/
+│   ├── service/PaymentApplicationService.java
+│   └── port/
+│       ├── in/{ProcessPaymentUseCase, CreatePaymentCommand}.java
+│       └── out/{PaymentPersistencePort, PaymentGatewayPort}.java
+├── adapter/
+│   ├── in/kafka/OrderEventConsumer.java
+│   ├── in/web/PaymentController.java          # REST API & Mock Process Endpoint
+│   ├── out/gateway/MockPaymentAdapter.java    # Sandbox Gateway Simulation
+│   └── out/persistence/PaymentPersistenceAdapter.java # PostgreSQL JPA
+└── config/
+```
 
-**Tech:** Spring Boot 3, Spring Kafka, Spring Data JPA, PostgreSQL, Resilience4j (circuit breaker cho cổng thanh toán ngoài). 
-**Pattern:** Outbox, Inbox (idempotency theo `eventId`). 
-**Event tiêu thụ:** `order.created`. 
-**Event phát ra:** `payment.authorized`, `payment.captured`, `payment.failed`. 
+**Tech:** Spring Boot 3, Spring Kafka, Spring Data JPA, PostgreSQL, SpringDoc OpenAPI.
+**Pattern:** Outbox, Inbox (idempotency theo `eventId`), Hexagonal Architecture.
+**Event tiêu thụ:** `order-events` (`OrderWaitingPaymentEto`).
+**Event phát ra:** `fulfillment-events` / `payment-events` (`PaymentCompletedEto`, `PaymentFailedEto`).
 
 --- 
 
-### 5.5. Inventory Service (Spring Boot) 
+### 5.5. Inventory Service (Spring Boot)
 
-**Trách nhiệm:** Giữ chỗ nguyên liệu (reserve), nhả chỗ (release) khi Saga compensation. 
+**Trách nhiệm:** Giữ chỗ nguyên liệu (reserve), nhả chỗ (release) khi Saga compensation.
 
-**Kiến trúc:** giống Hexagonal như Payment. 
+**Kiến trúc:** giống Hexagonal như Payment. 
 ``` 
 src/main/java/com/quickbite/inventory/ 
 ├── domain/model/{StockItem, Reservation}.java 

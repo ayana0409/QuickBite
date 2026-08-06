@@ -23,6 +23,26 @@
             }
         },
         {
+            "name": "C#: QuickBite.Order Debug (NetCoreDbg)",
+            "type": "coreclr",
+            "request": "launch",
+            "program": "${workspaceFolder}/src/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/bin/Debug/net10.0/QuickBite.Order.HttpApi.Host.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/src/QuickBite.Order/src/QuickBite.Order.HttpApi.Host",
+            "stopAtEntry": false,
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "pipeTransport": {
+                "pipeCwd": "${workspaceFolder}",
+                "pipeProgram": "netcoredbg",
+                "pipeArgs": [
+                    "--interpreter=vscode"
+                ],
+                "debuggerPath": "netcoredbg"
+            }
+        },
+        {
             "name": "Debug Catalog Service (NestJS)",
             "type": "node",
             "request": "launch",
@@ -39,7 +59,8 @@
             "request": "launch",
             "mainClass": "com.quickbite.inventory.InventoryApplication",
             "projectName": "inventory",
-            "cwd": "${workspaceFolder}/src/quick-bite-inventory"
+            "cwd": "${workspaceFolder}/src/quick-bite-inventory",
+            "console": "internalConsole"
         },
         {
             "type": "java",
@@ -47,23 +68,51 @@
             "request": "attach",
             "hostName": "localhost",
             "port": 5005
+        },
+        {
+            "type": "java",
+            "name": "Debug Payment Service (Spring Boot)",
+            "request": "launch",
+            "mainClass": "com.quickbite.payment.PaymentApplication",
+            "projectName": "payment",
+            "cwd": "${workspaceFolder}/src/quick-bite-payment",
+            "console": "internalConsole"
+        },
+        {
+            "type": "java",
+            "name": "Attach to Payment Service (Remote Debug 5006)",
+            "request": "attach",
+            "hostName": "localhost",
+            "port": 5006
         }
     ],
     "compounds": [
         {
-            "name": "🚀 Debug (Catalog + Inventory)",
+            "name": "⚡ Debug Java Services (Inventory + Payment)",
             "configurations": [
-                "Debug Catalog Service (NestJS)",
-                "Debug Inventory Service (Spring Boot)"
+                "Debug Inventory Service (Spring Boot)",
+                "Debug Payment Service (Spring Boot)"
             ],
             "stopAll": true
         },
         {
-            "name": "🌐 Debug System (Identity + Catalog + Inventory)",
+            "name": "🚀 Debug Core Backend (Order + Catalog + Inventory + Payment)",
+            "configurations": [
+                "C#: QuickBite.Order Debug (NetCoreDbg)",
+                "Debug Catalog Service (NestJS)",
+                "Debug Inventory Service (Spring Boot)",
+                "Debug Payment Service (Spring Boot)"
+            ],
+            "stopAll": true
+        },
+        {
+            "name": "🌐 Full System Debug (Identity + Order + Catalog + Inventory + Payment)",
             "configurations": [
                 "C#: QuickBite.Identity Debug (NetCoreDbg)",
+                "C#: QuickBite.Order Debug (NetCoreDbg)",
                 "Debug Catalog Service (NestJS)",
-                "Debug Inventory Service (Spring Boot)"
+                "Debug Inventory Service (Spring Boot)",
+                "Debug Payment Service (Spring Boot)"
             ],
             "stopAll": true
         }
