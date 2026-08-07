@@ -10,6 +10,7 @@ using QuickBite.Order.Domain.Shared.Event.External;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.EventBus.Distributed;
+using Volo.Abp.EventBus.Local;
 using Volo.Abp.Uow;
 
 namespace QuickBite.Order.Domain.Orders.Managers;
@@ -19,17 +20,20 @@ public class OrderFulfillmentManager : DomainService
 {
     private readonly IOrderRepository _orderRepository;
     private readonly IDistributedEventBus _distributedEventBus;
+    private readonly ILocalEventBus _localEventBus;
     private readonly IRepository<InboxMessage, Guid> _inboxRepository;
     private readonly ILogger<OrderFulfillmentManager> _logger;
 
     public OrderFulfillmentManager(
         IOrderRepository orderRepository,
         IDistributedEventBus distributedEventBus,
+        ILocalEventBus localEventBus,
         IRepository<InboxMessage, Guid> inboxRepository,
         ILogger<OrderFulfillmentManager> logger)
     {
         _orderRepository = orderRepository;
         _distributedEventBus = distributedEventBus;
+        _localEventBus = localEventBus;
         _inboxRepository = inboxRepository;
         _logger = logger;
     }
@@ -170,6 +174,7 @@ public class OrderFulfillmentManager : DomainService
                     }).ToList()
                 };
                 await _distributedEventBus.PublishAsync(orderConfirmedEto);
+                await _localEventBus.PublishAsync(orderConfirmedEto);
                 _logger.LogInformation("[ProcessPaymentAuthorized] Published OrderConfirmedEto for OrderId: {OrderId}", order.Id);
 
                 if (eventData.EventId != Guid.Empty)

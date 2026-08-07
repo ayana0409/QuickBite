@@ -161,6 +161,13 @@ public class Order : FullAuditedAggregateRoot<Guid>
         ChangeStatus(OrderStatus.Cancelled, reason ?? "Order cancelled");
     }
 
+    public void Refund(string reason = null)
+    {
+        EnsureCanRefund();
+
+        ChangeStatus(OrderStatus.Refunded, reason ?? "Order refunded");
+    }
+
     /// <summary>
     /// Reverts an order from processing state (e.g. Pending/WaitingStock) back to Draft status (e.g. when stock is rejected).
     /// </summary>
@@ -179,8 +186,11 @@ public class Order : FullAuditedAggregateRoot<Guid>
     /// </summary>
     public void UpdateStatus(OrderStatus newStatus)
     {
-        if (newStatus == OrderStatus.Confirmed || newStatus == OrderStatus.Cancelled)
-            throw new BusinessException("UseConfirmOrCancelMethodInstead", "Vui lòng sử dụng phương thức Confirm hoặc Cancel chuyên dụng.");
+        if (Status == newStatus)
+            return;
+
+        if (newStatus == OrderStatus.Confirmed || newStatus == OrderStatus.Cancelled || newStatus == OrderStatus.Refunded)
+            throw new BusinessException("UseConfirmOrCancelMethodInstead", "Vui lòng sử dụng phương thức Confirm, Cancel hoặc Refund chuyên dụng.");
 
         EnsureValidTransition(newStatus);
 
@@ -263,6 +273,22 @@ public class Order : FullAuditedAggregateRoot<Guid>
         }
     }
 
+    private void EnsureCanRefund()
+    {
+        var refundableStatuses = new[]
+        {
+            OrderStatus.Completed
+        };
+
+        if (!refundableStatuses.Contains(Status))
+        {
+            throw new BusinessException(
+                code: OrderDomainErrorCodes.InvalidOrderStatus,
+                message: $"Không thể hoàn tiền đơn hàng ở trạng thái '{Status}'."
+            );
+        }
+    }
+
     private void EnsureValidTransition(OrderStatus newStatus)
     {
         // Simple state machine validation
@@ -309,6 +335,11 @@ public class Order : FullAuditedAggregateRoot<Guid>
             OrderStatus.Preparing => new[]
             {
                 OrderStatus.Delivering,
+                OrderStatus.Cancelled
+            },
+            OrderStatus.Delivering => new[]
+            {
+                OrderStatus.Completed,
                 OrderStatus.Cancelled
             },
             _ => Array.Empty<OrderStatus>()

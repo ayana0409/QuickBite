@@ -20,4 +20,6 @@ public interface IOrderAppService : IApplicationService
     Task<OrderDto> UpdateStatusAsync(Guid id, UpdateOrderStatusDto input);
 
     Task CancelAsync(Guid id);
+
+    Task RefundAsync(Guid id, RefundOrderDto input = null);
 }

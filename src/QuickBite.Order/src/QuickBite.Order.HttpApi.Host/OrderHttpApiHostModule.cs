@@ -28,6 +28,8 @@ using QuickBite.Order.Middleware;
 using QuickBite.Order.Infrastructure;
 using QuickBite.Order.Infrastructure.Kafka;
 
+using Volo.Abp.BackgroundJobs;
+
 namespace QuickBite.Order;
 
 [DependsOn(
@@ -69,6 +71,10 @@ public class OrderHttpApiHostModule : AbpModule
         ConfigureCors(context, configuration);
         ConfigureSwaggerServices(context, configuration);
 
+        Configure<AbpBackgroundJobOptions>(options =>
+        {
+            options.IsJobExecutionEnabled = true;
+        });
     }
 
 

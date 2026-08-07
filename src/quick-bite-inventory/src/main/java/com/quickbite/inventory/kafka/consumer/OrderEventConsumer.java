@@ -169,6 +169,11 @@ public class OrderEventConsumer {
                     }
                     break;
 
+                case "order.refunded":
+                case "ORDER_REFUNDED":
+                    log.info("[Kafka Consumer] Event '{}' received for OrderId: {}. Food items are non-refundable, skipping stock modification.", eventType, orderId);
+                    break;
+
                 default:
                     log.debug("[Kafka Consumer] Unhandled eventType: '{}' for OrderId: '{}'", eventType, orderId);
                     break;

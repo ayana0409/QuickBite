@@ -395,6 +395,41 @@ public class OrderAppService :
     }
 
     /// <summary>
+    /// Refunds a specific order.
+    /// </summary>
+    public async Task RefundAsync(Guid id, RefundOrderDto input = null)
+    {
+        var order = await _orderRepository.GetAsync(id, includeDetails: true);
+
+        string reason = (input != null && !string.IsNullOrWhiteSpace(input.Reason))
+            ? input.Reason
+            : "Hoàn tiền cho khách hàng";
+
+        order.Refund(reason);
+
+        var orderRefundedEto = new OrderRefundedEto
+        {
+            EventId = GuidGenerator.Create(),
+            OrderId = order.Id,
+            Reason = reason,
+            CorrelationId = order.CorrelationId,
+            OccurredAt = DateTime.UtcNow,
+            Items = order.OrderItems.Select(x => new OrderItemEto
+            {
+                FoodItemId = x.Sku,
+                ItemName = x.ItemName,
+                Quantity = x.Quantity,
+                UnitPrice = x.UnitPrice,
+                SelectedVariantName = x.SelectedVariantName ?? string.Empty,
+                SelectedToppings = x.SelectedToppings
+            }).ToList()
+        };
+
+        await _distributedEventBus.PublishAsync(orderRefundedEto);
+        await _orderRepository.UpdateAsync(order, autoSave: true);
+    }
+
+    /// <summary>
     /// Helper method to fetch FoodItem replicas.
     /// </summary>
     private async Task<Dictionary<Guid, FoodItem>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)
