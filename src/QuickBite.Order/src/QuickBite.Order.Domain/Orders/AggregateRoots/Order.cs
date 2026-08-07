@@ -243,15 +243,24 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
     private void EnsureCanCancel()
     {
-        if (Status == OrderStatus.Completed)
+        var cancellableStatuses = new[]
+        {
+            OrderStatus.Draft,
+            OrderStatus.Pending,
+            OrderStatus.WaitingInventory,
+            OrderStatus.WaitingPayment,
+            OrderStatus.WaitingStock,
+            OrderStatus.Confirmed,
+            OrderStatus.Preparing
+        };
+
+        if (!cancellableStatuses.Contains(Status))
         {
             throw new BusinessException(
-                code: OrderDomainErrorCodes.CannotCancelCompletedOrder,
-                message: "Không thể hủy đơn hàng đã hoàn thành."
+                code: OrderDomainErrorCodes.InvalidOrderStatus,
+                message: $"Không thể hủy đơn hàng ở trạng thái '{Status}'."
             );
         }
-
-        // Additional rules: prevent cancellation when Delivering...
     }
 
     private void EnsureValidTransition(OrderStatus newStatus)
@@ -295,6 +304,11 @@ public class Order : FullAuditedAggregateRoot<Guid>
             OrderStatus.Confirmed => new[]
             {
                 OrderStatus.Preparing,
+                OrderStatus.Cancelled
+            },
+            OrderStatus.Preparing => new[]
+            {
+                OrderStatus.Delivering,
                 OrderStatus.Cancelled
             },
             _ => Array.Empty<OrderStatus>()

@@ -85,4 +85,31 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
 
         return savedPayment;
     }
+
+    @Override
+    @Transactional
+    public Payment cancelPaymentByOrderId(UUID orderId, String reason) {
+        return persistencePort.findByOrderId(orderId)
+                .map(payment -> {
+                    String cancelReason = reason != null && !reason.isBlank() ? reason : "Đơn hàng hủy do người dùng";
+                    if (payment.getStatus() == PaymentStatus.SUCCESS) {
+                        payment.markAsRefunded(cancelReason);
+                    } else {
+                        payment.markAsFailed(cancelReason);
+                    }
+                    return persistencePort.save(payment);
+                })
+                .orElse(null);
+    }
+
+    @Override
+    @Transactional
+    public Payment refundPaymentByOrderId(UUID orderId, String reason) {
+        return persistencePort.findByOrderId(orderId)
+                .map(payment -> {
+                    payment.markAsRefunded(reason != null && !reason.isBlank() ? reason : "Hoàn tiền cho khách hàng");
+                    return persistencePort.save(payment);
+                })
+                .orElse(null);
+    }
 }

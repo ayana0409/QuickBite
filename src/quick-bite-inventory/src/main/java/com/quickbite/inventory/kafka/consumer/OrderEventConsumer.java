@@ -140,6 +140,13 @@ public class OrderEventConsumer {
 
                 case "order.confirmed":
                 case "ORDER_CONFIRMED":
+                case "order.success":
+                case "ORDER_SUCCESS":
+                    log.info("[Kafka Consumer] Event '{}' received for OrderId: {}. Skipping stock deduction as stock is deducted only when order is Completed (order.completed).", eventType, orderId);
+                    break;
+
+                case "order.completed":
+                case "ORDER_COMPLETED":
                     JsonNode confirmItemsNode = rootNode.has("items") ? rootNode.get("items")
                             : payloadNode.get("items");
                     if (confirmItemsNode != null && confirmItemsNode.isArray()) {

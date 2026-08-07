@@ -10,9 +10,11 @@ using QuickBite.Order.Domain.Shared.Event.External;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.Domain.Services;
 using Volo.Abp.EventBus.Distributed;
+using Volo.Abp.Uow;
 
 namespace QuickBite.Order.Domain.Orders.Managers;
 
+[UnitOfWork]
 public class OrderFulfillmentManager : DomainService
 {
     private readonly IOrderRepository _orderRepository;

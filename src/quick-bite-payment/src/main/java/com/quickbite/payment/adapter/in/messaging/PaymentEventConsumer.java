@@ -40,11 +40,49 @@ public class PaymentEventConsumer {
             // Extract eventId if present, or generate deterministic UUID based on message payload hash/orderId
             UUID eventId = root.has("eventId") 
                     ? UUID.fromString(root.get("eventId").asText()) 
-                    : (root.has("orderId") ? UUID.nameUUIDFromBytes(("ORDER_PAYMENT_" + root.get("orderId").asText()).getBytes()) : UUID.randomUUID());
+                    : (root.has("orderId") ? UUID.nameUUIDFromBytes(("ORDER_PAYMENT_" + eventType + "_" + root.get("orderId").asText()).getBytes()) : UUID.randomUUID());
 
             // Inbox Check (Idempotency)
             if (inboxRepository.existsByEventId(eventId)) {
                 log.info("Duplicate event detected in Inbox. Skipping processing for eventId: {}", eventId);
+                return;
+            }
+
+            // Handle order.cancelled or order.Cancelled (or payload containing reason without totalAmount)
+            boolean isCancelled = "order.cancelled".equalsIgnoreCase(eventType) 
+                    || "order.Cancelled".equalsIgnoreCase(eventType) 
+                    || (eventType.isEmpty() && root.has("reason") && !root.has("totalAmount") && !root.has("amount"));
+
+            if (isCancelled) {
+                if (root.has("orderId")) {
+                    UUID orderId = UUID.fromString(root.get("orderId").asText());
+                    String reason = root.has("reason") ? root.get("reason").asText() : "Đơn hàng hủy do người dùng";
+                    
+                    Payment payment = processPaymentUseCase.cancelPaymentByOrderId(orderId, reason);
+                    if (payment != null) {
+                        saveInboxRecord(eventId, "order.cancelled");
+                        log.info("Cancelled payment for OrderId: {}, Reason: {}", orderId, reason);
+                    } else {
+                        log.info("No payment found for OrderId: {}. Skipping payment cancellation.", orderId);
+                    }
+                }
+                return;
+            }
+
+            // Handle order.refunded or order.Refunded
+            if ("order.refunded".equalsIgnoreCase(eventType) || "order.Refunded".equalsIgnoreCase(eventType)) {
+                if (root.has("orderId")) {
+                    UUID orderId = UUID.fromString(root.get("orderId").asText());
+                    String reason = root.has("reason") ? root.get("reason").asText() : "Hoàn tiền cho khách hàng";
+                    
+                    Payment payment = processPaymentUseCase.refundPaymentByOrderId(orderId, reason);
+                    if (payment != null) {
+                        saveInboxRecord(eventId, "order.refunded");
+                        log.info("Refunded payment for OrderId: {}, Reason: {}", orderId, reason);
+                    } else {
+                        log.info("No payment found for OrderId: {}. Skipping payment refund.", orderId);
+                    }
+                }
                 return;
             }
 
@@ -74,21 +112,23 @@ public class PaymentEventConsumer {
 
                 Payment createdPayment = processPaymentUseCase.createPayment(command);
 
-                // Record event in Inbox table to prevent duplicate processing
-                PaymentInboxEntity inboxRecord = PaymentInboxEntity.builder()
-                        .id(UUID.randomUUID())
-                        .eventId(eventId)
-                        .eventType(eventType)
-                        .processedAt(LocalDateTime.now())
-                        .build();
-                inboxRepository.save(inboxRecord);
-
+                saveInboxRecord(eventId, eventType);
                 log.info("Created PENDING Payment via Kafka event and saved to Inbox for OrderId: {}, PaymentId: {}", orderId, createdPayment.getId());
             } else {
-                log.debug("Ignored Kafka event on order-events as it does not contain payment payload: {}", eventType);
+                log.debug("Ignored Kafka event on order-events: {}", eventType);
             }
         } catch (Exception e) {
             log.error("Error processing incoming Kafka order event: {}", message, e);
         }
+    }
+
+    private void saveInboxRecord(UUID eventId, String eventType) {
+        PaymentInboxEntity inboxRecord = PaymentInboxEntity.builder()
+                .id(UUID.randomUUID())
+                .eventId(eventId)
+                .eventType(eventType)
+                .processedAt(LocalDateTime.now())
+                .build();
+        inboxRepository.save(inboxRecord);
     }
 }

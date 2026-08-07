@@ -7,18 +7,19 @@ using Microsoft.Extensions.Logging;
 using QuickBite.Order.Domain.Shared.Event;
 using QuickBite.Order.Domain.Shared.Event.External;
 using Volo.Abp.EventBus.Local;
+using Volo.Abp.Uow;
 
 namespace QuickBite.Order.Infrastructure.MassTransit.Consumers;
 
 /// <summary>
 /// A single Kafka consumer for topic "fulfillment-events" that reads raw JSON strings,
 /// inspects the "eventType" field, and routes to the correct local handler.
-/// This prevents cross-type deserialization where stock.reserved is accidentally
-/// deserialized into StockRejectedEto because they share common fields (orderId, correlationId).
+/// Wrapped in an ABP UnitOfWork to ensure OrderDbContext is not disposed during processing.
 /// </summary>
 public class FulfillmentRawConsumer : IConsumer<FulfillmentRawMessage>
 {
     private readonly ILocalEventBus _localEventBus;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
     private readonly ILogger<FulfillmentRawConsumer> _logger;
 
     private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions
@@ -28,14 +29,18 @@ public class FulfillmentRawConsumer : IConsumer<FulfillmentRawMessage>
 
     public FulfillmentRawConsumer(
         ILocalEventBus localEventBus,
+        IUnitOfWorkManager unitOfWorkManager,
         ILogger<FulfillmentRawConsumer> logger)
     {
         _localEventBus = localEventBus;
+        _unitOfWorkManager = unitOfWorkManager;
         _logger = logger;
     }
 
     public async Task Consume(ConsumeContext<FulfillmentRawMessage> context)
     {
+        using var uow = _unitOfWorkManager.Begin();
+
         var raw = context.Message;
         var eventType = raw.EventType?.ToLower()?.Trim();
 
@@ -104,6 +109,8 @@ public class FulfillmentRawConsumer : IConsumer<FulfillmentRawMessage>
                 _logger.LogWarning("[FulfillmentRawConsumer] Unknown eventType '{EventType}', skipping.", eventType);
                 break;
         }
+
+        await uow.CompleteAsync();
     }
 }
 

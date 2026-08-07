@@ -39,4 +39,10 @@ public class Payment {
         this.failureReason = reason;
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void markAsRefunded(String reason) {
+        this.status = PaymentStatus.REFUNDED;
+        this.failureReason = reason;
+        this.updatedAt = LocalDateTime.now();
+    }
 }
