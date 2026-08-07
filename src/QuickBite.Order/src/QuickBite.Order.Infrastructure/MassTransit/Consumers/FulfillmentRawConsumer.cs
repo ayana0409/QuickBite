@@ -73,6 +73,33 @@ public class FulfillmentRawConsumer : IConsumer<FulfillmentRawMessage>
                     raw.OrderId, raw.Reason);
                 break;
 
+            case "payment.authorized":
+                var authorized = new PaymentAuthorizedEto
+                {
+                    EventId = raw.EventId,
+                    OrderId = raw.OrderId,
+                    PaymentId = raw.PaymentId ?? Guid.Empty,
+                    CorrelationId = raw.CorrelationId,
+                    OccurredAt = raw.OccurredAt
+                };
+                await _localEventBus.PublishAsync(authorized);
+                _logger.LogInformation("[FulfillmentRawConsumer] Dispatched PaymentAuthorizedEto for OrderId: {OrderId}", raw.OrderId);
+                break;
+
+            case "payment.failed":
+                var failed = new PaymentFailedEto
+                {
+                    EventId = raw.EventId,
+                    OrderId = raw.OrderId,
+                    Reason = raw.Reason,
+                    CorrelationId = raw.CorrelationId,
+                    OccurredAt = raw.OccurredAt
+                };
+                await _localEventBus.PublishAsync(failed);
+                _logger.LogInformation("[FulfillmentRawConsumer] Dispatched PaymentFailedEto for OrderId: {OrderId}, Reason: {Reason}",
+                    raw.OrderId, raw.Reason);
+                break;
+
             default:
                 _logger.LogWarning("[FulfillmentRawConsumer] Unknown eventType '{EventType}', skipping.", eventType);
                 break;
@@ -82,7 +109,7 @@ public class FulfillmentRawConsumer : IConsumer<FulfillmentRawMessage>
 
 /// <summary>
 /// Envelope DTO for raw fulfillment-events messages.
-/// Contains all possible fields from both stock.reserved and stock.rejected.
+/// Contains all possible fields from stock.reserved, stock.rejected, payment.authorized, payment.failed.
 /// </summary>
 public class FulfillmentRawMessage
 {
@@ -94,6 +121,9 @@ public class FulfillmentRawMessage
 
     [JsonPropertyName("orderId")]
     public Guid OrderId { get; set; }
+
+    [JsonPropertyName("paymentId")]
+    public Guid? PaymentId { get; set; }
 
     [JsonPropertyName("foodItemId")]
     public Guid? FoodItemId { get; set; }

@@ -57,11 +57,13 @@ public class OrderSagaBridgeHandler :
 
     public async Task HandleEventAsync(PaymentAuthorizedEto eventData)
     {
+        await _orderFulfillmentManager.ProcessPaymentAuthorizedAsync(eventData);
         await _publishEndpoint.Publish(eventData);
     }
 
     public async Task HandleEventAsync(PaymentFailedEto eventData)
     {
+        await _orderFulfillmentManager.ProcessPaymentFailedAsync(eventData);
         await _publishEndpoint.Publish(eventData);
     }
 }
