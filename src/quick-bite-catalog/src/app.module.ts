@@ -35,20 +35,11 @@ import { FoodItemModule } from './food-item/food-item.module';
           ? [join(__dirname, '..', '**', '*.entity.js')]
           : [join(__dirname, '..', '**', '*.entity.ts')];
 
-        // SSL handling
+        // SSL handling for Render PostgreSQL
         const rawSsl = config.get<string | boolean>('DB_SSL');
         const useSsl = rawSsl === true || String(rawSsl).toLowerCase() === 'true';
 
-        let extra: any = {};
-        if (useSsl) {
-          const caPath = config.get<string>('DB_SSL_CA_PATH') || '/secrets/ca.pem';
-          if (!fs.existsSync(caPath)) {
-            throw new Error(`DB SSL enabled but CA file not found at ${caPath}`);
-          }
-          const ca = fs.readFileSync(caPath).toString();
-          // use extra.ssl to ensure pg driver receives CA
-          extra = { ssl: { ca, rejectUnauthorized: true } };
-        }
+        const ssl = useSsl ? { rejectUnauthorized: false } : false;
 
         return {
           type: 'postgres',
@@ -60,7 +51,8 @@ import { FoodItemModule } from './food-item/food-item.module';
           entities,
           synchronize: true,
           logging: true,
-          extra,
+          ssl,
+          extra: useSsl ? { ssl: { rejectUnauthorized: false } } : {},
         } as any;
       },
     }),
