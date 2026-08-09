@@ -10,6 +10,7 @@ import { getRequired } from './common/helpers/get-config';
 import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
 import { FoodItemModule } from './food-item/food-item.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -53,6 +54,10 @@ import { FoodItemModule } from './food-item/food-item.module';
           logging: true,
           ssl,
           extra: useSsl ? { ssl: { rejectUnauthorized: false } } : {},
+          retryAttempts: 10,
+          retryDelay: 3000,
+          keepConnectionAlive: true,
+          connectTimeoutMS: 10000,
         } as any;
       },
     }),
@@ -60,7 +65,7 @@ import { FoodItemModule } from './food-item/food-item.module';
     AuthModule,
     CategoryModule,
     FoodItemModule,
-    // ...other modules
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

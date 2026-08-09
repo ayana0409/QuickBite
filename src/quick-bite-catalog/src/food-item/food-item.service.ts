@@ -48,11 +48,22 @@ export class FoodItemService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
+    await this.connectKafkaWithRetry();
+  }
+
+  private async connectKafkaWithRetry(attempt = 1, maxAttempts = 10): Promise<void> {
     try {
       await this.kafkaClient.connect();
       this.logger.log('[Kafka] Connected to Kafka broker successfully.');
     } catch (error) {
-      this.logger.warn('[Kafka] Could not connect to Kafka broker. Events will fail until broker is available.');
+      if (attempt >= maxAttempts) {
+        this.logger.error('[Kafka] Max retry attempts reached. Service continues without Kafka connection.');
+        return;
+      }
+      const delay = Math.min(Math.pow(2, attempt) * 300, 30000);
+      this.logger.warn(`[Kafka] Connection failed (attempt ${attempt}/${maxAttempts}). Retrying in ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      return this.connectKafkaWithRetry(attempt + 1, maxAttempts);
     }
   }
 
