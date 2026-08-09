@@ -1,21 +1,29 @@
 using Confluent.Kafka;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
 using QuickBite.Order.Domain;
 using QuickBite.Order.EntityFrameworkCore;
+using QuickBite.Order.HealthCheck;
+using QuickBite.Order.Infrastructure;
+using QuickBite.Order.Middleware;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Volo.Abp;
 using Volo.Abp.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.Libs;
 using Volo.Abp.AspNetCore.Serilog;
 using Volo.Abp.Autofac;
+using Volo.Abp.BackgroundJobs;
 using Volo.Abp.EventBus.Kafka;
 using Volo.Abp.Kafka;
 using Volo.Abp.Modularity;
@@ -23,12 +31,6 @@ using Volo.Abp.Security.Claims;
 using Volo.Abp.Swashbuckle;
 using Volo.Abp.UI.Navigation.Urls;
 using Volo.Abp.VirtualFileSystem;
-using QuickBite.Order.Middleware;
-
-using QuickBite.Order.Infrastructure;
-using QuickBite.Order.Infrastructure.Kafka;
-
-using Volo.Abp.BackgroundJobs;
 
 namespace QuickBite.Order;
 
@@ -70,6 +72,7 @@ public class OrderHttpApiHostModule : AbpModule
         ConfigureVirtualFileSystem(context);
         ConfigureCors(context, configuration);
         ConfigureSwaggerServices(context, configuration);
+        ConfigureHealthChecks(context);
 
         Configure<AbpBackgroundJobOptions>(options =>
         {
@@ -87,9 +90,15 @@ public class OrderHttpApiHostModule : AbpModule
         {
             if (!string.IsNullOrEmpty(bootstrapServers))
             {
-                var clientConfig = new Confluent.Kafka.ClientConfig { BootstrapServers = bootstrapServers };
-                if (Enum.TryParse<Confluent.Kafka.SecurityProtocol>(producerSection["SecurityProtocol"], out var sp)) clientConfig.SecurityProtocol = sp;
-                if (Enum.TryParse<Confluent.Kafka.SaslMechanism>(producerSection["SaslMechanism"], out var sm)) clientConfig.SaslMechanism = sm;
+                var clientConfig = new ClientConfig
+                {
+                    BootstrapServers = bootstrapServers,
+                    ReconnectBackoffMs = 1000,
+                    ReconnectBackoffMaxMs = 10000,
+                    SocketKeepaliveEnable = true
+                };
+                if (Enum.TryParse<SecurityProtocol>(producerSection["SecurityProtocol"], out var sp)) clientConfig.SecurityProtocol = sp;
+                if (Enum.TryParse<SaslMechanism>(producerSection["SaslMechanism"], out var sm)) clientConfig.SaslMechanism = sm;
                 clientConfig.SaslUsername = producerSection["SaslUsername"];
                 clientConfig.SaslPassword = producerSection["SaslPassword"];
                 if (bool.TryParse(producerSection["EnableSslCertificateVerification"], out var verify)) clientConfig.EnableSslCertificateVerification = verify;
@@ -117,7 +126,7 @@ public class OrderHttpApiHostModule : AbpModule
             };
         });
 
-        Configure<Volo.Abp.EventBus.Kafka.AbpKafkaEventBusOptions>(options =>
+        Configure<AbpKafkaEventBusOptions>(options =>
         {
             options.TopicName = configuration["Kafka:EventBus:TopicName"] ?? "order-events";
             options.GroupId = configuration["Kafka:EventBus:GroupId"] ?? "order-service-group";
@@ -252,6 +261,7 @@ public class OrderHttpApiHostModule : AbpModule
         }
 
         app.UseCorrelationId();
+        app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.UseMiddleware<ResponseWrapperMiddleware>();
         app.MapAbpStaticAssets();
         app.UseRouting();
@@ -271,8 +281,53 @@ public class OrderHttpApiHostModule : AbpModule
             c.OAuthScopes("Order");
         });
 
+        app.UseHealthChecks("/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+        app.UseHealthChecks("/api/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
         app.UseConfiguredEndpoints();
+    }
+
+    private void ConfigureHealthChecks(ServiceConfigurationContext context)
+    {
+        context.Services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database")
+            .AddCheck<KafkaHealthCheck>("kafka")
+            .AddCheck<SystemResourceHealthCheck>("system_resources")
+            .AddCheck<BackgroundJobHealthCheck>("background_jobs");
+    }
+
+    private static async Task WriteHealthResponse(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            total_duration_ms = Math.Round(report.TotalDuration.TotalMilliseconds, 2),
+            timestamp = DateTime.UtcNow,
+            entries = report.Entries.ToDictionary(
+                entry => entry.Key,
+                entry => new
+                {
+                    status = entry.Value.Status.ToString(),
+                    description = entry.Value.Description,
+                    data = entry.Value.Data.Count > 0 ? entry.Value.Data : null,
+                    duration_ms = Math.Round(entry.Value.Duration.TotalMilliseconds, 2),
+                    exception = entry.Value.Exception?.Message
+                })
+        };
+
+        context.Response.StatusCode = report.Status == HealthStatus.Unhealthy
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status200OK;
+
+        await context.Response.WriteAsJsonAsync(response);
     }
 }

@@ -1,3 +1,5 @@
+using System;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using QuickBite.Order.Domain;
@@ -39,8 +41,8 @@ public class OrderEntityFrameworkCoreModule : AbpModule
 
         Configure<AbpDbContextOptions>(options =>
         {
-                /* The main point to change your DBMS.
-                 * See also OrderMigrationsDbContextFactory for EF Core tooling. */
+            /* The main point to change your DBMS.
+             * See also OrderMigrationsDbContextFactory for EF Core tooling. */
             options.UseMySQL();
         });
 
