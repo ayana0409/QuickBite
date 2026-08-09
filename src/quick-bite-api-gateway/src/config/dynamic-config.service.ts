@@ -180,4 +180,59 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
       await this.redisClient.set(redisKey, value, 'EX', 60);
     }
   }
+
+  async checkRedisHealth(): Promise<{ status: 'Healthy' | 'Unhealthy'; duration_ms: number; description: string; exception?: string }> {
+    const startTime = Date.now();
+    if (!this.redisClient || this.redisClient.status !== 'ready') {
+      return {
+        status: 'Unhealthy',
+        description: 'Redis client is not connected or ready.',
+        duration_ms: Date.now() - startTime,
+        exception: this.redisClient ? `Status: ${this.redisClient.status}` : 'Client uninitialized',
+      };
+    }
+    try {
+      await this.redisClient.ping();
+      return {
+        status: 'Healthy',
+        description: 'Redis connection is healthy.',
+        duration_ms: Date.now() - startTime,
+      };
+    } catch (err: any) {
+      return {
+        status: 'Unhealthy',
+        description: 'Redis ping failed.',
+        duration_ms: Date.now() - startTime,
+        exception: err.message,
+      };
+    }
+  }
+
+  async checkMongoHealth(): Promise<{ status: 'Healthy' | 'Unhealthy'; duration_ms: number; description: string; exception?: string }> {
+    const startTime = Date.now();
+    try {
+      const state = this.configModel.db.readyState;
+      if (state === 1) {
+        return {
+          status: 'Healthy',
+          description: 'MongoDB database connection is healthy.',
+          duration_ms: Date.now() - startTime,
+        };
+      }
+      return {
+        status: 'Unhealthy',
+        description: `MongoDB state is not connected (readyState: ${state}).`,
+        duration_ms: Date.now() - startTime,
+        exception: `readyState: ${state}`,
+      };
+    } catch (err: any) {
+      return {
+        status: 'Unhealthy',
+        description: 'MongoDB connection check failed.',
+        duration_ms: Date.now() - startTime,
+        exception: err.message,
+      };
+    }
+  }
 }
+

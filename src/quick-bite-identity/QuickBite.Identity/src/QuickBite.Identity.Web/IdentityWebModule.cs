@@ -36,11 +36,23 @@ using Volo.Abp.Swashbuckle;
 using Volo.Abp.Timing;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.UI.Navigation.Urls;
+
 using Volo.Abp.VirtualFileSystem;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+
+
 using QuickBite.Identity.Claims;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using QuickBite.Identity.Web.HealthCheck;
+using QuickBite.Identity.Web.Middleware;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace QuickBite.Identity.Web;
+
+
 
 [DependsOn(
     typeof(IdentityHttpApiModule),
@@ -138,7 +150,9 @@ public class IdentityWebModule : AbpModule
         ConfigureNavigationServices();
         ConfigureAutoApiControllers();
         ConfigureSwaggerServices(context.Services);
+        ConfigureHealthChecks(context);
         Configure<RazorPagesOptions>(options =>
+
         {
             // Require login in all page
             options.Conventions.AuthorizeFolder("/");
@@ -279,6 +293,7 @@ public class IdentityWebModule : AbpModule
         }
 
         app.UseCorrelationId();
+        app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.MapAbpStaticAssets();
         app.UseRouting();
         app.UseAuthentication();
@@ -299,8 +314,52 @@ public class IdentityWebModule : AbpModule
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "Identity API");
         });
 
+        app.UseHealthChecks("/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+        app.UseHealthChecks("/api/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
         app.UseConfiguredEndpoints();
     }
+
+    private void ConfigureHealthChecks(ServiceConfigurationContext context)
+    {
+        context.Services.AddHealthChecks()
+            .AddCheck<DatabaseHealthCheck>("database")
+            .AddCheck<SystemResourceHealthCheck>("system_resources");
+    }
+
+    private static async Task WriteHealthResponse(HttpContext context, HealthReport report)
+    {
+        context.Response.ContentType = "application/json";
+        var response = new
+        {
+            status = report.Status.ToString(),
+            total_duration_ms = Math.Round(report.TotalDuration.TotalMilliseconds, 2),
+            timestamp = DateTime.UtcNow,
+            entries = report.Entries.ToDictionary(
+                entry => entry.Key,
+                entry => new
+                {
+                    status = entry.Value.Status.ToString(),
+                    description = entry.Value.Description,
+                    data = entry.Value.Data.Count > 0 ? entry.Value.Data : null,
+                    duration_ms = Math.Round(entry.Value.Duration.TotalMilliseconds, 2),
+                    exception = entry.Value.Exception?.Message
+                })
+        };
+
+        context.Response.StatusCode = report.Status == HealthStatus.Unhealthy
+            ? StatusCodes.Status503ServiceUnavailable
+            : StatusCodes.Status200OK;
+
+        await context.Response.WriteAsJsonAsync(response);
+    }
 }
+

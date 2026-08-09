@@ -20,7 +20,8 @@ public class HealthController {
     private final KafkaHealthIndicator kafkaHealthIndicator;
     private final SystemResourcesHealthIndicator sysHealthIndicator;
 
-    @GetMapping({"/health", "/api/health"})
+    @GetMapping({"/health", "/api/health", "/api/v1/health", "/v1/health"})
+
     public ResponseEntity<HealthResponse> getHealth() {
         long startTime = System.currentTimeMillis();
 

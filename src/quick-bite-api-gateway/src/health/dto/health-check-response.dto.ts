@@ -1,12 +1,14 @@
-export interface ServiceHealthStatus {
-  serviceName: string;
-  status: 'UP' | 'DOWN' | 'UNKNOWN';
-  responseTimeMs?: number;
-  error?: string;
+export interface HealthCheckEntry {
+  status: 'Healthy' | 'Degraded' | 'Unhealthy';
+  description: string;
+  data?: any;
+  duration_ms: number;
+  exception?: string | null;
 }
 
-export class HealthCheckResponseDto {
-  status: 'ok' | 'degraded' | 'error';
+export class HealthResponseDto {
+  status: 'Healthy' | 'Degraded' | 'Unhealthy';
+  total_duration_ms: number;
   timestamp: string;
-  services?: ServiceHealthStatus[];
+  entries: Record<string, HealthCheckEntry>;
 }

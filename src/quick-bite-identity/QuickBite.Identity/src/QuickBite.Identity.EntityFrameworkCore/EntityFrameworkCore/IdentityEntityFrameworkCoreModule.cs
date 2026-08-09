@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection;
 using Volo.Abp.AuditLogging.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore;
 using Volo.Abp.EntityFrameworkCore.PostgreSql;
@@ -43,6 +43,8 @@ public class IdentityEntityFrameworkCoreModule : AbpModule
                  * See also IdentityMigrationsDbContextFactory for EF Core tooling. */
             options.UseNpgsql();
         });
+
+
 
     }
 }
