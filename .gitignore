@@ -49,3 +49,6 @@ src/quick-bite-inventory/src/main/resources/ca.pem
 src/quick-bite-payment/.mvn/wrapper/maven-wrapper.properties
 src/quick-bite-order/QuickBite.Order/src/QuickBite.Order.DbMigrator/appsettings.json
 src/quick-bite-order/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/appsettings.Development.json
+src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.DbMigrator/appsettings.json
+src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
+src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.json
