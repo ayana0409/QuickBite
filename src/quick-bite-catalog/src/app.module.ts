@@ -53,7 +53,11 @@ import { HealthModule } from './health/health.module';
           synchronize: true,
           logging: true,
           ssl,
-          extra: useSsl ? { ssl: { rejectUnauthorized: false } } : {},
+          extra: {
+            max: 2,
+            min: 1,
+            ...(useSsl ? { ssl: { rejectUnauthorized: false } } : {}),
+          },
           retryAttempts: 10,
           retryDelay: 3000,
           keepConnectionAlive: true,

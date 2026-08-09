@@ -1,12 +1,13 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import Redis from 'ioredis';
 import * as dotenv from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-import { GatewayConfig, GatewayConfigDocument } from './schemas/gateway-config.schema';
+import { GatewayConfigDocument } from './schemas/gateway-config.schema';
+
+export const GATEWAY_CONFIG_MODEL = 'GATEWAY_CONFIG_MODEL';
 
 @Injectable()
 export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
@@ -16,11 +17,27 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     private readonly configService: ConfigService,
-    @InjectModel(GatewayConfig.name)
-    private readonly configModel: Model<GatewayConfigDocument>,
+    @Optional()
+    @Inject(GATEWAY_CONFIG_MODEL)
+    private readonly configModel: Model<GatewayConfigDocument> | null,
   ) {
     this.loadEnv();
     this.watchEnvFile();
+  }
+
+  /**
+   * Helper to check if MongoDB is active and connected
+   */
+  private isMongoConnected(): boolean {
+    try {
+      return !!(
+        this.configModel &&
+        this.configModel.db &&
+        this.configModel.db.readyState === 1
+      );
+    } catch {
+      return false;
+    }
   }
 
   async onModuleInit() {
@@ -35,9 +52,14 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Seed initial configs to MongoDB if they don't exist
+   * Seed initial configs to MongoDB if connected
    */
   private async seedDefaultConfigs() {
+    if (!this.isMongoConnected()) {
+      this.logger.warn('⚠️ MongoDB is not connected. API Gateway will fallback to .env configuration.');
+      return;
+    }
+
     const defaultConfigs: { [key: string]: string } = {
       RATE_LIMIT_TTL: '60000',
       RATE_LIMIT_MAX: '100',
@@ -50,11 +72,10 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
 
     try {
       for (const [key, defaultValue] of Object.entries(defaultConfigs)) {
-        const existing = await this.configModel.findOne({ key }).exec();
+        const existing = await this.configModel!.findOne({ key }).exec();
         if (!existing) {
-          // Fallback to .env if provided, otherwise use default
           const valueToSeed = this.getEnv(key, defaultValue);
-          await this.configModel.create({ key, value: valueToSeed });
+          await this.configModel!.create({ key, value: valueToSeed });
           this.logger.log(`🌱 Seeded default config: ${key} = ${valueToSeed}`);
         }
       }
@@ -130,27 +151,25 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
       }
     }
 
-    // 2. Check MongoDB
-    try {
-      const dbConfig = await this.configModel.findOne({ key }).exec();
-      if (dbConfig && dbConfig.value !== undefined) {
-        // Cache to Redis for future requests (TTL 60s)
-        if (this.redisClient && this.redisClient.status === 'ready') {
-          this.redisClient.set(redisKey, dbConfig.value, 'EX', 60).catch(() => { });
+    // 2. Check MongoDB (if connected)
+    if (this.isMongoConnected()) {
+      try {
+        const dbConfig = await this.configModel!.findOne({ key }).exec();
+        if (dbConfig && dbConfig.value !== undefined) {
+          if (this.redisClient && this.redisClient.status === 'ready') {
+            this.redisClient.set(redisKey, dbConfig.value, 'EX', 60).catch(() => { });
+          }
+          return dbConfig.value;
         }
-        return dbConfig.value;
+      } catch (err: any) {
+        this.logger.warn(`MongoDB query failed for ${key}: ${err.message}`);
       }
-    } catch (err: any) {
-      this.logger.warn(`MongoDB query failed for ${key}: ${err.message}`);
     }
 
     // 3. Fallback to .env / process.env
     return this.getEnv(key, defaultValue);
   }
 
-  /**
-   * Synchronous getter for cases where async is not possible (falls back to .env)
-   */
   get(key: string, defaultValue = ''): string {
     return this.getEnv(key, defaultValue);
   }
@@ -166,14 +185,19 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Helper to set/update a config in MongoDB and update Redis cache immediately
+   * Helper to set/update a config in MongoDB and update Redis cache
    */
   async setConfig(key: string, value: string): Promise<void> {
-    await this.configModel.findOneAndUpdate(
-      { key },
-      { key, value },
-      { upsert: true, new: true },
-    ).exec();
+    if (this.isMongoConnected()) {
+      await this.configModel!.findOneAndUpdate(
+        { key },
+        { key, value },
+        { upsert: true, new: true },
+      ).exec();
+    } else {
+      this.logger.warn(`MongoDB is disconnected. Setting ${key}=${value} in local environment fallback cache.`);
+      this.envConfig[key] = value;
+    }
 
     const redisKey = `gateway:config:${key}`;
     if (this.redisClient && this.redisClient.status === 'ready') {
@@ -210,29 +234,18 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
 
   async checkMongoHealth(): Promise<{ status: 'Healthy' | 'Unhealthy'; duration_ms: number; description: string; exception?: string }> {
     const startTime = Date.now();
-    try {
-      const state = this.configModel.db.readyState;
-      if (state === 1) {
-        return {
-          status: 'Healthy',
-          description: 'MongoDB database connection is healthy.',
-          duration_ms: Date.now() - startTime,
-        };
-      }
+    if (!this.isMongoConnected()) {
       return {
         status: 'Unhealthy',
-        description: `MongoDB state is not connected (readyState: ${state}).`,
+        description: 'MongoDB is disconnected. Gateway is running in .env fallback mode.',
         duration_ms: Date.now() - startTime,
-        exception: `readyState: ${state}`,
-      };
-    } catch (err: any) {
-      return {
-        status: 'Unhealthy',
-        description: 'MongoDB connection check failed.',
-        duration_ms: Date.now() - startTime,
-        exception: err.message,
+        exception: 'MongoDB connection failed or unavailable',
       };
     }
+    return {
+      status: 'Healthy',
+      description: 'MongoDB database connection is healthy.',
+      duration_ms: Date.now() - startTime,
+    };
   }
 }
-

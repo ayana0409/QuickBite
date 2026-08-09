@@ -1,27 +1,47 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, Logger } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
-import { DynamicConfigService } from './dynamic-config.service';
-import { GatewayConfig, GatewayConfigSchema } from './schemas/gateway-config.schema';
+import mongoose from 'mongoose';
+import { DynamicConfigService, GATEWAY_CONFIG_MODEL } from './dynamic-config.service';
+import { GatewayConfigSchema } from './schemas/gateway-config.schema';
 import { ConfigManagementController } from './config.controller';
+import { AuthModule } from '../auth/auth.module';
+
+const logger = new Logger('AppConfigModule');
 
 @Global()
 @Module({
   imports: [
+    AuthModule,
     ConfigModule.forRoot({ isGlobal: true }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        uri: config.get<string>('MONGODB_URI') || 'mongodb://localhost:27017/quickbite_gateway',
-      }),
-    }),
-    MongooseModule.forFeature([
-      { name: GatewayConfig.name, schema: GatewayConfigSchema },
-    ]),
   ],
   controllers: [ConfigManagementController],
-  providers: [DynamicConfigService],
-  exports: [DynamicConfigService, MongooseModule],
+  providers: [
+    {
+      provide: GATEWAY_CONFIG_MODEL,
+      useFactory: async (configService: ConfigService) => {
+        const mongoUri =
+          configService.get<string>('MONGODB_URI') ||
+          'mongodb://localhost:27017/quickbite_gateway';
+        try {
+          // Non-blocking connection attempt with fast 3000ms timeout
+          const conn = await mongoose
+            .createConnection(mongoUri, {
+              serverSelectionTimeoutMS: 3000,
+            })
+            .asPromise();
+          logger.log('✅ MongoDB connected successfully for API Gateway.');
+          return conn.model('GatewayConfig', GatewayConfigSchema);
+        } catch (error: any) {
+          logger.warn(
+            `⚠️ MongoDB connection failed (${error.message}). API Gateway will continue running with .env fallback mode.`,
+          );
+          return null;
+        }
+      },
+      inject: [ConfigService],
+    },
+    DynamicConfigService,
+  ],
+  exports: [DynamicConfigService, GATEWAY_CONFIG_MODEL],
 })
 export class AppConfigModule {}
