@@ -263,6 +263,10 @@ export class HealthService {
       if (!candidates.includes(originHealth)) {
         candidates.push(originHealth);
       }
+      const originApiAppHealth = `${urlObj.origin}/api/app/health`;
+      if (!candidates.includes(originApiAppHealth)) {
+        candidates.push(originApiAppHealth);
+      }
       const originApiV1Health = `${urlObj.origin}/api/v1/health`;
       if (!candidates.includes(originApiV1Health)) {
         candidates.push(originApiV1Health);
