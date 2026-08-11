@@ -7,7 +7,7 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
-  private readonly activeWakeups = new Set<string>();
+  private activePings = new Map<string, Promise<any>>();
 
   constructor(
     private readonly httpService: HttpService,
@@ -16,7 +16,7 @@ export class HealthService {
 
   async checkHealth(): Promise<HealthResponseDto> {
     const overallStartTime = Date.now();
-    this.logger.log('🔍 Executing Fast Non-Blocking Health Check...');
+    this.logger.log('🔍 Executing Smart Waking Health Check...');
 
     // 1. Gateway system_resources
     const sysStartTime = Date.now();
@@ -55,7 +55,7 @@ export class HealthService {
       exception: mongoResult.exception || null,
     };
 
-    // 3. Microservices list - Fast Parallel Ping (Non-Blocking)
+    // 3. Microservices list
     const microservices = [
       { key: 'identity_service', configKey: 'IDENTITY_URL' },
       { key: 'order_service', configKey: 'ORDER_URL' },
@@ -82,103 +82,72 @@ export class HealthService {
         }
 
         const isLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
+        if (isLocalhost) {
+          return {
+            key: service.key,
+            entry: {
+              status: 'Unhealthy' as const,
+              description: `⚠️ ${service.configKey} is set to localhost (${baseUrl}). Set ${service.configKey} in Render Environment!`,
+              data: null,
+              duration_ms: 0,
+              exception: `Target URL is localhost: ${baseUrl}`,
+            },
+          };
+        }
+
         const candidateUrls = this.getHealthUrlCandidates(baseUrl);
         const startTime = Date.now();
-        let lastResponse: any = null;
-        let isColdStart = false;
 
-        for (const healthUrl of candidateUrls) {
-          try {
-            // Fast 3.5-second ping to check status without blocking client
-            const response = await firstValueFrom(
-              this.httpService.get(healthUrl, {
-                timeout: 3500,
-                validateStatus: () => true,
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuickBite-Gateway/1.0',
-                  'Accept': 'application/json, text/plain, text/html, */*',
-                },
-              }),
-            );
-            lastResponse = response;
-            const duration = Date.now() - startTime;
-            const isHtmlContent = typeof response.data === 'string' && response.data.includes('<!DOCTYPE html>');
+        try {
+          // Get the ongoing long ping, or start a new one
+          const pingPromise = this.getOrStartLongPing(service.key, candidateUrls);
+          
+          const timeoutSymbol = Symbol('TIMEOUT');
+          // Race the ping against a fast 1.5s timeout.
+          // If the service is healthy, pingPromise resolves in < 500ms.
+          // If the service is sleeping, pingPromise is held by Render for 60s, so we hit the timeout and return Degraded.
+          const result = await Promise.race([
+            pingPromise,
+            new Promise((resolve) => setTimeout(() => resolve(timeoutSymbol), 1500)),
+          ]);
 
-            // Case A: Online and Healthy JSON response
-            if (response.status >= 200 && response.status < 300) {
-              const body = response.data;
-              const innerData = body?.data?.status ? body.data : body;
-              const isHealthy =
-                !isHtmlContent &&
-                (innerData?.status === 'Healthy' ||
-                  innerData?.status === 'ok' ||
-                  innerData?.status === 'UP' ||
-                  typeof body === 'object');
+          const duration = Date.now() - startTime;
 
-              if (isHealthy) {
-                return {
-                  key: service.key,
-                  entry: {
-                    status: 'Healthy' as const,
-                    description: `${service.key} is healthy (Pinging: ${healthUrl})`,
-                    data: body || null,
-                    duration_ms: duration,
-                    exception: null,
-                  },
-                };
-              }
-            }
-
-            // Case B: Render Cold-Start detected (502/503 HTML or root ping) -> Trigger Background Wake-up!
-            if (!isLocalhost && (response.status === 502 || response.status === 503 || isHtmlContent)) {
-              isColdStart = true;
-              this.logger.warn(`⏳ [${service.key}] Render Cold-Start detected at ${healthUrl}. Triggering background wake-up...`);
-              
-              // Trigger background wake-up loop asynchronously across candidates
-              this.triggerBackgroundWakeup(service.key, candidateUrls);
-              break;
-            }
-
-            // Case C: 404 -> test next candidate URL
-            if (response.status === 404) {
-              continue;
-            }
-          } catch (error: any) {
-            if (!isLocalhost) {
-              isColdStart = true;
-              this.triggerBackgroundWakeup(service.key, candidateUrls);
-            }
-            break;
+          if (result === timeoutSymbol) {
+            return {
+              key: service.key,
+              entry: {
+                status: 'Degraded' as const,
+                description: `Service ${service.key} is waking up in background (Holding request to ${baseUrl})`,
+                data: null,
+                duration_ms: duration,
+                exception: `Cold Start in progress for ${baseUrl}`,
+              },
+            };
+          } else {
+            return {
+              key: service.key,
+              entry: {
+                status: 'Healthy' as const,
+                description: `${service.key} is healthy (Pinging: ${baseUrl})`,
+                data: result,
+                duration_ms: duration,
+                exception: null,
+              },
+            };
           }
+        } catch (error: any) {
+          return {
+            key: service.key,
+            entry: {
+              status: 'Unhealthy' as const,
+              description: `Unable to reach ${service.key} at ${baseUrl}`,
+              data: null,
+              duration_ms: Date.now() - startTime,
+              exception: error.message || 'Connection failed',
+            },
+          };
         }
-
-        const duration = Date.now() - startTime;
-        let statusStr: 'Healthy' | 'Degraded' | 'Unhealthy' = isColdStart ? 'Degraded' : 'Unhealthy';
-        let descStr = '';
-        let exceptionStr = '';
-
-        if (isLocalhost) {
-          statusStr = 'Unhealthy';
-          descStr = `⚠️ ${service.configKey} is set to localhost (${baseUrl}). Set ${service.configKey} in Render Environment Variables!`;
-          exceptionStr = `Target URL is localhost: ${baseUrl}`;
-        } else if (isColdStart) {
-          descStr = `Service ${service.key} is waking up in background (Pinging: ${baseUrl})`;
-          exceptionStr = `Render Cold Start in progress for ${baseUrl}`;
-        } else {
-          descStr = `Unable to reach ${service.key} at ${baseUrl}`;
-          exceptionStr = lastResponse ? `HTTP ${lastResponse.status}` : `Connection failed to ${baseUrl}`;
-        }
-
-        return {
-          key: service.key,
-          entry: {
-            status: statusStr,
-            description: descStr,
-            data: null,
-            duration_ms: duration,
-            exception: exceptionStr,
-          },
-        };
       }),
     );
 
@@ -214,69 +183,93 @@ export class HealthService {
   }
 
   /**
-   * Non-blocking background wake-up loop for sleeping Render services
+   * Holds a long-running request to Render to force the container to wake up.
+   * Runs independently of the fast checkHealth response.
    */
-  private triggerBackgroundWakeup(serviceKey: string, candidateUrls: string[]) {
-    if (this.activeWakeups.has(serviceKey)) {
-      return; // Already actively waking up in background
+  private getOrStartLongPing(serviceKey: string, candidateUrls: string[]): Promise<any> {
+    if (this.activePings.has(serviceKey)) {
+      return this.activePings.get(serviceKey)!;
     }
 
-    this.activeWakeups.add(serviceKey);
-
-    // Fire-and-forget background task to hit root origin and candidate URLs
-    (async () => {
-      this.logger.log(`🚀 [BACKGROUND WAKEUP STARTED] ${serviceKey} for URLs: ${candidateUrls.join(', ')}`);
-      const maxRetries = 10;
+    const promise = (async () => {
+      this.logger.log(`🚀 [WAKE-UP INIT] Creating and holding connection for ${serviceKey}...`);
+      const startTime = Date.now();
+      const maxDuration = 180000; // Allow up to 3 minutes for Render to boot
       
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        for (const targetUrl of candidateUrls) {
+      while (Date.now() - startTime < maxDuration) {
+        for (const url of candidateUrls) {
           try {
-            this.logger.log(`  [Background Wakeup Ping ${attempt}/${maxRetries}] ${targetUrl}`);
+            // Send request with HUGE timeout so Render Proxy holds the connection open while booting
             const res = await firstValueFrom(
-              this.httpService.get(targetUrl, {
-                timeout: 8000,
+              this.httpService.get(url, {
+                timeout: 60000, 
                 validateStatus: () => true,
                 headers: {
                   'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuickBite-Gateway/1.0',
-                  'Accept': 'application/json, text/plain, text/html, */*',
+                  'Accept': 'application/json, text/plain, */*',
                 },
               }),
             );
-            if (res.status >= 200 && res.status < 300 && typeof res.data !== 'string') {
-              this.logger.log(`🎉 [BACKGROUND WAKEUP SUCCESS] ${serviceKey} is now UP and ONLINE via ${targetUrl}!`);
-              this.activeWakeups.delete(serviceKey);
-              return;
+            
+            const isHtml = typeof res.data === 'string' && res.data.includes('<!DOCTYPE html>');
+            
+            // If we got a valid JSON/Healthy response, the container is fully up!
+            if (res.status >= 200 && res.status < 300 && !isHtml) {
+              const body = res.data;
+              const innerData = body?.data?.status ? body.data : body;
+              const isHealthy = (innerData?.status === 'Healthy' || innerData?.status === 'ok' || innerData?.status === 'UP' || typeof body === 'object');
+              
+              if (isHealthy) {
+                this.logger.log(`🎉 [WAKE-UP SUCCESS] ${serviceKey} is UP and returned 200 OK!`);
+                
+                // Keep the promise in cache for 10 seconds to serve subsequent rapid health checks, then clear it
+                setTimeout(() => this.activePings.delete(serviceKey), 10000); 
+                return res.data;
+              }
             }
-          } catch (err: any) {
-            this.logger.warn(`  [Background Wakeup Ping ${attempt} Error] ${targetUrl}: ${err.message}`);
+            
+            // If Render drops connection with 502 HTML early, the loop continues and waits
+          } catch (err) {
+            // Network error / timeout, continue loop
           }
         }
-        await new Promise((r) => setTimeout(r, 4000)); // Sleep 4s between background retry cycles
+        
+        // Wait 4s before the next ping cycle to avoid spamming
+        await new Promise((r) => setTimeout(r, 4000));
       }
-      this.activeWakeups.delete(serviceKey);
+      
+      this.activePings.delete(serviceKey);
+      throw new Error(`Timeout after ${maxDuration}ms waiting for Render container`);
     })();
+
+    this.activePings.set(serviceKey, promise);
+    
+    // In case the promise rejects, remove it from the map so the next check can retry
+    promise.catch(() => {
+      if (this.activePings.get(serviceKey) === promise) {
+        this.activePings.delete(serviceKey);
+      }
+    });
+
+    return promise;
   }
 
   private getHealthUrlCandidates(baseUrl: string): string[] {
     const cleanUrl = baseUrl.trim().replace(/\/$/, '');
     const candidates: string[] = [];
 
-    // Candidate 1: Direct cleanUrl if it already ends with /health
     if (cleanUrl.endsWith('/health')) {
       candidates.push(cleanUrl);
     } else {
       candidates.push(`${cleanUrl}/health`);
     }
 
-    // Candidate 2, 3, 4: Origin level root & health fallbacks for Render router wake-up
     try {
       const urlObj = new URL(baseUrl);
       
-      // Origin Root (e.g. https://quick-bite-inventory.onrender.com) - Most reliable Render wake-up trigger!
       if (!candidates.includes(urlObj.origin)) {
         candidates.push(urlObj.origin);
       }
-
       const originHealth = `${urlObj.origin}/health`;
       if (!candidates.includes(originHealth)) {
         candidates.push(originHealth);
