@@ -52,3 +52,4 @@ src/quick-bite-order/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/appsetting
 src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.DbMigrator/appsettings.json
 src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.Development.json
 src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.json
+src/quick-bite-admin-portal/.env
