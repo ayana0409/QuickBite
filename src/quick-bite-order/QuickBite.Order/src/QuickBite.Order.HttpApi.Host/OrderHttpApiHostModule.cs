@@ -229,13 +229,24 @@ public class OrderHttpApiHostModule : AbpModule
         {
             options.AddDefaultPolicy(builder =>
             {
+                var origins = configuration["App:CorsOrigins"]?
+                    .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                    .Select(o => o.RemovePostFix("/"))
+                    .ToArray() ?? Array.Empty<string>();
+
+                if (origins.Length > 0)
+                {
+                    builder.WithOrigins(origins)
+                           .SetIsOriginAllowedToAllowWildcardSubdomains();
+                }
+                else
+                {
+                    builder.SetIsOriginAllowed(_ => true);
+                }
+
                 builder
-                    .WithOrigins(configuration["App:CorsOrigins"]?
-                        .Split(",", StringSplitOptions.RemoveEmptyEntries)
-                        .Select(o => o.RemovePostFix("/"))
-                        .ToArray() ?? Array.Empty<string>())
                     .WithAbpExposedHeaders()
-                    .SetIsOriginAllowedToAllowWildcardSubdomains()
+                    .SetIsOriginAllowed(_ => true)
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();
