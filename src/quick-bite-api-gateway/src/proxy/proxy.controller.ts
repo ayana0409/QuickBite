@@ -49,10 +49,11 @@ export class ProxyController {
   }
 
   private async forwardRequest(targetConfigKey: string, req: Request, res: Response) {
+    const startTime = Date.now();
     const targetBaseUrl = await this.configService.getAsync(targetConfigKey);
 
     if (!targetBaseUrl) {
-      this.logger.warn(`Service URL for ${targetConfigKey} is not configured.`);
+      this.logger.warn(`⚠️ [PROXY WARN] Service URL for ${targetConfigKey} is not configured.`);
       res.status(503).json({
         statusCode: 503,
         message: `Service URL for ${targetConfigKey} is not configured in Gateway environment.`,
@@ -61,27 +62,78 @@ export class ProxyController {
     }
 
     const targetUrl = `${targetBaseUrl.replace(/\/$/, '')}${req.originalUrl}`;
+    this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
-    try {
-      const response = await firstValueFrom(
-        this.httpService.request({
-          method: req.method,
-          url: targetUrl,
-          data: req.body,
-          headers: {
-            ...req.headers,
-            host: undefined,
-          },
-          validateStatus: () => true,
-        }),
-      );
+    const maxAttempts = 3;
+    let lastResponse: any = null;
+    let lastError: any = null;
 
-      res.status(response.status).set(response.headers).send(response.data);
-    } catch (error: any) {
-      this.logger.error(`Error proxying request to ${targetUrl}: ${error.message}`);
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        const response = await firstValueFrom(
+          this.httpService.request({
+            method: req.method,
+            url: targetUrl,
+            data: req.body,
+            headers: {
+              ...req.headers,
+              host: undefined,
+            },
+            validateStatus: () => true, // Accept all status codes to inspect Render 502/503 HTML
+            timeout: 15000,
+          }),
+        );
+
+        lastResponse = response;
+        const isHtml502 =
+          (response.status === 502 || response.status === 503) &&
+          typeof response.data === 'string' &&
+          response.data.includes('<!DOCTYPE html>');
+
+        // If downstream returned Render 502/503 HTML (Cold Start in progress), retry to wait for container startup
+        if (isHtml502) {
+          this.logger.warn(
+            `⏳ [RENDER COLD START] ${req.method} ${targetUrl} returned HTTP ${response.status} HTML. Waiting for service to boot... (${attempt}/${maxAttempts})`,
+          );
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 4000)); // Wait 4s before retry
+            continue;
+          }
+        }
+
+        const duration = Date.now() - startTime;
+        this.logger.log(
+          `✅ [PROXY RESPONSE] ${req.method} ${req.originalUrl} -> ${targetUrl} [HTTP ${response.status}] (${duration}ms)`,
+        );
+
+        res.status(response.status).set(response.headers).send(response.data);
+        return;
+      } catch (error: any) {
+        lastError = error;
+        this.logger.warn(
+          `⚠️ [PROXY ATTEMPT FAILED] ${req.method} ${targetUrl} (Attempt ${attempt}/${maxAttempts}) - ${error.message}`,
+        );
+
+        if (attempt < maxAttempts) {
+          await new Promise((r) => setTimeout(r, 3000));
+        }
+      }
+    }
+
+    const duration = Date.now() - startTime;
+    this.logger.error(
+      `❌ [PROXY ERROR] ${req.method} ${req.originalUrl} -> ${targetUrl} [${duration}ms] - Final Error: ${
+        lastError?.message || (lastResponse ? `HTTP ${lastResponse.status}` : 'Downstream failure')
+      }`,
+    );
+
+    if (lastResponse) {
+      res.status(lastResponse.status).set(lastResponse.headers).send(lastResponse.data);
+    } else {
       res.status(502).json({
         statusCode: 502,
         message: `Bad Gateway: Unable to connect to downstream service at ${targetUrl}`,
+        error: lastError?.message,
       });
     }
   }

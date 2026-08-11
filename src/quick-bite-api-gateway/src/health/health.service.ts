@@ -7,6 +7,7 @@ import { firstValueFrom } from 'rxjs';
 @Injectable()
 export class HealthService {
   private readonly logger = new Logger(HealthService.name);
+  private readonly activeWakeups = new Set<string>();
 
   constructor(
     private readonly httpService: HttpService,
@@ -15,6 +16,7 @@ export class HealthService {
 
   async checkHealth(): Promise<HealthResponseDto> {
     const overallStartTime = Date.now();
+    this.logger.log('🔍 Executing Fast Non-Blocking Health Check...');
 
     // 1. Gateway system_resources
     const sysStartTime = Date.now();
@@ -53,7 +55,7 @@ export class HealthService {
       exception: mongoResult.exception || null,
     };
 
-    // 3. Microservices list
+    // 3. Microservices list - Fast Parallel Ping (Non-Blocking)
     const microservices = [
       { key: 'identity_service', configKey: 'IDENTITY_URL' },
       { key: 'order_service', configKey: 'ORDER_URL' },
@@ -80,54 +82,81 @@ export class HealthService {
 
         const candidateUrls = this.getHealthUrlCandidates(baseUrl);
         const startTime = Date.now();
-        let lastError: any = null;
+        let lastResponse: any = null;
+        let isColdStart = false;
 
         for (const healthUrl of candidateUrls) {
           try {
+            // Fast 3-second ping to check status without blocking client
             const response = await firstValueFrom(
-              this.httpService.get(healthUrl, { timeout: 5000 }),
+              this.httpService.get(healthUrl, {
+                timeout: 3500,
+                validateStatus: () => true,
+                headers: { Accept: 'application/json, text/plain, */*' },
+              }),
             );
+            lastResponse = response;
             const duration = Date.now() - startTime;
-            const body = response.data;
-            const innerData = body?.data?.status ? body.data : body;
+            const isHtmlContent = typeof response.data === 'string' && response.data.includes('<!DOCTYPE html>');
 
-            const isHealthy =
-              response.status >= 200 &&
-              response.status < 300 &&
-              innerData &&
-              (innerData.status === 'Healthy' || innerData.status === 'ok');
+            // Case A: Online and Healthy JSON response
+            if (response.status >= 200 && response.status < 300) {
+              const body = response.data;
+              const innerData = body?.data?.status ? body.data : body;
+              const isHealthy =
+                !isHtmlContent &&
+                (innerData?.status === 'Healthy' ||
+                  innerData?.status === 'ok' ||
+                  innerData?.status === 'UP' ||
+                  typeof body === 'object');
 
-            return {
-              key: service.key,
-              entry: {
-                status: isHealthy ? ('Healthy' as const) : ('Unhealthy' as const),
-                description: `${service.key} connection status: ${response.status}`,
-                data: body || null,
-                duration_ms: duration,
-                exception: null,
-              },
-            };
-          } catch (error: any) {
-            lastError = error;
-            // If HTTP status is 404 (e.g. /api/app/health returned 404), try next candidate URL
-            if (error?.response?.status === 404) {
+              if (isHealthy) {
+                return {
+                  key: service.key,
+                  entry: {
+                    status: 'Healthy' as const,
+                    description: `${service.key} is healthy`,
+                    data: body || null,
+                    duration_ms: duration,
+                    exception: null,
+                  },
+                };
+              }
+            }
+
+            // Case B: Render Cold-Start detected (502/503 HTML) -> Trigger Background Wake-up!
+            if (response.status === 502 || response.status === 503 || isHtmlContent) {
+              isColdStart = true;
+              this.logger.warn(`⏳ [${service.key}] Render Cold-Start detected. Triggering non-blocking background wake-up...`);
+              
+              // Trigger background wake-up loop asynchronously without holding response!
+              this.triggerBackgroundWakeup(service.key, healthUrl);
+              break;
+            }
+
+            // Case C: 404 -> test next candidate URL
+            if (response.status === 404) {
               continue;
             }
+          } catch (error: any) {
+            // Network failure or timeout -> trigger background wakeup attempt as well
+            isColdStart = true;
+            this.triggerBackgroundWakeup(service.key, healthUrl);
             break;
           }
         }
 
         const duration = Date.now() - startTime;
-        const errorResponseBody = lastError?.response?.data || null;
-
         return {
           key: service.key,
           entry: {
-            status: 'Unhealthy' as const,
-            description: `Failed to connect to ${service.key}`,
-            data: errorResponseBody,
+            status: isColdStart ? ('Degraded' as const) : ('Unhealthy' as const),
+            description: isColdStart
+              ? `Service ${service.key} is waking up in background (Render Cold-Start)`
+              : `Unable to reach ${service.key} at ${baseUrl}`,
+            data: null,
             duration_ms: duration,
-            exception: lastError?.message || 'Connection failed',
+            exception: isColdStart ? 'Cold Start (Waking up)' : 'Service Unreachable',
           },
         };
       }),
@@ -143,12 +172,8 @@ export class HealthService {
       entries[item.key] = item.entry;
     }
 
-    const hasUnhealthy = Object.values(entries).some(
-      (e) => e.status === 'Unhealthy',
-    );
-    const hasDegraded = Object.values(entries).some(
-      (e) => e.status === 'Degraded',
-    );
+    const hasUnhealthy = Object.values(entries).some((e) => e.status === 'Unhealthy');
+    const hasDegraded = Object.values(entries).some((e) => e.status === 'Degraded');
 
     let overallStatus: 'Healthy' | 'Degraded' | 'Unhealthy' = 'Healthy';
     if (hasUnhealthy) {
@@ -157,26 +182,62 @@ export class HealthService {
       overallStatus = 'Degraded';
     }
 
+    const totalDuration = Date.now() - overallStartTime;
+    this.logger.log(`🏁 [FAST HEALTH RESPONSE] Status: ${overallStatus} in ${totalDuration}ms`);
+
     return {
       status: overallStatus,
-      total_duration_ms: Date.now() - overallStartTime,
+      total_duration_ms: totalDuration,
       timestamp: new Date().toISOString(),
       entries,
     };
+  }
+
+  /**
+   * Non-blocking background wake-up loop for sleeping Render services
+   */
+  private triggerBackgroundWakeup(serviceKey: string, healthUrl: string) {
+    if (this.activeWakeups.has(serviceKey)) {
+      return; // Already actively waking up in background
+    }
+
+    this.activeWakeups.add(serviceKey);
+
+    // Fire-and-forget background task
+    (async () => {
+      this.logger.log(`🚀 [BACKGROUND WAKEUP STARTED] ${serviceKey} at ${healthUrl}`);
+      const maxRetries = 6;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        await new Promise((r) => setTimeout(r, 4000)); // Sleep 4s between background pings
+        try {
+          const res = await firstValueFrom(
+            this.httpService.get(healthUrl, {
+              timeout: 10000,
+              validateStatus: () => true,
+            }),
+          );
+          if (res.status >= 200 && res.status < 300 && typeof res.data !== 'string') {
+            this.logger.log(`🎉 [BACKGROUND WAKEUP SUCCESS] ${serviceKey} is now UP and ONLINE!`);
+            break;
+          }
+        } catch {
+          // Ignore background errors
+        }
+      }
+      this.activeWakeups.delete(serviceKey);
+    })();
   }
 
   private getHealthUrlCandidates(baseUrl: string): string[] {
     const cleanUrl = baseUrl.trim().replace(/\/$/, '');
     const candidates: string[] = [];
 
-    // Candidate 1: Appended /health (e.g. http://localhost:3001/api/health or http://localhost:8083/api/v1/health)
     if (cleanUrl.endsWith('/health')) {
       candidates.push(cleanUrl);
     } else {
       candidates.push(`${cleanUrl}/health`);
     }
 
-    // Candidate 2 & 3: Host level fallback (e.g. https://localhost:44386/health or https://localhost:44386/api/health)
     try {
       const urlObj = new URL(baseUrl);
       const originHealth = `${urlObj.origin}/health`;
@@ -186,6 +247,10 @@ export class HealthService {
       const originApiHealth = `${urlObj.origin}/api/health`;
       if (!candidates.includes(originApiHealth)) {
         candidates.push(originApiHealth);
+      }
+      const originV1Health = `${urlObj.origin}/api/v1/health`;
+      if (!candidates.includes(originV1Health)) {
+        candidates.push(originV1Health);
       }
     } catch {}
 
