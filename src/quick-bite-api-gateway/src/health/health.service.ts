@@ -87,12 +87,15 @@ export class HealthService {
 
         for (const healthUrl of candidateUrls) {
           try {
-            // Fast 3-second ping to check status without blocking client
+            // Fast 3.5-second ping to check status without blocking client
             const response = await firstValueFrom(
               this.httpService.get(healthUrl, {
                 timeout: 3500,
                 validateStatus: () => true,
-                headers: { Accept: 'application/json, text/plain, */*' },
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuickBite-Gateway/1.0',
+                  'Accept': 'application/json, text/plain, text/html, */*',
+                },
               }),
             );
             lastResponse = response;
@@ -124,13 +127,13 @@ export class HealthService {
               }
             }
 
-            // Case B: Render Cold-Start detected (502/503 HTML) -> Trigger Background Wake-up!
+            // Case B: Render Cold-Start detected (502/503 HTML or root ping) -> Trigger Background Wake-up!
             if (response.status === 502 || response.status === 503 || isHtmlContent) {
               isColdStart = true;
-              this.logger.warn(`⏳ [${service.key}] Render Cold-Start detected. Triggering non-blocking background wake-up...`);
+              this.logger.warn(`⏳ [${service.key}] Render Cold-Start detected at ${healthUrl}. Triggering background wake-up...`);
               
-              // Trigger background wake-up loop asynchronously without holding response!
-              this.triggerBackgroundWakeup(service.key, healthUrl);
+              // Trigger background wake-up loop asynchronously across candidates
+              this.triggerBackgroundWakeup(service.key, candidateUrls);
               break;
             }
 
@@ -141,7 +144,7 @@ export class HealthService {
           } catch (error: any) {
             // Network failure or timeout -> trigger background wakeup attempt as well
             isColdStart = true;
-            this.triggerBackgroundWakeup(service.key, healthUrl);
+            this.triggerBackgroundWakeup(service.key, candidateUrls);
             break;
           }
         }
@@ -196,33 +199,41 @@ export class HealthService {
   /**
    * Non-blocking background wake-up loop for sleeping Render services
    */
-  private triggerBackgroundWakeup(serviceKey: string, healthUrl: string) {
+  private triggerBackgroundWakeup(serviceKey: string, candidateUrls: string[]) {
     if (this.activeWakeups.has(serviceKey)) {
       return; // Already actively waking up in background
     }
 
     this.activeWakeups.add(serviceKey);
 
-    // Fire-and-forget background task
+    // Fire-and-forget background task to hit root origin and candidate URLs
     (async () => {
-      this.logger.log(`🚀 [BACKGROUND WAKEUP STARTED] ${serviceKey} at ${healthUrl}`);
-      const maxRetries = 6;
+      this.logger.log(`🚀 [BACKGROUND WAKEUP STARTED] ${serviceKey}`);
+      const maxRetries = 8;
+      
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        await new Promise((r) => setTimeout(r, 4000)); // Sleep 4s between background pings
-        try {
-          const res = await firstValueFrom(
-            this.httpService.get(healthUrl, {
-              timeout: 10000,
-              validateStatus: () => true,
-            }),
-          );
-          if (res.status >= 200 && res.status < 300 && typeof res.data !== 'string') {
-            this.logger.log(`🎉 [BACKGROUND WAKEUP SUCCESS] ${serviceKey} is now UP and ONLINE!`);
-            break;
+        for (const targetUrl of candidateUrls) {
+          try {
+            const res = await firstValueFrom(
+              this.httpService.get(targetUrl, {
+                timeout: 8000,
+                validateStatus: () => true,
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuickBite-Gateway/1.0',
+                  'Accept': 'application/json, text/plain, text/html, */*',
+                },
+              }),
+            );
+            if (res.status >= 200 && res.status < 300 && typeof res.data !== 'string') {
+              this.logger.log(`🎉 [BACKGROUND WAKEUP SUCCESS] ${serviceKey} is now UP and ONLINE via ${targetUrl}!`);
+              this.activeWakeups.delete(serviceKey);
+              return;
+            }
+          } catch {
+            // Ignore individual candidate ping errors during wake-up
           }
-        } catch {
-          // Ignore background errors
         }
+        await new Promise((r) => setTimeout(r, 4000)); // Sleep 4s between background retry cycles
       }
       this.activeWakeups.delete(serviceKey);
     })();
@@ -232,25 +243,33 @@ export class HealthService {
     const cleanUrl = baseUrl.trim().replace(/\/$/, '');
     const candidates: string[] = [];
 
+    // Candidate 1: Direct cleanUrl if it already ends with /health
     if (cleanUrl.endsWith('/health')) {
       candidates.push(cleanUrl);
     } else {
       candidates.push(`${cleanUrl}/health`);
     }
 
+    // Candidate 2, 3, 4: Origin level root & health fallbacks for Render router wake-up
     try {
       const urlObj = new URL(baseUrl);
+      
+      // Origin Root (e.g. https://quick-bite-inventory.onrender.com) - Most reliable Render wake-up trigger!
+      if (!candidates.includes(urlObj.origin)) {
+        candidates.push(urlObj.origin);
+      }
+
       const originHealth = `${urlObj.origin}/health`;
       if (!candidates.includes(originHealth)) {
         candidates.push(originHealth);
       }
+      const originApiV1Health = `${urlObj.origin}/api/v1/health`;
+      if (!candidates.includes(originApiV1Health)) {
+        candidates.push(originApiV1Health);
+      }
       const originApiHealth = `${urlObj.origin}/api/health`;
       if (!candidates.includes(originApiHealth)) {
         candidates.push(originApiHealth);
-      }
-      const originV1Health = `${urlObj.origin}/api/v1/health`;
-      if (!candidates.includes(originV1Health)) {
-        candidates.push(originV1Health);
       }
     } catch {}
 
