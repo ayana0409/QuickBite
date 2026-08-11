@@ -69,6 +69,12 @@ export class RestaurantService {
     );
   }
 
+  async findByOwner(ownerId: string): Promise<Restaurant | null> {
+    return await this.restaurantRepository.findOne({
+      where: { ownerId },
+    });
+  }
+
   async findOne(
     id: string,
   ): Promise<Restaurant> {

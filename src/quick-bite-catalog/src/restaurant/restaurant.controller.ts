@@ -50,6 +50,13 @@ export class RestaurantController {
     );
   }
 
+  @Get('owner/:ownerId')
+  findByOwner(
+    @Param('ownerId') ownerId: string
+  ) {
+    return this.restaurantService.findByOwner(ownerId);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.RESTAURANT_READ)
