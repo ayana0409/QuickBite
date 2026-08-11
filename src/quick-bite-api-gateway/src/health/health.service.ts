@@ -192,54 +192,55 @@ export class HealthService {
     }
 
     const promise = (async () => {
-      this.logger.log(`🚀 [WAKE-UP INIT] Creating and holding connection for ${serviceKey}...`);
-      const startTime = Date.now();
-      const maxDuration = 180000; // Allow up to 3 minutes for Render to boot
+      // Pick the best candidate URL (the first one) instead of spamming all of them
+      const targetUrl = candidateUrls[0]; 
+      this.logger.log(`🚀 [WAKE-UP INIT] Start ping loop for ${serviceKey} at ${targetUrl}`);
       
-      while (Date.now() - startTime < maxDuration) {
-        for (const url of candidateUrls) {
-          try {
-            // Send request with HUGE timeout so Render Proxy holds the connection open while booting
-            const res = await firstValueFrom(
-              this.httpService.get(url, {
-                timeout: 60000, 
-                validateStatus: () => true,
-                headers: {
-                  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuickBite-Gateway/1.0',
-                  'Accept': 'application/json, text/plain, */*',
-                },
-              }),
-            );
+      // Try up to 12 times (about 2 minutes with 10s delays)
+      for (let attempt = 1; attempt <= 12; attempt++) {
+        try {
+          // Send request with HUGE timeout (120s). 
+          // This allows Render to HOLD the connection while the container boots (which can take 60-90s).
+          // This perfectly mimics how a Browser sends a ping and just waits.
+          const res = await firstValueFrom(
+            this.httpService.get(targetUrl, {
+              timeout: 120000, 
+              validateStatus: () => true,
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) QuickBite-Gateway/1.0',
+                'Accept': 'application/json, text/plain, */*',
+              },
+            }),
+          );
+          
+          const isHtml = typeof res.data === 'string' && res.data.includes('<!DOCTYPE html>');
+          
+          // If we got a valid JSON/Healthy response, the container is fully up!
+          if (res.status >= 200 && res.status < 300 && !isHtml) {
+            const body = res.data;
+            const innerData = body?.data?.status ? body.data : body;
+            const isHealthy = (innerData?.status === 'Healthy' || innerData?.status === 'ok' || innerData?.status === 'UP' || typeof body === 'object');
             
-            const isHtml = typeof res.data === 'string' && res.data.includes('<!DOCTYPE html>');
-            
-            // If we got a valid JSON/Healthy response, the container is fully up!
-            if (res.status >= 200 && res.status < 300 && !isHtml) {
-              const body = res.data;
-              const innerData = body?.data?.status ? body.data : body;
-              const isHealthy = (innerData?.status === 'Healthy' || innerData?.status === 'ok' || innerData?.status === 'UP' || typeof body === 'object');
+            if (isHealthy) {
+              this.logger.log(`🎉 [WAKE-UP SUCCESS] ${serviceKey} is UP after ${attempt} attempt(s)!`);
               
-              if (isHealthy) {
-                this.logger.log(`🎉 [WAKE-UP SUCCESS] ${serviceKey} is UP and returned 200 OK!`);
-                
-                // Keep the promise in cache for 10 seconds to serve subsequent rapid health checks, then clear it
-                setTimeout(() => this.activePings.delete(serviceKey), 10000); 
-                return res.data;
-              }
+              // Keep the promise in cache for 15 seconds to serve subsequent rapid health checks, then clear it
+              setTimeout(() => this.activePings.delete(serviceKey), 15000); 
+              return res.data;
             }
-            
-            // If Render drops connection with 502 HTML early, the loop continues and waits
-          } catch (err) {
-            // Network error / timeout, continue loop
+          } else {
+             this.logger.warn(`⏳ [WAKE-UP] ${serviceKey} attempt ${attempt} returned status ${res.status}. Waiting 10s...`);
           }
+        } catch (err: any) {
+          this.logger.warn(`⏳ [WAKE-UP] ${serviceKey} attempt ${attempt} failed (${err.message}). Waiting 10s...`);
         }
         
-        // Wait 4s before the next ping cycle to avoid spamming
-        await new Promise((r) => setTimeout(r, 4000));
+        // Wait exactly 10s before the next ping cycle to avoid spamming (Matches User's React logic)
+        await new Promise((r) => setTimeout(r, 10000));
       }
       
       this.activePings.delete(serviceKey);
-      throw new Error(`Timeout after ${maxDuration}ms waiting for Render container`);
+      throw new Error(`Timeout after 12 attempts waiting for ${serviceKey} container`);
     })();
 
     this.activePings.set(serviceKey, promise);
