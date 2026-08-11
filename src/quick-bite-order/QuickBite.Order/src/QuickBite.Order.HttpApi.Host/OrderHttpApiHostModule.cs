@@ -289,6 +289,14 @@ public class OrderHttpApiHostModule : AbpModule
         {
             ResponseWriter = WriteHealthResponse
         });
+        app.UseHealthChecks("/api/app/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+        app.UseHealthChecks("/api/app/v1/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
 
         app.UseAuditing();
         app.UseAbpSerilogEnrichers();
