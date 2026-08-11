@@ -18,14 +18,11 @@ FROM eclipse-temurin:21-jre-alpine AS runner
 
 WORKDIR /app
 
-# Set environment
-ENV PORT=8083
-
 # Copy built jar file from builder stage
 COPY --from=builder /app/target/*.jar app.jar
 
-# Expose service port
+# Expose default port
 EXPOSE 8083
 
-# Execute application
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Execute application with dynamic PORT support for Render
+ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8083} -jar app.jar"]
