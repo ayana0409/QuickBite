@@ -20,6 +20,7 @@ WORKDIR /app
 
 # Copy built jar file from builder stage
 COPY --from=builder /app/target/*.jar app.jar
+COPY --from=builder /app/src/main/resources/ca.pem ./src/main/resources/ca.pem
 
 # Expose default port
 EXPOSE 8084
