@@ -1,25 +1,92 @@
 import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import BootScreen from './components/BootScreen';
+import { useAuthStore } from './stores/authStore';
 
-function App() {
+// Layouts
+import AuthLayout from './layouts/AuthLayout';
+import AdminLayout from './layouts/AdminLayout';
+import MerchantLayout from './layouts/MerchantLayout';
+
+// Guards
+import AuthGuard from './guards/AuthGuard';
+
+// Pages
+import LoginPage from './pages/auth/LoginPage';
+import AdminDashboardPage from './pages/admin/DashboardPage';
+import MerchantDashboardPage from './pages/merchant/DashboardPage';
+import UnauthorizedPage from './pages/UnauthorizedPage';
+
+/**
+ * Smart Redirect based on authentication state and user role
+ */
+function SmartRootRedirect() {
+  const { isAuthenticated, user } = useAuthStore();
+
+  if (!isAuthenticated || !user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (user.role === 'Admin') {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  if (user.role === 'Merchant') {
+    return <Navigate to="/merchant/dashboard" replace />;
+  }
+
+  return <Navigate to="/unauthorized" replace />;
+}
+
+export default function App() {
   const [isSystemReady, setIsSystemReady] = useState<boolean>(false);
 
-  // Nếu hệ thống chưa sẵn sàng (backend cold start / đang poll API Gateway), hiển thị BootScreen
+  // Nếu hệ thống microservices chưa sẵn sàng, hiển thị BootScreen (polling API Gateway /health)
   if (!isSystemReady) {
     return <BootScreen onReady={() => setIsSystemReady(true)} />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-slate-800 p-8 rounded-xl border border-slate-700 shadow-2xl text-center space-y-4">
-        <h1 className="text-3xl font-bold text-amber-500">QuickBite Portal</h1>
-        <p className="text-slate-400">Backend API Gateway is ONLINE & BootScreen unmounted!</p>
-        <div className="inline-block px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-sm font-medium">
-          System Ready for Authentication
-        </div>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        {/* Public Root Redirect */}
+        <Route path="/" element={<SmartRootRedirect />} />
+
+        {/* Public Auth Routes */}
+        <Route element={<AuthLayout />}>
+          <Route path="/login" element={<LoginPage />} />
+        </Route>
+
+        {/* Protected Admin Routes */}
+        <Route element={<AuthGuard allowedRoles={['Admin']} />}>
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboardPage />} />
+            <Route path="restaurants" element={<AdminDashboardPage />} />
+            <Route path="users" element={<AdminDashboardPage />} />
+            <Route path="orders" element={<AdminDashboardPage />} />
+            <Route path="analytics" element={<AdminDashboardPage />} />
+            <Route path="settings" element={<AdminDashboardPage />} />
+          </Route>
+        </Route>
+
+        {/* Protected Merchant Routes */}
+        <Route element={<AuthGuard allowedRoles={['Merchant']} />}>
+          <Route path="/merchant" element={<MerchantLayout />}>
+            <Route index element={<Navigate to="/merchant/dashboard" replace />} />
+            <Route path="dashboard" element={<MerchantDashboardPage />} />
+            <Route path="menu" element={<MerchantDashboardPage />} />
+            <Route path="orders" element={<MerchantDashboardPage />} />
+            <Route path="inventory" element={<MerchantDashboardPage />} />
+            <Route path="revenue" element={<MerchantDashboardPage />} />
+            <Route path="profile" element={<MerchantDashboardPage />} />
+          </Route>
+        </Route>
+
+        {/* Status Pages */}
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
+        <Route path="*" element={<SmartRootRedirect />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-export default App;

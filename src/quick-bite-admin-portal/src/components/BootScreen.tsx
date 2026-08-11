@@ -15,6 +15,8 @@ interface ServiceEntry {
   description?: string;
   duration_ms?: number;
   exception?: string | null;
+  data?: any;
+  entries?: Record<string, any>;
 }
 
 interface HealthCheckResponse {
@@ -330,7 +332,99 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     });
   }, [selectedServiceId]);
 
-  // 2. Logic Polling API /health liên tục
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const [isIgniting, setIsIgniting] = useState<boolean>(true);
+  const [litNodes, setLitNodes] = useState<string[]>(['gateway']);
+
+  // 1.4. Trình tự bừng sáng động cơ (0s: GW -> 1s: Redis-Payment -> 2s: Catalog-Inventory -> 3s: Identity-Order -> 5s: Check)
+  useEffect(() => {
+    let isCancelled = false;
+
+    // 0s: Kích nổ Gateway ở giữa
+    import('animejs').then((animeModule: any) => {
+      if (isCancelled) return;
+      const anime = animeModule.default || animeModule;
+      anime({
+        targets: '#gateway-node',
+        scale: [0.1, 1.25, 1],
+        opacity: [0, 1],
+        easing: 'easeOutElastic(1, .6)',
+        duration: 800,
+      });
+    });
+
+    // 1s: Cặp Redis & Payment bừng sáng
+    const t1 = setTimeout(() => {
+      if (!isCancelled) {
+        setLitNodes(['gateway', 'redis', 'payment']);
+      }
+    }, 1000);
+
+    // 2s: Cặp Catalog & Inventory bừng sáng
+    const t2 = setTimeout(() => {
+      if (!isCancelled) {
+        setLitNodes(['gateway', 'redis', 'payment', 'catalog', 'inventory']);
+      }
+    }, 2000);
+
+    // 3s: Cặp Identity & Order bừng sáng
+    const t3 = setTimeout(() => {
+      if (!isCancelled) {
+        setLitNodes(['gateway', 'redis', 'payment', 'catalog', 'inventory', 'identity', 'order']);
+      }
+    }, 3000);
+
+    // 5s: Hoàn tất 4s sáng + 1s giữ hiệu ứng -> Bắt đầu health check polling
+    const t5 = setTimeout(() => {
+      if (!isCancelled) {
+        setIsIgniting(false);
+      }
+    }, 5000);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t5);
+    };
+  }, []);
+
+  // Kích nổ elastic animation mỗi khi cặp node mới gia nhập litNodes
+  useEffect(() => {
+    if (litNodes.length <= 1) return;
+    const last1 = litNodes[litNodes.length - 1];
+    const last2 = litNodes[litNodes.length - 2];
+
+    import('animejs').then((animeModule: any) => {
+      const anime = animeModule.default || animeModule;
+      anime({
+        targets: `#node-${last1}, #node-${last2}, .line-${last1}, .line-${last2}`,
+        scale: [0.5, 1.25, 1],
+        opacity: [0.1, 1],
+        easing: 'easeOutElastic(1, .6)',
+        duration: 800,
+      });
+    });
+  }, [litNodes]);
+
+  // 1.5. Countdown timer khi tất cả service đều Healthy
+  useEffect(() => {
+    if (redirectCountdown === null) return;
+
+    if (redirectCountdown <= 0) {
+      onReady();
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [redirectCountdown, onReady]);
+
+  // 2. Logic Polling API /health liên tục (chỉ bắt đầu sau 5s Ignition hoàn tất)
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | null = null;
     let isCancelled = false;
@@ -345,9 +439,8 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           if (parsed) {
             setHealthData(parsed);
             if (parsed.status === 'Healthy') {
-              setTimeout(() => {
-                if (!isCancelled) onReady();
-              }, 700);
+              setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
+              setRedirectCountdown((prev) => (prev === null ? 3 : prev));
               return;
             }
           }
@@ -362,6 +455,11 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
 
           if (parsedError) {
             setHealthData(parsedError);
+            if (parsedError.status === 'Healthy') {
+              setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
+              setRedirectCountdown((prev) => (prev === null ? 3 : prev));
+              return;
+            }
             setErrorMessage('API Gateway active (HTTP 503). Microservices warming up...');
           } else {
             setErrorMessage(err.message || 'Connecting to API Gateway...');
@@ -372,10 +470,16 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
       }
     };
 
-    checkHealth();
+    // Dành 5 giây (4s ignition xen kẽ + 1s hold) trước khi gửi request healthcheck đầu tiên
+    const initialDelay = setTimeout(() => {
+      if (!isCancelled) {
+        checkHealth();
+      }
+    }, 5000);
 
     return () => {
       isCancelled = true;
+      clearTimeout(initialDelay);
       if (timer) clearTimeout(timer);
     };
   }, [onReady]);
@@ -415,15 +519,36 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
             )}
           </div>
 
-          <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-lg ${healthData?.status === 'Healthy'
-            ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/50 shadow-emerald-500/20'
-            : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/50 shadow-amber-500/20'
+          <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-lg ${
+            isIgniting
+              ? 'bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-amber-500/30 text-purple-200 border border-purple-400 shadow-purple-500/40 animate-pulse'
+              : redirectCountdown !== null
+              ? 'bg-gradient-to-r from-emerald-500/30 to-teal-500/30 text-emerald-300 border border-emerald-400 shadow-emerald-500/40 animate-pulse'
+              : healthData?.status === 'Healthy'
+              ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/50 shadow-emerald-500/20'
+              : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/50 shadow-amber-500/20'
             }`}>
-            <span className={`w-2 h-2 rounded-full ${healthData?.status === 'Healthy' ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
-            {healthData?.status || 'Waking'}
+            <span className={`w-2 h-2 rounded-full ${isIgniting ? 'bg-purple-400 animate-ping' : healthData?.status === 'Healthy' || redirectCountdown !== null ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
+            {isIgniting ? 'IGNITION (5s)' : redirectCountdown !== null ? `ĐANG CHUYỂN HƯỚNG (${redirectCountdown}s)` : healthData?.status || 'Waking'}
           </span>
         </div>
       </header>
+
+      {/* Redirect Countdown Banner khi tất cả microservices Healthy */}
+      {redirectCountdown !== null && (
+        <div className="w-full max-w-7xl mx-auto z-20 mb-3 bg-gradient-to-r from-emerald-500/20 via-teal-500/30 to-emerald-500/20 border border-emerald-500/50 p-3 rounded-2xl flex items-center justify-between text-xs font-bold text-emerald-300 shadow-2xl shadow-emerald-500/20 animate-pulse">
+          <span className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-emerald-400 animate-spin" />
+            <span>Tất cả microservices đã sẵn sàng! Đang chuyển hướng vào Portal trong <strong>{redirectCountdown} giây</strong>...</span>
+          </span>
+          <div className="w-32 bg-slate-950/80 rounded-full h-2 overflow-hidden border border-emerald-500/40">
+            <div
+              className="bg-gradient-to-r from-emerald-400 to-teal-300 h-full transition-all duration-1000 ease-linear"
+              style={{ width: `${((3 - redirectCountdown) / 3) * 100}%` }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Main Responsive Layout */}
       <main className="w-full max-w-7xl mx-auto my-auto z-10">
@@ -466,6 +591,72 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                 </span>
               </div>
 
+              {/* Realtime Telemetry & Health Sub-entries Breakdown */}
+              {(() => {
+                const nodeEntry = activeDetail.id === 'gateway'
+                  ? healthData?.entries?.['system_resources']
+                  : healthData?.entries?.[activeDetail.apiKey];
+
+                if (!nodeEntry) return null;
+
+                const subEntries = nodeEntry.data?.data?.entries || nodeEntry.data?.entries || nodeEntry.entries;
+                const dbEntry = subEntries?.database;
+                const kafkaEntry = subEntries?.kafka;
+                const busEntry = subEntries?.['masstransit-bus'];
+                const sysEntry = subEntries?.system_resources?.data || nodeEntry.data?.data?.system_resources?.data || (nodeEntry.data?.working_set_mb ? nodeEntry.data : null);
+
+                return (
+                  <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-3 space-y-2 shadow-inner">
+                    <div className="flex items-center justify-between text-[11px] font-bold">
+                      <span className="text-slate-400 flex items-center gap-1">
+                        <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" /> Telemetry Realtime:
+                      </span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
+                        nodeEntry.status === 'Healthy' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                      }`}>
+                        {nodeEntry.status || 'Checking'} ({nodeEntry.duration_ms ?? 0}ms)
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 text-[10px]">
+                      {dbEntry && (
+                        <div className="p-1.5 bg-slate-900/90 rounded border border-slate-800 flex items-center justify-between">
+                          <span className="text-slate-400">Database:</span>
+                          <span className={dbEntry.status === 'Healthy' ? 'text-emerald-400 font-extrabold' : 'text-red-400 font-extrabold'}>
+                            {dbEntry.status} ({dbEntry.duration_ms}ms)
+                          </span>
+                        </div>
+                      )}
+
+                      {kafkaEntry && (
+                        <div className="p-1.5 bg-slate-900/90 rounded border border-slate-800 flex items-center justify-between">
+                          <span className="text-slate-400">Kafka Msg:</span>
+                          <span className="text-cyan-300 font-extrabold">
+                            {kafkaEntry.data?.brokers?.length ? `${kafkaEntry.data.brokers.length} Broker(s)` : kafkaEntry.data?.active_listeners ? `${kafkaEntry.data.active_listeners} Listener(s)` : kafkaEntry.status}
+                          </span>
+                        </div>
+                      )}
+
+                      {busEntry && (
+                        <div className="p-1.5 bg-slate-900/90 rounded border border-slate-800 flex items-center justify-between col-span-2">
+                          <span className="text-slate-400">MassTransit Bus:</span>
+                          <span className="text-amber-300 font-extrabold">
+                            {Object.keys(busEntry.data?.Endpoints || {}).length} Endpoints Ready
+                          </span>
+                        </div>
+                      )}
+
+                      {sysEntry?.working_set_mb && (
+                        <div className="p-1.5 bg-slate-900/90 rounded border border-slate-800 flex items-center justify-between">
+                          <span className="text-slate-400">RAM Working:</span>
+                          <span className="text-purple-300 font-mono font-bold">{Math.round(sysEntry.working_set_mb)} MB</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="space-y-2 pt-1">
                 <p className="text-xs font-extrabold text-cyan-400 uppercase tracking-wider flex items-center gap-1">
                   <Info className="w-3.5 h-3.5" /> Architecture Highlights:
@@ -495,6 +686,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
                 {services.map((s) => {
                   const isHealthy = healthData?.entries?.[s.apiKey]?.status === 'Healthy';
+                  const isLineLit = litNodes.includes(s.id);
                   return (
                     <line
                       key={s.id}
@@ -502,10 +694,10 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                       y1="45%"
                       x2={`${s.x}%`}
                       y2={`${s.y}%`}
-                      stroke={isHealthy ? '#10b981' : '#f59e0b'}
-                      strokeWidth="2.5"
-                      strokeDasharray="8 8"
-                      className="topology-line opacity-80"
+                      stroke={isLineLit ? (isHealthy ? '#10b981' : '#f59e0b') : '#1e293b'}
+                      strokeWidth={isLineLit ? "2.5" : "1"}
+                      strokeDasharray={isLineLit ? "8 8" : "3 3"}
+                      className={`topology-line line-${s.id} transition-all duration-700 ${isLineLit ? 'opacity-80' : 'opacity-10'}`}
                     />
                   );
                 })}
@@ -515,7 +707,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
               <div
                 id="gateway-node"
                 onClick={() => setSelectedServiceId('gateway')}
-                className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-2xl flex flex-col items-center justify-center p-2 shadow-2xl z-20 cursor-pointer border transition-all duration-300 ${selectedServiceId === 'gateway'
+                className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-2xl flex flex-col items-center justify-center p-2 shadow-2xl z-20 cursor-pointer border transition-all duration-500 ${selectedServiceId === 'gateway'
                   ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 border-white scale-110 shadow-amber-500/80 ring-4 ring-amber-400/40'
                   : 'bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 border-amber-300/40 opacity-95 hover:scale-105'
                   }`}
@@ -538,19 +730,24 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                 const isHealthy = nodeEntry?.status === 'Healthy';
                 const isNodePresent = !!nodeEntry;
                 const isSelected = selectedServiceId === s.id;
+                const isLit = litNodes.includes(s.id);
 
                 return (
                   <div
                     key={s.id}
-                    onClick={() => setSelectedServiceId(s.id)}
-                    className={`microservice-node absolute -translate-x-1/2 -translate-y-1/2 border rounded-xl p-2 flex items-center gap-2 shadow-2xl z-10 cursor-pointer transition-all duration-300 hover:scale-110 ${isSelected
-                      ? `ring-4 ring-cyan-400/50 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/50 scale-105`
-                      : isHealthy
-                        ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40'
+                    id={`node-${s.id}`}
+                    onClick={() => isLit && setSelectedServiceId(s.id)}
+                    className={`microservice-node node-${s.id} absolute -translate-x-1/2 -translate-y-1/2 border rounded-xl p-2 flex items-center gap-2 shadow-2xl z-10 cursor-pointer transition-all duration-700 hover:scale-110 ${
+                      !isLit
+                        ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-15 grayscale scale-90 shadow-none pointer-events-none'
+                        : isSelected
+                        ? `ring-4 ring-cyan-400/50 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/50 scale-105 opacity-100`
+                        : isHealthy
+                        ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40 opacity-100'
                         : isNodePresent
-                          ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40'
-                          : 'bg-slate-900/70 border-slate-800 text-slate-500'
-                      }`}
+                        ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40 opacity-100'
+                        : 'bg-slate-900/70 border-slate-800 text-slate-400 opacity-100'
+                    }`}
                     style={{ left: `${s.x}%`, top: `${s.y}%` }}
                   >
                     <div className={`p-1.5 rounded-lg shadow-inner ${isHealthy ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30' : isNodePresent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-500'
@@ -717,16 +914,20 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
               const nodeEntry = healthData?.entries?.[s.apiKey];
               const isHealthy = nodeEntry?.status === 'Healthy';
               const isNodePresent = !!nodeEntry;
+              const isLit = litNodes.includes(s.id);
 
               return (
                 <div
                   key={s.id}
-                  className={`border rounded-xl p-2.5 flex items-center gap-2 shadow-lg transition-all ${isHealthy
-                    ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30'
-                    : isNodePresent
-                      ? 'bg-slate-900/90 border-amber-500/50 text-amber-300 shadow-amber-950/30'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-500'
-                    }`}
+                  className={`border rounded-xl p-2.5 flex items-center gap-2 shadow-lg transition-all duration-700 ${
+                    !isLit
+                      ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-20 grayscale scale-95 shadow-none'
+                      : isHealthy
+                      ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30 opacity-100'
+                      : isNodePresent
+                      ? 'bg-slate-900/90 border-amber-500/50 text-amber-300 shadow-amber-950/30 opacity-100'
+                      : 'bg-slate-900/60 border-slate-800 text-slate-500 opacity-100'
+                  }`}
                 >
                   <div className={`p-1.5 rounded-lg shrink-0 ${isHealthy ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30' : isNodePresent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-500'
                     }`}>
