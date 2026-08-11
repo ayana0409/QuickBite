@@ -261,5 +261,38 @@ src/QuickBite.Identity.DbMigrator/Logs/*
 src/QuickBite.Identity.Blazor.Server/Logs/*
 src/QuickBite.Identity.Blazor.Server.Tiered/Logs/*
 
-# Use abp install-libs to restore.
-**/wwwroot/libs/*
+# Allow wwwroot/libs to be committed to git for Docker builds on Render
+!**/wwwroot/libs/**
+
+# Ignore debug map files, documentation and build configs in wwwroot/libs
+**/wwwroot/libs/**/*.map
+**/wwwroot/libs/**/*.md
+**/wwwroot/libs/**/LICENSE*
+**/wwwroot/libs/**/CHANGELOG*
+**/wwwroot/libs/**/package.json
+**/wwwroot/libs/**/bower.json
+
+# Ignore foreign language locale files except English and Vietnamese
+**/wwwroot/libs/**/i18n/*
+!**/wwwroot/libs/**/i18n/en*
+!**/wwwroot/libs/**/i18n/vi*
+
+**/wwwroot/libs/**/locales/*
+!**/wwwroot/libs/**/locales/*en*
+!**/wwwroot/libs/**/locales/*vi*
+
+**/wwwroot/libs/**/locale/*
+!**/wwwroot/libs/**/locale/en*
+!**/wwwroot/libs/**/locale/vi*
+
+**/wwwroot/libs/**/localization/*
+!**/wwwroot/libs/**/localization/*en*
+!**/wwwroot/libs/**/localization/*vi*
+
+**/wwwroot/libs/**/lang/*
+!**/wwwroot/libs/**/lang/*en*
+!**/wwwroot/libs/**/lang/*vi*
+
+**/wwwroot/libs/**/messages_*.js
+!**/wwwroot/libs/**/messages_en*.js
+!**/wwwroot/libs/**/messages_vi*.js
