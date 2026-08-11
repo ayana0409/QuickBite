@@ -67,12 +67,13 @@ export class HealthService {
     const serviceEntries = await Promise.all(
       microservices.map(async (service) => {
         const baseUrl = await this.configService.getAsync(service.configKey);
+        
         if (!baseUrl) {
           return {
             key: service.key,
             entry: {
               status: 'Unhealthy' as const,
-              description: `URL not configured for ${service.key}`,
+              description: `URL not configured for ${service.configKey} on Render Environment`,
               data: null,
               duration_ms: 0,
               exception: 'Configuration missing',
@@ -80,6 +81,7 @@ export class HealthService {
           };
         }
 
+        const isLocalhost = baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1');
         const candidateUrls = this.getHealthUrlCandidates(baseUrl);
         const startTime = Date.now();
         let lastResponse: any = null;
@@ -118,7 +120,7 @@ export class HealthService {
                   key: service.key,
                   entry: {
                     status: 'Healthy' as const,
-                    description: `${service.key} is healthy`,
+                    description: `${service.key} is healthy (Pinging: ${healthUrl})`,
                     data: body || null,
                     duration_ms: duration,
                     exception: null,
@@ -128,7 +130,7 @@ export class HealthService {
             }
 
             // Case B: Render Cold-Start detected (502/503 HTML or root ping) -> Trigger Background Wake-up!
-            if (response.status === 502 || response.status === 503 || isHtmlContent) {
+            if (!isLocalhost && (response.status === 502 || response.status === 503 || isHtmlContent)) {
               isColdStart = true;
               this.logger.warn(`⏳ [${service.key}] Render Cold-Start detected at ${healthUrl}. Triggering background wake-up...`);
               
@@ -142,24 +144,39 @@ export class HealthService {
               continue;
             }
           } catch (error: any) {
-            // Network failure or timeout -> trigger background wakeup attempt as well
-            isColdStart = true;
-            this.triggerBackgroundWakeup(service.key, candidateUrls);
+            if (!isLocalhost) {
+              isColdStart = true;
+              this.triggerBackgroundWakeup(service.key, candidateUrls);
+            }
             break;
           }
         }
 
         const duration = Date.now() - startTime;
+        let statusStr: 'Healthy' | 'Degraded' | 'Unhealthy' = isColdStart ? 'Degraded' : 'Unhealthy';
+        let descStr = '';
+        let exceptionStr = '';
+
+        if (isLocalhost) {
+          statusStr = 'Unhealthy';
+          descStr = `⚠️ ${service.configKey} is set to localhost (${baseUrl}). Set ${service.configKey} in Render Environment Variables!`;
+          exceptionStr = `Target URL is localhost: ${baseUrl}`;
+        } else if (isColdStart) {
+          descStr = `Service ${service.key} is waking up in background (Pinging: ${baseUrl})`;
+          exceptionStr = `Render Cold Start in progress for ${baseUrl}`;
+        } else {
+          descStr = `Unable to reach ${service.key} at ${baseUrl}`;
+          exceptionStr = lastResponse ? `HTTP ${lastResponse.status}` : `Connection failed to ${baseUrl}`;
+        }
+
         return {
           key: service.key,
           entry: {
-            status: isColdStart ? ('Degraded' as const) : ('Unhealthy' as const),
-            description: isColdStart
-              ? `Service ${service.key} is waking up in background (Render Cold-Start)`
-              : `Unable to reach ${service.key} at ${baseUrl}`,
+            status: statusStr,
+            description: descStr,
             data: null,
             duration_ms: duration,
-            exception: isColdStart ? 'Cold Start (Waking up)' : 'Service Unreachable',
+            exception: exceptionStr,
           },
         };
       }),
@@ -208,12 +225,13 @@ export class HealthService {
 
     // Fire-and-forget background task to hit root origin and candidate URLs
     (async () => {
-      this.logger.log(`🚀 [BACKGROUND WAKEUP STARTED] ${serviceKey}`);
-      const maxRetries = 8;
+      this.logger.log(`🚀 [BACKGROUND WAKEUP STARTED] ${serviceKey} for URLs: ${candidateUrls.join(', ')}`);
+      const maxRetries = 10;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         for (const targetUrl of candidateUrls) {
           try {
+            this.logger.log(`  [Background Wakeup Ping ${attempt}/${maxRetries}] ${targetUrl}`);
             const res = await firstValueFrom(
               this.httpService.get(targetUrl, {
                 timeout: 8000,
@@ -229,8 +247,8 @@ export class HealthService {
               this.activeWakeups.delete(serviceKey);
               return;
             }
-          } catch {
-            // Ignore individual candidate ping errors during wake-up
+          } catch (err: any) {
+            this.logger.warn(`  [Background Wakeup Ping ${attempt} Error] ${targetUrl}: ${err.message}`);
           }
         }
         await new Promise((r) => setTimeout(r, 4000)); // Sleep 4s between background retry cycles
