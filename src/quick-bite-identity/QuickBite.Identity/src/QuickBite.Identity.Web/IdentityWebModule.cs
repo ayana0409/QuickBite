@@ -1,17 +1,31 @@
-using System;
-using System.IO;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
+using OpenIddict.Abstractions;
+using OpenIddict.Server.AspNetCore;
 using OpenIddict.Validation.AspNetCore;
+using QuickBite.Identity.Claims;
 using QuickBite.Identity.EntityFrameworkCore;
 using QuickBite.Identity.Localization;
 using QuickBite.Identity.MultiTenancy;
+using QuickBite.Identity.Web.HealthCheck;
 using QuickBite.Identity.Web.Menus;
+using QuickBite.Identity.Web.Middleware;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using Volo.Abp;
 using Volo.Abp.Account.Web;
 using Volo.Abp.AspNetCore.Mvc;
@@ -21,10 +35,6 @@ using Volo.Abp.AspNetCore.Mvc.UI.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.LeptonXLite.Bundling;
 using Volo.Abp.AspNetCore.Mvc.UI.Theme.Shared;
-using Microsoft.AspNetCore.Authentication.Google;
-using Microsoft.AspNetCore.Authentication;
-using OpenIddict.Server.AspNetCore;
-using OpenIddict.Abstractions;
 using Volo.Abp.AspNetCore.Serilog;
 using Volo.Abp.Autofac;
 using Volo.Abp.Identity.Web;
@@ -36,19 +46,7 @@ using Volo.Abp.Swashbuckle;
 using Volo.Abp.Timing;
 using Volo.Abp.UI.Navigation;
 using Volo.Abp.UI.Navigation.Urls;
-
 using Volo.Abp.VirtualFileSystem;
-using Microsoft.AspNetCore.Mvc.RazorPages;
-
-
-using QuickBite.Identity.Claims;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using QuickBite.Identity.Web.HealthCheck;
-using QuickBite.Identity.Web.Middleware;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace QuickBite.Identity.Web;
 
@@ -142,7 +140,8 @@ public class IdentityWebModule : AbpModule
         var configuration = context.Services.GetConfiguration();
         
         context.Services.AddTransient<PermissionClaimsPrincipalContributor>();
-        
+
+        ConfigureCors(context);
         ConfigureAuthentication(context);
         ConfigureUrls(configuration);
         ConfigureBundles();
@@ -172,6 +171,30 @@ public class IdentityWebModule : AbpModule
         });
 
         context.Services.AddMapperlyObjectMapper<IdentityWebModule>();
+    }
+
+    private void ConfigureCors(ServiceConfigurationContext context)
+    {
+        var configuration = context.Services.GetConfiguration();
+
+        context.Services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(builder =>
+            {
+                builder
+                    .WithOrigins(
+                        configuration["App:CorsOrigins"]?
+                            .Split(",", StringSplitOptions.RemoveEmptyEntries)
+                            .Select(o => o.RemovePostFix("/"))
+                            .ToArray() ?? Array.Empty<string>()
+                    )
+                    .WithAbpExposedHeaders()
+                    .SetIsOriginAllowedToAllowWildcardSubdomains()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
+        });
     }
 
     private void ConfigureAuthentication(ServiceConfigurationContext context)
@@ -296,6 +319,7 @@ public class IdentityWebModule : AbpModule
         app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.MapAbpStaticAssets();
         app.UseRouting();
+        app.UseCors();
         app.UseAuthentication();
         app.UseAbpOpenIddictValidation();
 
