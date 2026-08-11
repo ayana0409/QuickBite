@@ -23,6 +23,11 @@ export class ProxyController {
     await this.forwardRequest('ORDER_URL', req, res);
   }
 
+  @All('catalog{*path}')
+  async proxyCatalog(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('CATALOG_URL', req, res);
+  }
+
   @All('restaurants{*path}')
   async proxyRestaurants(@Req() req: Request, @Res() res: Response) {
     await this.forwardRequest('CATALOG_URL', req, res);
@@ -61,7 +66,14 @@ export class ProxyController {
       return;
     }
 
-    const targetUrl = `${targetBaseUrl.replace(/\/$/, '')}${req.originalUrl}`;
+    // Strip prefix if request contains /catalog, /identity, /order, /inventory, /payments
+    const relativePath = req.originalUrl.replace(/^\/(catalog|identity|order|inventory|payments)/, '');
+    const cleanBaseUrl = targetBaseUrl.replace(/\/$/, '');
+    
+    // Ensure relativePath starts with /
+    const formattedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+    const targetUrl = `${cleanBaseUrl}${formattedPath}`;
+
     this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
 
     const maxAttempts = 3;

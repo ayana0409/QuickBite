@@ -40,13 +40,15 @@ export class RestaurantController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard, PermissionGuard)
-  @Permissions(PermissionKeys.RESTAURANT_READ)
   findAll(
-    @Query() pagination: PaginationDto,
+    @Query('ownerId') ownerId?: string,
+    @Query() pagination?: PaginationDto,
   ) {
+    if (ownerId) {
+      return this.restaurantService.findByOwner(ownerId);
+    }
     return this.restaurantService.findAll(
-      pagination,
+      pagination || new PaginationDto(),
     );
   }
 
@@ -54,6 +56,9 @@ export class RestaurantController {
   findByOwner(
     @Param('ownerId') ownerId: string
   ) {
+    if (!ownerId || ownerId === 'undefined') {
+      return null;
+    }
     return this.restaurantService.findByOwner(ownerId);
   }
 
