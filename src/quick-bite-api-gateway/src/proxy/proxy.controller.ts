@@ -74,7 +74,11 @@ export class ProxyController {
     const formattedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     const targetUrl = `${cleanBaseUrl}${formattedPath}`;
 
-    this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
+    if (req.method !== 'GET' && req.body && Object.keys(req.body).length > 0) {
+      this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl} | BODY: ${JSON.stringify(req.body)}`);
+    } else {
+      this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
+    }
 
     const maxAttempts = 3;
     let lastResponse: any = null;
@@ -90,6 +94,7 @@ export class ProxyController {
             headers: {
               ...req.headers,
               host: undefined,
+              'content-length': undefined, // Bắt buộc xoá để Axios tự tính lại length, tránh lỗi 400 Bad Request JSON
             },
             validateStatus: () => true, // Accept all status codes to inspect Render 502/503 HTML
             timeout: 15000,

@@ -37,7 +37,7 @@ class AddressDto {
 }
 
 export class CreateRestaurantDto {
-    @IsUUID()
+    @IsString()
     ownerId!: string;
 
     @IsString()

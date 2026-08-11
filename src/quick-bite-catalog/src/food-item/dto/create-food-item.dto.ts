@@ -13,10 +13,10 @@ import { FoodVariantDto } from './food-variant.dto';
 import { FoodToppingDto } from './food-topping.dto';
 
 export class CreateFoodItemDto {
-  @IsUUID()
+  @IsUUID('all')
   categoryId!: string;
 
-  @IsUUID()
+  @IsUUID('all')
   restaurantId!: string;
 
   @IsString()
