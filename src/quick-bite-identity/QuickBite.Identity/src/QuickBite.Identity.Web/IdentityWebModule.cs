@@ -124,7 +124,23 @@ public class IdentityWebModule : AbpModule
 
             if (!hostingEnvironment.IsDevelopment())
             {
-                serverBuilder.AddProductionEncryptionAndSigningCertificate("openiddict.pfx", "241169aa-a9c9-463e-a110-afa15c634ead");
+                var certFileName = "openiddict.pfx";
+                var certPath = System.IO.Path.Combine(hostingEnvironment.ContentRootPath, certFileName);
+                var renderSecretPath = System.IO.Path.Combine("/etc/secrets", certFileName);
+
+                if (System.IO.File.Exists(certPath))
+                {
+                    serverBuilder.AddProductionEncryptionAndSigningCertificate(certFileName, "241169aa-a9c9-463e-a110-afa15c634ead");
+                }
+                else if (System.IO.File.Exists(renderSecretPath))
+                {
+                    serverBuilder.AddProductionEncryptionAndSigningCertificate(renderSecretPath, "241169aa-a9c9-463e-a110-afa15c634ead");
+                }
+                else
+                {
+                    serverBuilder.AddDevelopmentEncryptionCertificate();
+                    serverBuilder.AddDevelopmentSigningCertificate();
+                }
             }
             else
             {
