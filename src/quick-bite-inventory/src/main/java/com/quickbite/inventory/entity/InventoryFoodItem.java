@@ -29,6 +29,15 @@ public class InventoryFoodItem {
     @Column(name = "sku")
     private String sku;
 
+    @Column(name = "name")
+    private String name;
+
+    @Column(name = "category_id")
+    private UUID categoryId;
+
+    @Column(name = "restaurant_id")
+    private UUID restaurantId;
+
     @Column(name = "is_available", nullable = false)
     @Builder.Default
     private boolean isAvailable = true;

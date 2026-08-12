@@ -15,6 +15,11 @@ public interface InventoryService {
     List<InventoryItemResponse> getAllInventoryItems();
 
     /**
+     * Get inventory items by restaurant (paginated & filtered).
+     */
+    org.springframework.data.domain.Page<InventoryItemResponse> getInventoryByRestaurant(UUID restaurantId, UUID categoryId, String name, int page, int limit);
+
+    /**
      * Get inventory item by Food Item ID.
      */
     InventoryItemResponse getByFoodItemId(UUID foodItemId);

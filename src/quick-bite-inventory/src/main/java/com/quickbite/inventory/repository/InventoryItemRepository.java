@@ -25,4 +25,16 @@ public interface InventoryItemRepository extends JpaRepository<InventoryItem, UU
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT i FROM InventoryItem i WHERE i.foodItemId = :foodItemId")
     Optional<InventoryItem> findByFoodItemIdWithLock(@Param("foodItemId") UUID foodItemId);
+
+    @Query("SELECT new com.quickbite.inventory.dto.response.InventoryItemResponse(" +
+           "i.id, i.foodItemId, f.name, i.quantity, i.reservedQuantity, (i.quantity - i.reservedQuantity), i.createdAt, i.updatedAt) " +
+           "FROM InventoryItem i JOIN InventoryFoodItem f ON i.foodItemId = f.id " +
+           "WHERE f.restaurantId = :restaurantId " +
+           "AND (:categoryId IS NULL OR f.categoryId = :categoryId) " +
+           "AND (:name IS NULL OR LOWER(f.name) LIKE LOWER(CONCAT('%', :name, '%')))")
+    org.springframework.data.domain.Page<com.quickbite.inventory.dto.response.InventoryItemResponse> findInventoryByRestaurant(
+           @Param("restaurantId") UUID restaurantId, 
+           @Param("categoryId") UUID categoryId, 
+           @Param("name") String name, 
+           org.springframework.data.domain.Pageable pageable);
 }

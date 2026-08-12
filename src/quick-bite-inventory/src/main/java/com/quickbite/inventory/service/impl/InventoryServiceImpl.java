@@ -52,6 +52,13 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<InventoryItemResponse> getInventoryByRestaurant(UUID restaurantId, UUID categoryId, String name, int page, int limit) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page - 1), limit);
+        return inventoryItemRepository.findInventoryByRestaurant(restaurantId, categoryId, name, pageable);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public InventoryItemResponse getByFoodItemId(UUID foodItemId) {
         InventoryItem item = inventoryItemRepository.findByFoodItemId(foodItemId)
                 .orElseThrow(() -> new IllegalArgumentException("Inventory item not found for food item ID: " + foodItemId));

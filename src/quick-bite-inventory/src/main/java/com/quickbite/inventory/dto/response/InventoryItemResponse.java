@@ -15,6 +15,7 @@ import java.util.UUID;
 public class InventoryItemResponse {
     private UUID id;
     private UUID foodItemId;
+    private String name;
     private Integer quantity;
     private Integer reservedQuantity;
     private Integer availableQuantity;

@@ -22,7 +22,7 @@ public class InventoryFoodItemServiceImpl implements InventoryFoodItemService {
 
     @Override
     @Transactional
-    public void syncFoodItem(UUID id, String sku, Boolean isAvailable, UUID eventId) {
+    public void syncFoodItem(UUID id, String sku, String name, UUID categoryId, UUID restaurantId, Boolean isAvailable, UUID eventId) {
         if (eventId != null && inboxMessageRepository.existsById(eventId)) {
             log.info("[Inbox Pattern] Event ID: {} already processed for food item sync. Skipping.", eventId);
             return;
@@ -37,6 +37,15 @@ public class InventoryFoodItemServiceImpl implements InventoryFoodItemService {
 
         if (sku != null) {
             foodItem.setSku(sku);
+        }
+        if (name != null) {
+            foodItem.setName(name);
+        }
+        if (categoryId != null) {
+            foodItem.setCategoryId(categoryId);
+        }
+        if (restaurantId != null) {
+            foodItem.setRestaurantId(restaurantId);
         }
         if (isAvailable != null) {
             foodItem.setAvailable(isAvailable);

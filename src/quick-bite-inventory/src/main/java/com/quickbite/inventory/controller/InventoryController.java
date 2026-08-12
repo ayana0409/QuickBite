@@ -29,6 +29,17 @@ public class InventoryController {
         return ResponseEntity.ok(inventoryService.getAllInventoryItems());
     }
 
+    @GetMapping("/restaurant/{restaurantId}")
+    @Operation(summary = "Lấy danh sách tồn kho theo nhà hàng", description = "Có phân trang, lọc theo category, tìm kiếm theo tên món ăn.")
+    public ResponseEntity<org.springframework.data.domain.Page<InventoryItemResponse>> getByRestaurantId(
+            @PathVariable UUID restaurantId,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) String search,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(inventoryService.getInventoryByRestaurant(restaurantId, categoryId, search, page, limit));
+    }
+
     @GetMapping("/{foodItemId}")
     @Operation(summary = "Lấy thông tin tồn kho theo Food Item ID", description = "Trả về chi tiết tồn kho của 1 sản phẩm theo mã foodItemId.")
     public ResponseEntity<InventoryItemResponse> getByFoodItemId(@PathVariable UUID foodItemId) {

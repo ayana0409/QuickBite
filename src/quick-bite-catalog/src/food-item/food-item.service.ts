@@ -71,6 +71,8 @@ export class FoodItemService implements OnModuleInit {
     const eto: FoodItemUpdatedEto = {
       id: foodItem.id,
       name: foodItem.name,
+      categoryId: foodItem.categoryId,
+      restaurantId: foodItem.restaurantId,
       price: Number(foodItem.price),
       variants: foodItem.variants || [],
       toppings: foodItem.toppings || [],

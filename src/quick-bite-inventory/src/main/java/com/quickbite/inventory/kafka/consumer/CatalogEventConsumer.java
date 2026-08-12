@@ -66,12 +66,15 @@ public class CatalogEventConsumer {
                 }
 
                 String sku = extractString(rootNode, "sku");
+                String name = extractString(rootNode, "name");
+                UUID categoryId = parseUuid(rootNode, "categoryId");
+                UUID restaurantId = parseUuid(rootNode, "restaurantId");
                 Boolean isAvailable = parseBoolean(rootNode, "isAvailable");
                 if (isAvailable == null) isAvailable = true;
 
                 if (id != null) {
-                    inventoryFoodItemService.syncFoodItem(id, sku.isEmpty() ? null : sku, isAvailable, eventId);
-                    log.info("[Kafka Consumer] Successfully processed food item sync: ID={}, SKU={}, isAvailable={}", id, sku, isAvailable);
+                    inventoryFoodItemService.syncFoodItem(id, sku.isEmpty() ? null : sku, name.isEmpty() ? null : name, categoryId, restaurantId, isAvailable, eventId);
+                    log.info("[Kafka Consumer] Successfully processed food item sync: ID={}, SKU={}, Name={}, isAvailable={}", id, sku, name, isAvailable);
                 } else {
                     log.warn("[Kafka Consumer] FoodItem sync event missing ID field. Raw message: {}", message);
                 }
