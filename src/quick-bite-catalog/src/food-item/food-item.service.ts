@@ -7,7 +7,7 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import { ClientKafka } from '@nestjs/microservices';
 import { lastValueFrom } from 'rxjs';
 
@@ -210,13 +210,23 @@ export class FoodItemService implements OnModuleInit {
     restaurantId: string,
     pagination: PaginationDto,
   ) {
+    const whereCondition: any = {
+      restaurantId,
+    };
+
+    if (pagination.categoryId && pagination.categoryId !== 'ALL') {
+      whereCondition.categoryId = pagination.categoryId;
+    }
+
+    if (pagination.search && pagination.search.trim() !== '') {
+      whereCondition.name = ILike(`%${pagination.search.trim()}%`);
+    }
+
     return PaginationHelper.paginate(
       this.foodItemRepository,
       pagination,
       {
-        where: {
-          restaurantId,
-        },
+        where: whereCondition,
         select: {
           id: true,
           name: true,
@@ -225,6 +235,8 @@ export class FoodItemService implements OnModuleInit {
           images: true,
           isAvailable: true,
           totalSold: true,
+          categoryId: true,
+          restaurantId: true,
         },
       },
     );
