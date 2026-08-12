@@ -10,11 +10,17 @@ import MerchantLayout from './layouts/MerchantLayout';
 
 // Guards
 import AuthGuard from './guards/AuthGuard';
+import RestaurantGuard from './guards/RestaurantGuard';
 
 // Pages
 import LoginPage from './pages/auth/LoginPage';
 import AdminDashboardPage from './pages/admin/DashboardPage';
+import { RestaurantsPage } from './pages/admin/RestaurantsPage';
+import { UsersPage } from './pages/admin/UsersPage';
+import { OrdersPage } from './pages/admin/OrdersPage';
 import MerchantDashboardPage from './pages/merchant/DashboardPage';
+import CreateRestaurantPage from './pages/merchant/CreateRestaurantPage';
+import MerchantMenuPage from './pages/merchant/MerchantMenuPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 
 /**
@@ -62,9 +68,9 @@ export default function App() {
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
-            <Route path="restaurants" element={<AdminDashboardPage />} />
-            <Route path="users" element={<AdminDashboardPage />} />
-            <Route path="orders" element={<AdminDashboardPage />} />
+            <Route path="restaurants" element={<RestaurantsPage />} />
+            <Route path="users" element={<UsersPage />} />
+            <Route path="orders" element={<OrdersPage />} />
             <Route path="analytics" element={<AdminDashboardPage />} />
             <Route path="settings" element={<AdminDashboardPage />} />
           </Route>
@@ -72,14 +78,17 @@ export default function App() {
 
         {/* Protected Merchant Routes */}
         <Route element={<AuthGuard allowedRoles={['Merchant']} />}>
-          <Route path="/merchant" element={<MerchantLayout />}>
-            <Route index element={<Navigate to="/merchant/dashboard" replace />} />
-            <Route path="dashboard" element={<MerchantDashboardPage />} />
-            <Route path="menu" element={<MerchantDashboardPage />} />
-            <Route path="orders" element={<MerchantDashboardPage />} />
-            <Route path="inventory" element={<MerchantDashboardPage />} />
-            <Route path="revenue" element={<MerchantDashboardPage />} />
-            <Route path="profile" element={<MerchantDashboardPage />} />
+          <Route element={<RestaurantGuard />}>
+            <Route path="/merchant/setup" element={<CreateRestaurantPage />} />
+            <Route path="/merchant" element={<MerchantLayout />}>
+              <Route index element={<Navigate to="/merchant/dashboard" replace />} />
+              <Route path="dashboard" element={<MerchantDashboardPage />} />
+              <Route path="menu" element={<MerchantMenuPage />} />
+              <Route path="orders" element={<MerchantDashboardPage />} />
+              <Route path="inventory" element={<MerchantDashboardPage />} />
+              <Route path="revenue" element={<MerchantDashboardPage />} />
+              <Route path="profile" element={<MerchantDashboardPage />} />
+            </Route>
           </Route>
         </Route>
 

@@ -208,6 +208,44 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   const [selectedServiceId, setSelectedServiceId] = useState<string>('gateway');
   const animationRef = useRef<any>(null);
 
+  // Track per-service status independently (for direct ping approach)
+  const [serviceStatuses, setServiceStatuses] = useState<Record<string, 'Healthy' | 'Degraded' | 'Unhealthy' | 'Pending'>>({
+    identity_service: 'Pending',
+    order_service: 'Pending',
+    catalog_service: 'Pending',
+    inventory_service: 'Pending',
+    payment_service: 'Pending',
+  });
+
+  // Map serviceKey -> URL from environment variables
+  const SERVICE_URLS: Record<string, string[]> = {
+    identity_service: [
+      import.meta.env.VITE_IDENTITY_URL,
+      `${import.meta.env.VITE_IDENTITY_URL}/health`,
+      `${import.meta.env.VITE_IDENTITY_URL}/api/health`,
+    ].filter(Boolean),
+    order_service: [
+      import.meta.env.VITE_ORDER_URL,
+      `${import.meta.env.VITE_ORDER_URL}/health`,
+      `${import.meta.env.VITE_ORDER_URL}/api/app/health`,
+    ].filter(Boolean),
+    catalog_service: [
+      import.meta.env.VITE_CATALOG_URL,
+      `${import.meta.env.VITE_CATALOG_URL}/health`,
+      `${import.meta.env.VITE_CATALOG_URL}/api/health`,
+    ].filter(Boolean),
+    inventory_service: [
+      import.meta.env.VITE_INVENTORY_URL,
+      `${import.meta.env.VITE_INVENTORY_URL}/health`,
+      `${import.meta.env.VITE_INVENTORY_URL}/v1/health`,
+    ].filter(Boolean),
+    payment_service: [
+      import.meta.env.VITE_PAYMENT_URL,
+      `${import.meta.env.VITE_PAYMENT_URL}/health`,
+      `${import.meta.env.VITE_PAYMENT_URL}/v1/health`,
+    ].filter(Boolean),
+  };
+
   // Danh sách các Microservices trong Polyglot Architecture
   const services: ServiceNode[] = [
     { id: 'redis', apiKey: 'redis', name: 'Redis Cache', tech: 'Cache', color: 'from-pink-500 to-rose-600', gradient: 'pink', icon: HardDrive, x: 20, y: 15 },
@@ -424,65 +462,134 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     return () => clearTimeout(timer);
   }, [redirectCountdown, onReady]);
 
-  // 2. Logic Polling API /health liên tục (chỉ bắt đầu sau 5s Ignition hoàn tất)
+  // 2. Logic ping trực tiếp từng service song song + poll Gateway liên tục
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | null = null;
     let isCancelled = false;
+    let gatewayTimer: ReturnType<typeof setTimeout> | null = null;
 
-    const checkHealth = async () => {
-      setAttempts((prev) => prev + 1);
+    // Periodically poll Gateway /health to keep Redis, MongoDB, System Resources & overall status updated
+    const pollGateway = async () => {
       try {
         const rawRes: any = await axiosClient.get('/health');
-
         if (!isCancelled) {
           const parsed = parseHealthPayload(rawRes);
-          if (parsed) {
-            setHealthData(parsed);
-            if (parsed.status === 'Healthy') {
-              setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
-              setRedirectCountdown((prev) => (prev === null ? 3 : prev));
-              return;
-            }
-          }
-
-          setErrorMessage('API Gateway connected. Polling node health status...');
-          timer = setTimeout(checkHealth, 2500);
+          if (parsed) setHealthData(parsed);
+          setErrorMessage('API Gateway online. Đang theo dõi các microservices...');
         }
       } catch (err: any) {
         if (!isCancelled) {
-          const rawErrorPayload = err.response?.data;
-          const parsedError = parseHealthPayload(rawErrorPayload);
-
-          if (parsedError) {
-            setHealthData(parsedError);
-            if (parsedError.status === 'Healthy') {
-              setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
-              setRedirectCountdown((prev) => (prev === null ? 3 : prev));
-              return;
-            }
-            setErrorMessage('API Gateway active (HTTP 503). Microservices warming up...');
-          } else {
-            setErrorMessage(err.message || 'Connecting to API Gateway...');
-          }
-
-          timer = setTimeout(checkHealth, 2500);
+          const parsedError = parseHealthPayload(err.response?.data);
+          if (parsedError) setHealthData(parsedError);
+        }
+      } finally {
+        if (!isCancelled) {
+          gatewayTimer = setTimeout(pollGateway, 3000);
         }
       }
     };
 
-    // Dành 5 giây (4s ignition xen kẽ + 1s hold) trước khi gửi request healthcheck đầu tiên
-    const initialDelay = setTimeout(() => {
-      if (!isCancelled) {
-        checkHealth();
+    // Direct ping to each service: hold connection until Render wakes container
+    const pingServiceDirectly = async (serviceKey: string, urls: string[]) => {
+      if (!urls || urls.length === 0) {
+        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Unhealthy' }));
+        return;
       }
-    }, 5000);
+
+      setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Degraded' }));
+      let retries = 0;
+      const maxRetries = 15;
+
+      while (retries < maxRetries && !isCancelled) {
+        for (const url of urls) {
+          if (isCancelled) return;
+          try {
+            const res = await fetch(url, {
+              method: 'GET',
+              headers: { 'Accept': 'application/json, text/plain, */*' },
+              signal: AbortSignal.timeout(120000), // 2 minutes max per attempt
+            });
+
+            if (isCancelled) return;
+
+            // If HTTP status is 200-299, container IS UP AND ALIVE!
+            if (res.ok) {
+              let body: any = null;
+              try {
+                body = await res.json();
+              } catch {
+                body = { status: 'Healthy' };
+              }
+
+              if (isCancelled) return;
+
+              setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
+              setHealthData((prev) => ({
+                ...(prev || { status: 'Degraded', total_duration_ms: 0, timestamp: new Date().toISOString() }),
+                entries: {
+                  ...(prev?.entries || {}),
+                  [serviceKey]: {
+                    status: 'Healthy',
+                    description: `${serviceKey} is healthy (direct ping)`,
+                    data: body,
+                    duration_ms: 0,
+                    exception: null,
+                  },
+                },
+              }));
+              setAttempts((prev) => prev + 1);
+              return; // Done for this service!
+            }
+          } catch {
+            // Timeout or network error, continue to next URL or retry
+          }
+        }
+
+        if (!isCancelled) {
+          await new Promise((r) => setTimeout(r, 8000));
+          retries++;
+        }
+      }
+
+      if (!isCancelled) {
+        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Unhealthy' }));
+      }
+    };
+
+    const initialDelay = setTimeout(() => {
+      if (isCancelled) return;
+      // 1. Start continuous Gateway polling
+      pollGateway();
+      // 2. Ping ALL microservices directly in parallel
+      Object.entries(SERVICE_URLS).forEach(([key, urls]) => {
+        pingServiceDirectly(key, urls);
+      });
+    }, 1000);
 
     return () => {
       isCancelled = true;
       clearTimeout(initialDelay);
-      if (timer) clearTimeout(timer);
+      if (gatewayTimer) clearTimeout(gatewayTimer);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReady]);
+
+  // Watch serviceStatuses & healthData — when ALL services (including Redis) are Healthy, trigger redirect
+  useEffect(() => {
+    const isRedisHealthy = healthData?.entries?.['redis']?.status === 'Healthy';
+    const areMicroservicesHealthy = services.every((s) => {
+      if (s.id === 'redis') return isRedisHealthy;
+      const direct = serviceStatuses[s.apiKey];
+      const gateway = healthData?.entries?.[s.apiKey]?.status;
+      return direct === 'Healthy' || gateway === 'Healthy';
+    });
+
+    if (areMicroservicesHealthy && redirectCountdown === null) {
+      setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
+      setHealthData((prev) => ({ ...(prev as any), status: 'Healthy' }));
+      setRedirectCountdown(3);
+    }
+  }, [serviceStatuses, healthData, redirectCountdown, services]);
+
 
   return (
     <div className="fixed inset-0 bg-slate-950 text-slate-100 flex flex-col justify-between p-3 sm:p-6 z-50 overflow-y-auto font-sans select-none">
@@ -684,8 +791,10 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
 
             <div className="relative w-full h-80 my-1">
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                {services.map((s) => {
-                  const isHealthy = healthData?.entries?.[s.apiKey]?.status === 'Healthy';
+                              {services.map((s) => {
+                  // Use serviceStatuses (from direct ping) as the source of truth
+                  const directStatus = serviceStatuses[s.apiKey];
+                  const isHealthy = directStatus === 'Healthy' || healthData?.entries?.[s.apiKey]?.status === 'Healthy';
                   const isLineLit = litNodes.includes(s.id);
                   return (
                     <line
@@ -723,12 +832,14 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                 </span>
               </div>
 
-              {/* Sub-Nodes với Hiệu Ứng Bập Bềnh Màu Sắc */}
+              {/* Sub-Nodes with serviceStatuses & healthData as combined source of truth */}
               {services.map((s) => {
                 const Icon = s.icon;
-                const nodeEntry = healthData?.entries?.[s.apiKey];
-                const isHealthy = nodeEntry?.status === 'Healthy';
-                const isNodePresent = !!nodeEntry;
+                const directStatus = serviceStatuses[s.apiKey];
+                const gatewayEntry = healthData?.entries?.[s.apiKey];
+                const isHealthy = directStatus === 'Healthy' || gatewayEntry?.status === 'Healthy';
+                const isDegraded = !isHealthy && (directStatus === 'Degraded' || directStatus === 'Pending' || gatewayEntry?.status === 'Degraded');
+                const isNodePresent = !!directStatus || !!gatewayEntry;
                 const isSelected = selectedServiceId === s.id;
                 const isLit = litNodes.includes(s.id);
 
@@ -744,13 +855,20 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                         ? `ring-4 ring-cyan-400/50 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/50 scale-105 opacity-100`
                         : isHealthy
                         ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40 opacity-100'
-                        : isNodePresent
+                        : isDegraded
                         ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40 opacity-100'
-                        : 'bg-slate-900/70 border-slate-800 text-slate-400 opacity-100'
+                        : 'bg-slate-900/95 border-red-500/50 text-red-400 shadow-red-950/40 opacity-100'
                     }`}
                     style={{ left: `${s.x}%`, top: `${s.y}%` }}
                   >
-                    <div className={`p-1.5 rounded-lg shadow-inner ${isHealthy ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30' : isNodePresent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-500'
+                    <div className={`p-1.5 rounded-lg shadow-inner ${
+                      isHealthy
+                        ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30'
+                        : isDegraded
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                        : isNodePresent
+                        ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                        : 'bg-slate-800 text-slate-500'
                       }`}>
                       <Icon className="w-3.5 h-3.5" />
                     </div>
@@ -765,10 +883,15 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                             <CheckCircle2 className="w-2.5 h-2.5 text-emerald-400" />
                             <span className="text-[9px] text-emerald-400 font-bold">Healthy</span>
                           </>
+                        ) : isDegraded ? (
+                          <>
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin text-amber-400" />
+                            <span className="text-[9px] text-amber-400 font-bold">Waking...</span>
+                          </>
                         ) : isNodePresent ? (
                           <>
-                            <XCircle className="w-2.5 h-2.5 text-amber-400" />
-                            <span className="text-[9px] text-amber-400 font-bold">Unhealthy</span>
+                            <XCircle className="w-2.5 h-2.5 text-red-400" />
+                            <span className="text-[9px] text-red-400 font-bold">Unreachable</span>
                           </>
                         ) : (
                           <>
