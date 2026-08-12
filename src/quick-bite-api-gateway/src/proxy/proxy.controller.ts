@@ -2,6 +2,7 @@ import { Controller, All, Req, Res, Logger } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import type { Request, Response } from 'express';
 import { DynamicConfigService } from '../config/dynamic-config.service';
+import { RedisCacheService, CachedResponse } from '../cache/redis-cache.service';
 import { firstValueFrom } from 'rxjs';
 
 @Controller()
@@ -11,6 +12,7 @@ export class ProxyController {
   constructor(
     private readonly httpService: HttpService,
     private readonly configService: DynamicConfigService,
+    private readonly redisCacheService: RedisCacheService,
   ) {}
 
   @All('identity{*path}')
@@ -53,6 +55,137 @@ export class ProxyController {
     await this.forwardRequest('PAYMENT_URL', req, res);
   }
 
+  private getCatalogCacheKeyAndTtl(req: Request): { key: string; ttl: number } | null {
+    const cleanPath = req.originalUrl.replace(/^\/catalog/, '');
+    const pathname = cleanPath.split('?')[0];
+
+    // 1. Food Items endpoints
+    const foodItemSubMatch = pathname.match(/^\/food-items\/([^\/]+)\/(images|variants|toppings)$/);
+    if (foodItemSubMatch) {
+      return null;
+    }
+
+    const foodItemRestaurantMatch = pathname.match(/^\/food-items\/restaurant\/([^\/]+)$/);
+    if (foodItemRestaurantMatch) {
+      return { key: `catalog:food-items:restaurant:${cleanPath}`, ttl: 120 };
+    }
+
+    const foodItemCategoryMatch = pathname.match(/^\/food-items\/category\/([^\/]+)$/);
+    if (foodItemCategoryMatch) {
+      return { key: `catalog:food-items:category:${cleanPath}`, ttl: 120 };
+    }
+
+    const foodItemSingleMatch = pathname.match(/^\/food-items\/([^\/]+)$/);
+    if (foodItemSingleMatch) {
+      return { key: `catalog:food-item:${foodItemSingleMatch[1]}`, ttl: 600 };
+    }
+
+    if (pathname === '/food-items' || pathname === '/food-items/') {
+      return { key: `catalog:food-items:list:${cleanPath}`, ttl: 120 };
+    }
+
+    // 2. Categories endpoints
+    const categorySingleMatch = pathname.match(/^\/categories\/([^\/]+)$/);
+    if (categorySingleMatch) {
+      return { key: `catalog:category:${categorySingleMatch[1]}`, ttl: 600 };
+    }
+
+    if (pathname === '/categories' || pathname === '/categories/') {
+      return { key: `catalog:categories:list:${cleanPath}`, ttl: 300 };
+    }
+
+    // 3. Restaurants endpoints
+    const restaurantOwnerMatch = pathname.match(/^\/restaurants\/owner\/([^\/]+)$/);
+    if (restaurantOwnerMatch) {
+      return { key: `catalog:restaurant:owner:${restaurantOwnerMatch[1]}`, ttl: 300 };
+    }
+
+    const restaurantSingleMatch = pathname.match(/^\/restaurants\/([^\/]+)$/);
+    if (restaurantSingleMatch) {
+      return { key: `catalog:restaurant:${restaurantSingleMatch[1]}`, ttl: 600 };
+    }
+
+    if (pathname === '/restaurants' || pathname === '/restaurants/') {
+      return { key: `catalog:restaurants:list:${cleanPath}`, ttl: 300 };
+    }
+
+    return null;
+  }
+
+  private async invalidateCatalogCache(req: Request): Promise<void> {
+    const cleanPath = req.originalUrl.replace(/^\/catalog/, '');
+    const pathname = cleanPath.split('?')[0];
+    const method = req.method.toUpperCase();
+
+    // 1. Food Item sub-resource updates (PATCH /food-items/:id/images, variants, toppings)
+    const foodItemSubMatch = pathname.match(/^\/food-items\/([^\/]+)\/(images|variants|toppings)$/);
+    if (foodItemSubMatch && method === 'PATCH') {
+      const foodId = foodItemSubMatch[1];
+      this.logger.log(`⚡ [CACHE INVALIDATION] Food Item Sub-resource update for ID [${foodId}]`);
+      await this.redisCacheService.del(`catalog:food-item:${foodId}`);
+      return;
+    }
+
+    // 2. Food Item single update or delete (PATCH or DELETE /food-items/:id)
+    const foodItemSingleMatch = pathname.match(/^\/food-items\/([^\/]+)$/);
+    if (foodItemSingleMatch && (method === 'PATCH' || method === 'DELETE')) {
+      const foodId = foodItemSingleMatch[1];
+      this.logger.log(`⚡ [CACHE INVALIDATION] Food Item update/delete for ID [${foodId}]`);
+      await this.redisCacheService.del(`catalog:food-item:${foodId}`);
+      await this.redisCacheService.delByPattern('catalog:food-items:*');
+      return;
+    }
+
+    // 3. Food Item creation (POST /food-items)
+    if ((pathname === '/food-items' || pathname === '/food-items/') && method === 'POST') {
+      this.logger.log(`⚡ [CACHE INVALIDATION] Food Item created`);
+      await this.redisCacheService.delByPattern('catalog:food-items:*');
+      return;
+    }
+
+    // 4. Category single update or delete (PATCH or DELETE /categories/:id)
+    const categorySingleMatch = pathname.match(/^\/categories\/([^\/]+)$/);
+    if (categorySingleMatch && (method === 'PATCH' || method === 'DELETE')) {
+      const catId = categorySingleMatch[1];
+      this.logger.log(`⚡ [CACHE INVALIDATION] Category update/delete for ID [${catId}]`);
+      await this.redisCacheService.del(`catalog:category:${catId}`);
+      await this.redisCacheService.delByPattern('catalog:categories:*');
+      await this.redisCacheService.delByPattern('catalog:restaurant:*');
+      return;
+    }
+
+    // 5. Category creation (POST /categories)
+    if ((pathname === '/categories' || pathname === '/categories/') && method === 'POST') {
+      this.logger.log(`⚡ [CACHE INVALIDATION] Category created`);
+      await this.redisCacheService.delByPattern('catalog:categories:*');
+      await this.redisCacheService.delByPattern('catalog:restaurant:*');
+      return;
+    }
+
+    // 6. Restaurant single update or delete (PATCH or DELETE /restaurants/:id)
+    const restaurantSingleMatch = pathname.match(/^\/restaurants\/([^\/]+)$/);
+    if (restaurantSingleMatch && (method === 'PATCH' || method === 'DELETE')) {
+      const restId = restaurantSingleMatch[1];
+      this.logger.log(`⚡ [CACHE INVALIDATION] Restaurant update/delete for ID [${restId}]`);
+      await this.redisCacheService.del(`catalog:restaurant:${restId}`);
+      await this.redisCacheService.delByPattern('catalog:restaurant:owner:*');
+      await this.redisCacheService.delByPattern('catalog:restaurants:list:*');
+      if (method === 'DELETE') {
+        await this.redisCacheService.delByPattern('catalog:categories:*');
+        await this.redisCacheService.delByPattern('catalog:food-items:*');
+      }
+      return;
+    }
+
+    // 7. Restaurant creation (POST /restaurants)
+    if ((pathname === '/restaurants' || pathname === '/restaurants/') && method === 'POST') {
+      this.logger.log(`⚡ [CACHE INVALIDATION] Restaurant created`);
+      await this.redisCacheService.delByPattern('catalog:restaurant:owner:*');
+      await this.redisCacheService.delByPattern('catalog:restaurants:list:*');
+      return;
+    }
+  }
+
   private async forwardRequest(targetConfigKey: string, req: Request, res: Response) {
     const startTime = Date.now();
     const targetBaseUrl = await this.configService.getAsync(targetConfigKey);
@@ -73,6 +206,21 @@ export class ProxyController {
     // Ensure relativePath starts with /
     const formattedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     const targetUrl = `${cleanBaseUrl}${formattedPath}`;
+
+    // Cache lookup for GET requests to CATALOG_URL
+    let cacheConfig: { key: string; ttl: number } | null = null;
+    if (targetConfigKey === 'CATALOG_URL' && req.method === 'GET') {
+      cacheConfig = this.getCatalogCacheKeyAndTtl(req);
+      if (cacheConfig) {
+        const cached = await this.redisCacheService.get<CachedResponse>(cacheConfig.key);
+        if (cached) {
+          this.logger.log(`⚡ [CACHE HIT] ${req.method} ${req.originalUrl} (Key: ${cacheConfig.key})`);
+          res.status(cached.statusCode).send(cached.data);
+          return;
+        }
+        this.logger.log(`🔍 [CACHE MISS] ${req.method} ${req.originalUrl} (Key: ${cacheConfig.key})`);
+      }
+    }
 
     if (req.method !== 'GET' && req.body && Object.keys(req.body).length > 0) {
       this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl} | BODY: ${JSON.stringify(req.body)}`);
@@ -122,6 +270,21 @@ export class ProxyController {
         this.logger.log(
           `✅ [PROXY RESPONSE] ${req.method} ${req.originalUrl} -> ${targetUrl} [HTTP ${response.status}] (${duration}ms)`,
         );
+
+        // Save cache for GET requests on success (HTTP 2xx)
+        if (targetConfigKey === 'CATALOG_URL' && req.method === 'GET' && cacheConfig && response.status >= 200 && response.status < 300) {
+          await this.redisCacheService.set(
+            cacheConfig.key,
+            { statusCode: response.status, data: response.data },
+            cacheConfig.ttl,
+          );
+          this.logger.log(`💾 [CACHE STORED] Key: ${cacheConfig.key} (TTL: ${cacheConfig.ttl}s)`);
+        }
+
+        // Cache invalidation for catalog mutations on success (HTTP 2xx)
+        if (targetConfigKey === 'CATALOG_URL' && req.method !== 'GET' && response.status >= 200 && response.status < 300) {
+          await this.invalidateCatalogCache(req);
+        }
 
         res.status(response.status).set(response.headers).send(response.data);
         return;

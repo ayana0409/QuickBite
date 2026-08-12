@@ -5,6 +5,7 @@ import { HealthModule } from './health/health.module';
 import { AppConfigModule } from './config/config.module';
 import { DynamicConfigService } from './config/dynamic-config.service';
 import { ProxyModule } from './proxy/proxy.module';
+import { CacheModule } from './cache/cache.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { ProxyModule } from './proxy/proxy.module';
       ],
     }),
     HealthModule,
+    CacheModule,
     ProxyModule,
   ],
   providers: [
