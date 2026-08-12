@@ -39,10 +39,11 @@ export default function MerchantMenuPage() {
   const [foodTags, setFoodTags] = useState('');
   const [foodVariants, setFoodVariants] = useState<FoodVariant[]>([]);
   const [foodToppings, setFoodToppings] = useState<FoodTopping[]>([]);
+  const [foodIsAvailable, setFoodIsAvailable] = useState<boolean>(true);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [pageSize] = useState<number>(9);
+  const [pageSize] = useState<number>(10);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
 
@@ -180,6 +181,7 @@ export default function MerchantMenuPage() {
       setFoodTags(food.tags ? food.tags.join(', ') : '');
       setFoodVariants(food.variants || []);
       setFoodToppings(food.toppings || []);
+      setFoodIsAvailable(food.isAvailable !== undefined ? food.isAvailable : true);
 
       setIsFoodModalOpen(true);
 
@@ -197,6 +199,7 @@ export default function MerchantMenuPage() {
         setFoodTags(detail.tags ? detail.tags.join(', ') : '');
         setFoodVariants(detail.variants || []);
         setFoodToppings(detail.toppings || []);
+        if (detail.isAvailable !== undefined) setFoodIsAvailable(detail.isAvailable);
       }
     } else {
       setEditingFood(null);
@@ -211,6 +214,7 @@ export default function MerchantMenuPage() {
       setFoodTags('');
       setFoodVariants([]);
       setFoodToppings([]);
+      setFoodIsAvailable(true);
       setIsFoodModalOpen(true);
     }
   };
@@ -263,6 +267,7 @@ export default function MerchantMenuPage() {
       description: foodDesc,
       imageUrl: foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
       images: foodImageUrl ? [foodImageUrl] : [],
+      isAvailable: foodIsAvailable,
       preparationTime: parsedPrepTime,
       tags: tagsArray,
       variants: foodVariants.filter(v => v.name.trim() !== ''),
@@ -393,7 +398,7 @@ export default function MerchantMenuPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {safeFoodItems.map((food) => {
                   const catName = safeCategories.find(c => c.id === food.categoryId)?.name || 'Danh mục';
                   const displayImage = (food.images && food.images[0]) || food.imageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80';
@@ -403,7 +408,11 @@ export default function MerchantMenuPage() {
                   return (
                     <div
                       key={food.id}
-                      className="bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden"
+                      className={`bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden ${
+                        !food.isAvailable
+                          ? 'opacity-50 grayscale-[50%] hover:opacity-90 hover:grayscale-0 border-slate-800/60 bg-slate-950/60'
+                          : ''
+                      }`}
                     >
                       <div className="space-y-3">
                         {/* Image & Status Badge */}
@@ -527,7 +536,7 @@ export default function MerchantMenuPage() {
             </button>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             {safeCategories.map((cat) => {
               const count = safeFoodItems.filter((f) => f && f.categoryId === cat.id).length;
               return (
@@ -582,6 +591,37 @@ export default function MerchantMenuPage() {
             </div>
 
             <form onSubmit={handleSaveFoodItem} className="space-y-4 text-xs">
+              {/* Trạng thái Mở Bán Toggle Switch */}
+              <div className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
+                <div className="flex items-center gap-2.5">
+                  {foodIsAvailable ? (
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-400 shrink-0" />
+                  )}
+                  <div>
+                    <span className="font-bold text-slate-200 block text-xs">Trạng Thái Mở Bán</span>
+                    <span className="text-[10px] text-slate-400">
+                      {foodIsAvailable ? 'Món ăn khả dụng và sẵn sàng cho khách hàng đặt mua' : 'Tạm hết món hoặc ngưng phục vụ món này trên menu'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFoodIsAvailable(!foodIsAvailable)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                    foodIsAvailable ? 'bg-emerald-500' : 'bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                      foodIsAvailable ? 'translate-x-5' : 'translate-x-0'
+                    }`}
+                  />
+                </button>
+              </div>
+
               {/* Tên & SKU */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="sm:col-span-2 space-y-1">
