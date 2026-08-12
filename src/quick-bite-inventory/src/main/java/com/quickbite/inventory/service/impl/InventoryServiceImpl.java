@@ -54,7 +54,12 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional(readOnly = true)
     public org.springframework.data.domain.Page<InventoryItemResponse> getInventoryByRestaurant(UUID restaurantId, UUID categoryId, String name, int page, int limit) {
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page - 1), limit);
-        return inventoryItemRepository.findInventoryByRestaurant(restaurantId, categoryId, name, pageable);
+        String searchName = (name == null) ? "" : name.trim();
+        
+        boolean hasCategoryId = (categoryId != null);
+        UUID safeCategoryId = hasCategoryId ? categoryId : UUID.fromString("00000000-0000-0000-0000-000000000000");
+        
+        return inventoryItemRepository.findInventoryByRestaurant(restaurantId, hasCategoryId, safeCategoryId, searchName, pageable);
     }
 
     @Override
