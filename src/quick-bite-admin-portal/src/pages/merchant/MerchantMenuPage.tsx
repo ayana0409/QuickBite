@@ -322,23 +322,21 @@ export default function MerchantMenuPage() {
         <div className="flex items-center gap-2 bg-slate-950/80 p-1.5 rounded-2xl border border-slate-800 shrink-0 relative z-10">
           <button
             onClick={() => setActiveTab('food')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'food'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'food'
                 ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-slate-950 shadow-lg shadow-emerald-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <Utensils className="w-3.5 h-3.5" />
-            <span>Món Ăn ({safeFoodItems.length})</span>
+            <span>Món Ăn ({totalItems})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('category')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'category'
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${activeTab === 'category'
                 ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 shadow-lg shadow-cyan-500/20'
                 : 'text-slate-400 hover:text-white hover:bg-slate-900'
-            }`}
+              }`}
           >
             <FolderPlus className="w-3.5 h-3.5" />
             <span>Danh Mục ({safeCategories.length})</span>
@@ -408,11 +406,10 @@ export default function MerchantMenuPage() {
                   return (
                     <div
                       key={food.id}
-                      className={`bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden ${
-                        !food.isAvailable
+                      className={`bg-slate-900/80 border border-slate-800 hover:border-emerald-500/40 rounded-2xl p-4 shadow-xl flex flex-col justify-between transition-all group relative overflow-hidden ${!food.isAvailable
                           ? 'opacity-50 grayscale-[50%] hover:opacity-90 hover:grayscale-0 border-slate-800/60 bg-slate-950/60'
                           : ''
-                      }`}
+                        }`}
                     >
                       <div className="space-y-3">
                         {/* Image & Status Badge */}
@@ -427,11 +424,10 @@ export default function MerchantMenuPage() {
                           {/* Availability Badge */}
                           <button
                             onClick={() => handleToggleAvailability(food.id, food.isAvailable)}
-                            className={`absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase flex items-center gap-1 shadow-lg backdrop-blur-md cursor-pointer transition-all ${
-                              food.isAvailable
+                            className={`absolute top-2.5 right-2.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase flex items-center gap-1 shadow-lg backdrop-blur-md cursor-pointer transition-all ${food.isAvailable
                                 ? 'bg-emerald-500/80 text-slate-950 border border-emerald-300'
                                 : 'bg-red-500/80 text-white border border-red-300'
-                            }`}
+                              }`}
                           >
                             {food.isAvailable ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
                             {food.isAvailable ? 'Đang Bán' : 'Tạm Hết'}
@@ -610,14 +606,12 @@ export default function MerchantMenuPage() {
                 <button
                   type="button"
                   onClick={() => setFoodIsAvailable(!foodIsAvailable)}
-                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                    foodIsAvailable ? 'bg-emerald-500' : 'bg-slate-700'
-                  }`}
+                  className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${foodIsAvailable ? 'bg-emerald-500' : 'bg-slate-700'
+                    }`}
                 >
                   <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                      foodIsAvailable ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${foodIsAvailable ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </button>
               </div>
