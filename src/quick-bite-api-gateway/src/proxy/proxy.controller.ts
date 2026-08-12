@@ -50,6 +50,11 @@ export class ProxyController {
     await this.forwardRequest('INVENTORY_URL', req, res);
   }
 
+  @All('api/v1/inventory{*path}')
+  async proxyApiV1Inventory(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('INVENTORY_URL', req, res);
+  }
+
   @All('payments{*path}')
   async proxyPayment(@Req() req: Request, @Res() res: Response) {
     await this.forwardRequest('PAYMENT_URL', req, res);
@@ -199,11 +204,16 @@ export class ProxyController {
       return;
     }
 
-    // Strip prefix if request contains /catalog, /identity, /order, /inventory, /payments
-    const relativePath = req.originalUrl.replace(/^\/(catalog|identity|order|inventory|payments)/, '');
+    // Compute relativePath based on service target
+    let relativePath = req.originalUrl;
+    if (targetConfigKey === 'INVENTORY_URL') {
+      // Keep /inventory path so it appends cleanly to INVENTORY_URL (http://localhost:8083/api/v1)
+      relativePath = req.originalUrl.replace(/^\/api\/v1/, '');
+    } else {
+      relativePath = req.originalUrl.replace(/^\/(catalog|identity|order|inventory|payments)/, '');
+    }
+
     const cleanBaseUrl = targetBaseUrl.replace(/\/$/, '');
-    
-    // Ensure relativePath starts with /
     const formattedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     const targetUrl = `${cleanBaseUrl}${formattedPath}`;
 

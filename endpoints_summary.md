@@ -404,6 +404,36 @@ Base path: `/api/v1/inventory`
 
 ---
 
+#### `GET /api/v1/inventory/restaurant/{restaurantId}`
+*Lấy danh sách tồn kho theo nhà hàng (trả về tất cả món ăn của nhà hàng kèm theo số lượng tồn kho).*
+
+**Params:** `restaurantId: UUID`
+**Query Params:** `?page=1&limit=10&categoryId=uuid&search=...`
+
+**Response** `200`: Phân trang danh sách `InventoryItemResponse`.
+```json
+{
+  "totalPages": 1,
+  "totalElements": 1,
+  "size": 10,
+  "content": [
+    {
+      "id": "uuid",
+      "foodItemId": "uuid",
+      "name": "Tên món ăn",
+      "quantity": 0,
+      "reservedQuantity": 0,
+      "availableQuantity": 0,
+      "createdAt": null,
+      "updatedAt": null
+    }
+  ],
+  "number": 0
+}
+```
+
+---
+
 #### `POST /api/v1/inventory`
 *Khởi tạo mới hoặc thiết lập lại số lượng tuyệt đối.*
 
