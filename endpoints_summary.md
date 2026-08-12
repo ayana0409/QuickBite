@@ -1,0 +1,785 @@
+# QuickBite Services – API Endpoints, Input & Output
+
+> **Ghi chú chung về Format Response:**
+> Ngoại trừ service **Identity**, tất cả các endpoint của các service còn lại đều trả về response được bọc trong một wrapper chung (Global Response Wrapper). 
+> 
+> **Dạng thành công (Success - 2xx):**
+> ```json
+> {
+>     "success": true,
+>     "statusCode": 200,
+>     "message": "Success.",
+>     "data": { ... }, // Dữ liệu trả về thực tế sẽ nằm ở field data này
+>     "timestamp": "2026-08-12T02:33:12.738Z",
+>     "path": "/restaurants/d92f82d1-d04d-4d2b-9a31-ee157a06f644"
+> }
+> ```
+> 
+> **Dạng lỗi (Error - 4xx/5xx):**
+> ```json
+> {
+>     "success": false,
+>     "statusCode": 404,
+>     "message": "Restaurant not found.",
+>     "errors": null,
+>     "timestamp": "2026-08-12T02:33:40.803Z",
+>     "path": "/restaurants/d92f82d1-d04d-4d2b-9a31-ee157a06f643"
+> }
+> ```
+
+> **Ghi chú chung về phân trang (Catalog Service):**
+> Các endpoint trả về danh sách đều hỗ trợ query params phân trang: `?page=1&limit=10&search=...&categoryId=...`
+> Response dạng phân trang (dữ liệu phân trang nằm trong field `data` của wrapper chung ở trên):
+> ```json
+> {
+>   "data": [...],
+>   "meta": { "page": 1, "limit": 10, "total": 100, "totalPages": 10 }
+> }
+> ```
+
+---
+
+## 1. Catalog Service (`quick-bite-catalog` — NestJS, port 3000)
+
+---
+
+### 📁 Restaurant API — `/restaurants`
+
+#### `POST /restaurants`
+**Auth:** JWT + Permission `RESTAURANT_CREATE`
+
+**Request Body:**
+```json
+{
+  "ownerId": "uuid",
+  "name": "Tên nhà hàng",
+  "slug": "ten-nha-hang",
+  "address": {
+    "line1": "123 Đường ABC",
+    "ward": "Phường 1",
+    "district": "Quận 1",
+    "city": "Hồ Chí Minh",
+    "geo": {
+      "type": "Point",
+      "coordinates": [106.6297, 10.8231]
+    }
+  }
+}
+```
+
+**Response** `201`:
+```json
+{
+  "id": "uuid",
+  "ownerId": "uuid",
+  "name": "Tên nhà hàng",
+  "slug": "ten-nha-hang",
+  "address": { "line1": "...", "ward": "...", "district": "...", "city": "...", "geo": { "type": "Point", "coordinates": [106.6, 10.8] } },
+  "status": "closed",
+  "rating": { "avg": 0, "count": 0 },
+  "createdAt": "2026-08-12T...",
+  "updatedAt": "2026-08-12T..."
+}
+```
+
+---
+
+#### `GET /restaurants`
+**Query Params:** `?page=1&limit=10&search=...&ownerId=uuid`
+
+**Response** `200`: Phân trang danh sách Restaurant (đầy đủ các field).
+
+---
+
+#### `GET /restaurants/owner/:ownerId`
+**Params:** `ownerId: string`
+
+**Response** `200`: Một object Restaurant hoặc `null`.
+
+---
+
+#### `GET /restaurants/:id`
+**Auth:** JWT + Permission `RESTAURANT_READ`
+**Params:** `id: UUID v4`
+
+**Response** `200`:
+```json
+{
+  "id": "uuid",
+  "name": "Tên nhà hàng",
+  "categories": [
+    { "id": "uuid", "name": "Pizza" }
+  ]
+}
+```
+> *Chỉ trả về `id`, `name` của restaurant và danh sách `categories` (id + name).*
+
+---
+
+#### `PATCH /restaurants/:id`
+**Auth:** JWT + Permission `RESTAURANT_UPDATE`
+**Params:** `id: UUID v4`
+
+**Request Body** *(tất cả optional)*:
+```json
+{
+  "name": "Tên mới",
+  "slug": "slug-moi",
+  "address": { "line1": "...", "ward": "...", "district": "...", "city": "...", "geo": { "type": "Point", "coordinates": [...] } }
+}
+```
+
+**Response** `200`: Object Restaurant đầy đủ sau khi cập nhật.
+
+---
+
+#### `DELETE /restaurants/:id`
+**Auth:** JWT + Permission `RESTAURANT_DELETE`
+**Params:** `id: UUID v4`
+
+**Response** `200`: `undefined` (void)
+
+---
+
+### 📁 Category API — `/categories`
+
+#### `POST /categories`
+**Auth:** JWT + Permission `CATEGORY_CREATE`
+
+**Request Body:**
+```json
+{
+  "restaurantId": "uuid",
+  "name": "Pizza",
+  "sortOrder": 1
+}
+```
+
+**Response** `201`:
+```json
+{
+  "id": "uuid",
+  "restaurantId": "uuid",
+  "name": "Pizza",
+  "sortOrder": 1,
+  "createdAt": "2026-08-12T...",
+  "updatedAt": "2026-08-12T..."
+}
+```
+
+---
+
+#### `GET /categories`
+**Auth:** JWT + Permission `CATEGORY_READ`
+**Query Params:** `?page=1&limit=10&search=...`
+
+**Response** `200`: Phân trang danh sách Category.
+
+---
+
+#### `GET /categories/:id`
+**Auth:** JWT + Permission `CATEGORY_READ`
+**Params:** `id: UUID v4`
+
+**Response** `200`:
+```json
+{
+  "id": "uuid",
+  "restaurantId": "uuid",
+  "name": "Pizza",
+  "sortOrder": 1,
+  "createdAt": "...",
+  "updatedAt": "...",
+  "restaurant": { "id": "uuid", "name": "Tên nhà hàng", "slug": "...", "ownerId": "...", "status": "..." }
+}
+```
+> *Load kèm relation `restaurant`.*
+
+---
+
+#### `PATCH /categories/:id`
+**Auth:** JWT + Permission `CATEGORY_UPDATE`
+**Params:** `id: UUID v4`
+
+**Request Body** *(tất cả optional)*:
+```json
+{
+  "name": "Tên mới",
+  "sortOrder": 2
+}
+```
+
+**Response** `200`: Object Category đầy đủ sau khi cập nhật.
+
+---
+
+#### `DELETE /categories/:id`
+**Auth:** JWT + Permission `CATEGORY_DELETE`
+**Params:** `id: UUID v4`
+
+**Response** `200`: `undefined` (void)
+
+---
+
+### 📁 Food Item API — `/food-items`
+
+#### `POST /food-items`
+**Auth:** JWT + Permission `FOOD_ITEM_CREATE`
+
+**Request Body:**
+```json
+{
+  "categoryId": "uuid",
+  "restaurantId": "uuid",
+  "sku": "PIZZA-001",
+  "name": "Pizza Margherita",
+  "description": "Pizza cổ điển Italy",
+  "price": 120000,
+  "currency": "VND",
+  "images": ["https://..."],
+  "isAvailable": true,
+  "preparationTime": 20,
+  "tags": ["italian", "cheese"],
+  "totalSold": 0,
+  "variants": [
+    { "name": "Size L", "priceDelta": 30000 }
+  ],
+  "toppings": [
+    { "name": "Extra Cheese", "price": 15000 }
+  ]
+}
+```
+
+**Response** `201`: Object FoodItem đầy đủ (tất cả các field).
+
+---
+
+#### `GET /food-items`
+**Auth:** JWT + Permission `FOOD_ITEM_READ`
+**Query Params:** `?page=1&limit=10&search=...`
+
+**Response** `200`: Phân trang với các field được select:
+```json
+{
+  "data": [
+    { "id": "uuid", "name": "...", "price": 0, "currency": "VND", "images": [], "isAvailable": true, "totalSold": 0, "restaurantId": "uuid", "categoryId": "uuid" }
+  ],
+  "meta": { "page": 1, "limit": 10, "total": 0, "totalPages": 0 }
+}
+```
+
+---
+
+#### `GET /food-items/:id`
+**Auth:** JWT + Permission `FOOD_ITEM_READ`
+**Params:** `id: string`
+
+**Response** `200`: Object FoodItem đầy đủ tất cả các field (bao gồm `variants`, `toppings`, `description`, `tags`, `sku`...).
+
+---
+
+#### `GET /food-items/restaurant/:restaurantId`
+**Auth:** JWT + Permission `FOOD_ITEM_READ`
+**Params:** `restaurantId: string`
+**Query Params:** `?page=1&limit=10&search=...&categoryId=uuid (hoặc 'ALL')`
+
+**Response** `200`: Phân trang với fields: `id, name, price, currency, images, isAvailable, totalSold, categoryId, restaurantId`.
+
+---
+
+#### `GET /food-items/category/:categoryId`
+**Auth:** JWT + Permission `FOOD_ITEM_READ`
+**Params:** `categoryId: string`
+**Query Params:** `?page=1&limit=10&search=...`
+
+**Response** `200`: Phân trang với fields: `id, name, price, currency, images, isAvailable, totalSold`.
+
+---
+
+#### `PATCH /food-items/:id`
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** `id: string`
+
+**Request Body** *(tất cả optional, partial của CreateFoodItemDto)*:
+```json
+{
+  "name": "Tên mới",
+  "price": 150000,
+  "isAvailable": false
+}
+```
+
+**Response** `200`: Object FoodItem đầy đủ sau khi cập nhật.
+
+---
+
+#### `PATCH /food-items/:id/images`
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** `id: string`
+
+**Request Body:**
+```json
+{
+  "images": ["https://url1.jpg", "https://url2.jpg"]
+}
+```
+
+**Response** `200`: `undefined` (void)
+
+---
+
+#### `PATCH /food-items/:id/variants`
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** `id: string`
+
+**Request Body:**
+```json
+{
+  "variants": [
+    { "name": "Size M", "priceDelta": 0 },
+    { "name": "Size L", "priceDelta": 30000 }
+  ]
+}
+```
+
+**Response** `200`: `undefined` (void)
+
+---
+
+#### `PATCH /food-items/:id/toppings`
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** `id: string`
+
+**Request Body:**
+```json
+{
+  "toppings": [
+    { "name": "Extra Cheese", "price": 15000 },
+    { "name": "Mushroom", "price": 10000 }
+  ]
+}
+```
+
+**Response** `200`: `undefined` (void)
+
+---
+
+#### `DELETE /food-items/:id`
+**Auth:** JWT + Permission `FOOD_ITEM_DELETE`
+**Params:** `id: string`
+
+**Response** `200`: `undefined` (void)
+
+---
+
+## 2. Inventory Service (`quick-bite-inventory` — Spring Boot)
+
+Base path: `/api/v1/inventory`
+
+---
+
+#### `GET /api/v1/inventory`
+
+**Response** `200`:
+```json
+[
+  {
+    "id": "uuid",
+    "foodItemId": "uuid",
+    "quantity": 100,
+    "reservedQuantity": 5,
+    "availableQuantity": 95,
+    "createdAt": "2026-08-12T...",
+    "updatedAt": "2026-08-12T..."
+  }
+]
+```
+
+---
+
+#### `GET /api/v1/inventory/{foodItemId}`
+**Params:** `foodItemId: UUID`
+
+**Response** `200`: Một object `InventoryItemResponse` (xem cấu trúc ở trên).
+
+---
+
+#### `POST /api/v1/inventory`
+*Khởi tạo mới hoặc thiết lập lại số lượng tuyệt đối.*
+
+**Request Body:**
+```json
+{
+  "foodItemId": "uuid",
+  "quantity": 100
+}
+```
+
+**Response** `201`: Object `InventoryItemResponse`.
+
+---
+
+#### `POST /api/v1/inventory/adjust`
+*Cộng/trừ số lượng tồn kho (số dương = thêm, số âm = giảm).*
+
+**Request Body:**
+```json
+{
+  "foodItemId": "uuid",
+  "adjustmentQuantity": -5
+}
+```
+
+**Response** `200`: Object `InventoryItemResponse` sau khi điều chỉnh.
+
+---
+
+#### `DELETE /api/v1/inventory/{foodItemId}`
+**Params:** `foodItemId: UUID`
+
+**Response** `204`: No Content
+
+---
+
+## 3. Payment Service (`quick-bite-payment` — Spring Boot)
+
+Base path: `/v1/payments`
+
+---
+
+#### `POST /v1/payments`
+*Tạo phiên thanh toán mới.*
+
+**Request Body:**
+```json
+{
+  "orderId": "uuid",
+  "customerId": "uuid",
+  "amount": 250000.00,
+  "method": "CASH | VNPAY | MOMO | BANK_TRANSFER"
+}
+```
+
+**Response** `200`:
+```json
+{
+  "id": "uuid",
+  "orderId": "uuid",
+  "customerId": "uuid",
+  "amount": 250000.00,
+  "status": "PENDING | SUCCESS | FAILED | REFUNDED",
+  "method": "CASH",
+  "transactionId": "TXN_...",
+  "paymentUrl": "https://...",
+  "failureReason": null,
+  "createdAt": "2026-08-12T...",
+  "updatedAt": "2026-08-12T..."
+}
+```
+
+---
+
+#### `GET /v1/payments/{id}`
+**Params:** `id: UUID`
+
+**Response** `200`: Object `PaymentResponseDto` (xem cấu trúc ở trên).
+
+---
+
+#### `GET /v1/payments/order/{orderId}`
+**Params:** `orderId: UUID`
+
+**Response** `200`: Object `PaymentResponseDto` của đơn hàng đó.
+
+---
+
+#### `POST /v1/payments/{id}/mock-process`
+*Giả lập kết quả thanh toán từ Sandbox UI.*
+**Params:** `id: UUID`
+
+**Request Body:**
+```json
+{
+  "success": true,
+  "failureReason": null
+}
+```
+
+**Response** `200`: Object `PaymentResponseDto` sau khi xử lý (status đã cập nhật).
+
+---
+
+## 4. Order Service (`quick-bite-order` — .NET / ABP Framework)
+
+> ABP tự động generate route dạng `/api/app/order` từ `IOrderAppService`.
+> Các phương thức `Task<T>` → `GET`, `Task Create/Update` → `POST/PUT`, method có `Id` → route `/{id}`.
+
+---
+
+#### `POST /api/app/order`
+*Tạo đơn hàng mới.*
+
+**Request Body:**
+```json
+{
+  "restaurantId": "uuid",
+  "customerId": "uuid",
+  "deliveryAddress": {
+    "receiverName": "Nguyễn Văn A",
+    "phoneNumber": "0901234567",
+    "addressLine": "123 Đường XYZ",
+    "ward": "Phường 1",
+    "district": "Quận 1",
+    "province": "TP. Hồ Chí Minh",
+    "note": "Gõ chuông khi đến"
+  },
+  "items": [
+    {
+      "foodItemId": "uuid",
+      "quantity": 2,
+      "selectedVariantName": "Size L",
+      "selectedToppings": ["Extra Cheese", "Mushroom"]
+    }
+  ]
+}
+```
+
+**Response** `200`: Object `OrderDto`:
+```json
+{
+  "id": "uuid",
+  "orderCode": "ORD-2026-XXXXX",
+  "customerId": "uuid",
+  "restaurantId": "uuid",
+  "status": "Draft | Submitted | Confirmed | Preparing | Delivering | Delivered | Cancelled | Refunded",
+  "totalAmount": 250000.00,
+  "deliveryAddress": { "receiverName": "...", "phoneNumber": "...", "addressLine": "...", "ward": "...", "district": "...", "province": "...", "note": "..." },
+  "items": [
+    { "foodItemId": "uuid", "foodName": "Pizza Margherita", "quantity": 2, "unitPrice": 120000, "totalPrice": 240000, "selectedVariantName": "Size L", "selectedToppings": ["Extra Cheese"] }
+  ],
+  "creationTime": "2026-08-12T..."
+}
+```
+
+---
+
+#### `GET /api/app/order/{id}`
+**Params:** `id: UUID`
+
+**Response** `200`: Object `OrderDto` đầy đủ (xem cấu trúc ở trên).
+
+---
+
+#### `PUT /api/app/order/{id}`
+*Cập nhật đơn hàng (chỉ khi còn ở trạng thái Draft).*
+**Params:** `id: UUID`
+
+**Request Body:**
+```json
+{
+  "deliveryAddress": { "receiverName": "...", "phoneNumber": "...", "addressLine": "...", "ward": "...", "district": "...", "province": "..." },
+  "items": [
+    { "foodItemId": "uuid", "quantity": 3, "selectedVariantName": null, "selectedToppings": [] }
+  ]
+}
+```
+
+**Response** `200`: Object `OrderDto` sau khi cập nhật.
+
+---
+
+#### `GET /api/app/order/my-orders`
+*Lấy danh sách đơn hàng của người dùng hiện tại.*
+
+**Response** `200`: `OrderDto[]`
+
+---
+
+#### `POST /api/app/order/{id}/submit`
+*Xác nhận đặt đơn (chuyển trạng thái Draft → Submitted).*
+**Params:** `id: UUID`
+
+**Response** `200`: `void`
+
+---
+
+#### `PUT /api/app/order/{id}/status`
+*Cập nhật trạng thái đơn hàng (dành cho Admin/Staff).*
+**Params:** `id: UUID`
+
+**Request Body:**
+```json
+{
+  "status": "Confirmed | Preparing | Delivering | Delivered | Cancelled",
+  "note": "Lý do hoặc ghi chú"
+}
+```
+
+**Response** `200`: Object `OrderDto` sau khi cập nhật.
+
+---
+
+#### `POST /api/app/order/{id}/cancel`
+*Hủy đơn hàng.*
+**Params:** `id: UUID`
+
+**Response** `200`: `void`
+
+---
+
+#### `POST /api/app/order/{id}/refund`
+*Yêu cầu hoàn tiền.*
+**Params:** `id: UUID`
+
+**Request Body** *(optional)*:
+```json
+{
+  "reason": "Lý do hoàn tiền"
+}
+```
+
+**Response** `200`: `void`
+
+---
+
+## 5. Identity Service (`quick-bite-identity` — .NET / ABP Framework)
+
+> ABP sử dụng OpenIddict làm Authorization Server. Các endpoint CRUD dưới đây được generate tự động từ các Application Service.
+
+---
+
+### 🔐 Auth API — `/api/app/auth`
+
+#### `POST /api/app/auth/login`
+
+**Request Body:**
+```json
+{
+  "userNameOrEmailAddress": "admin@quickbite.vn",
+  "password": "P@ssword123",
+  "rememberMe": false
+}
+```
+
+**Response** `200`:
+```json
+{
+  "token": "eyJhbGciOi...",
+  "expireIn": 3600
+}
+```
+
+---
+
+### 👤 Account API — `/api/app/account`
+
+#### `GET /api/app/account`
+**Query Params** *(từ `GetIdentityUsersInput`)*: `?filter=...&roleId=...&sorting=...&skipCount=0&maxResultCount=10`
+
+**Response** `200`:
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "userName": "john.doe",
+      "name": "John",
+      "surname": "Doe",
+      "email": "john@quickbite.vn",
+      "phoneNumber": "0901234567",
+      "isActive": true,
+      "creationTime": "2026-08-12T..."
+    }
+  ],
+  "totalCount": 1
+}
+```
+
+---
+
+#### `GET /api/app/account/{id}`
+**Params:** `id: UUID`
+
+**Response** `200`: Một object `IdentityUserDto`.
+
+---
+
+#### `GET /api/app/account/role`
+*Lấy tất cả roles hiện có.*
+
+**Response** `200`: `IdentityRoleDto[]`
+```json
+[
+  { "id": "uuid", "name": "Admin", "isDefault": false, "isStatic": true, "isPublic": true }
+]
+```
+
+---
+
+#### `GET /api/app/account/{id}/role`
+*Lấy danh sách tên role của một user.*
+**Params:** `id: UUID`
+
+**Response** `200`: `string[]` — ví dụ `["Admin", "Staff"]`
+
+---
+
+#### `POST /api/app/account`
+*Tạo tài khoản người dùng mới.*
+
+**Request Body** (`IdentityUserCreateDto`):
+```json
+{
+  "userName": "john.doe",
+  "name": "John",
+  "surname": "Doe",
+  "email": "john@quickbite.vn",
+  "phoneNumber": "0901234567",
+  "password": "P@ssword123",
+  "isActive": true,
+  "roleNames": ["Staff"]
+}
+```
+
+**Response** `200`: Object `IdentityUserDto`.
+
+---
+
+#### `PUT /api/app/account/{id}`
+*Cập nhật thông tin tài khoản.*
+**Params:** `id: UUID`
+
+**Request Body** (`IdentityUserUpdateDto`):
+```json
+{
+  "userName": "john.doe.updated",
+  "name": "John",
+  "surname": "Doe",
+  "email": "john@quickbite.vn",
+  "phoneNumber": "0901234567",
+  "isActive": true,
+  "roleNames": ["Admin"]
+}
+```
+
+**Response** `200`: Object `IdentityUserDto` sau khi cập nhật.
+
+---
+
+#### `PUT /api/app/account/{id}/user-roles`
+*Cập nhật toàn bộ danh sách role cho một user.*
+**Params:** `id: UUID`
+
+**Request Body:**
+```json
+["Admin", "Staff"]
+```
+
+**Response** `200`: `void`
+
+---
+
+#### `DELETE /api/app/account/{id}`
+**Params:** `id: UUID`
+
+**Response** `200`: `void`

@@ -137,31 +137,15 @@ const normalizeFoodItem = (raw: any): FoodItem => {
 
 export const menuService = {
   // --- CATEGORY API ---
-  // Hỗ trợ lấy danh mục qua /catalog/restaurants/:id (chứa res.data.categories) hoặc /catalog/categories
+  // GET /catalog/categories (Tối ưu 1 Request duy nhất)
   async getCategories(restaurantId: string): Promise<Category[]> {
     try {
-      // 1. Thử lấy danh mục gắn liền trong chi tiết nhà hàng GET /catalog/restaurants/:id
-      if (restaurantId && restaurantId !== 'rest-001') {
-        try {
-          const resRest: any = await axiosClient.get(`/catalog/restaurants/${restaurantId}`);
-          const catsFromRest = unwrapArray(resRest);
-          if (catsFromRest.length > 0) {
-            return catsFromRest.map((c: any) =>
-              normalizeCategory({ ...c, restaurantId: c.restaurantId || restaurantId })
-            );
-          }
-        } catch {}
-      }
-
-      // 2. Thử gọi API danh mục độc lập GET /catalog/categories
       const res: any = await axiosClient.get(`/catalog/categories?page=1&limit=100`);
       const rawList = unwrapArray(res);
       const list = rawList.map(normalizeCategory);
 
-      // Nếu có truyền restaurantId, lọc chính xác theo nhà hàng
       if (restaurantId && list.length > 0) {
-        const filtered = list.filter((c: Category) => !c.restaurantId || c.restaurantId === restaurantId);
-        if (filtered.length > 0) return filtered;
+        return list.filter((c: Category) => !c.restaurantId || c.restaurantId === restaurantId);
       }
       return list;
     } catch (err) {

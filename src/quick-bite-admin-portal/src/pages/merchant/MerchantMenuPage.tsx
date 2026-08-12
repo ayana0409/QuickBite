@@ -46,16 +46,42 @@ export default function MerchantMenuPage() {
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
 
-  // Fetch paginated food items directly from backend DB
-  const fetchFoodItemsBackend = async (page: number = 1) => {
+  // Tối ưu tuyệt đối: Master Loader nạp Nhà Hàng, Danh Mục & Món Ăn (Chỉ tốn tối đa 2 Requests khi vào trang)
+  const loadPageData = async (targetPage: number = 1, targetCat: string = selectedCatFilter, targetSearch: string = searchTerm) => {
+    if (!user?.id) return;
     setIsLoading(true);
+
     try {
+      let currentRestId = restaurantId;
+
+      // 1. Lấy nhà hàng nếu chưa có trong state
+      if (!currentRestId) {
+        const rest = await restaurantService.getRestaurantByOwner(user.id);
+        currentRestId = rest?.id || '';
+        if (currentRestId) {
+          setRestaurantId(currentRestId);
+          // Tận dụng mảng categories có sẵn trong object nhà hàng (nếu có)
+          if (Array.isArray((rest as any)?.categories) && (rest as any).categories.length > 0) {
+            setCategories((rest as any).categories);
+          } else {
+            const cats = await menuService.getCategories(currentRestId);
+            setCategories(Array.isArray(cats) ? cats : []);
+          }
+        }
+      }
+
+      if (!currentRestId) {
+        setIsLoading(false);
+        return;
+      }
+
+      // 2. Lấy danh sách món ăn phân trang trực tiếp từ Backend DB
       const res = await menuService.getFoodItemsPaginated({
-        restaurantId,
-        page,
+        restaurantId: currentRestId,
+        page: targetPage,
         limit: pageSize,
-        search: searchTerm,
-        categoryId: selectedCatFilter,
+        search: targetSearch,
+        categoryId: targetCat,
       });
 
       setFoodItems(res.items);
@@ -63,58 +89,41 @@ export default function MerchantMenuPage() {
       setCurrentPage(res.page);
       setTotalPages(res.totalPages);
     } catch (err) {
-      console.error('Error fetching paginated food items:', err);
-      setFoodItems([]);
-      setTotalItems(0);
+      console.error('Error in loadPageData:', err);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Initial load categories & restaurant
-  const initData = async () => {
-    if (!user?.id) return;
-    
-    setIsLoading(true);
-    try {
-      const rest = await restaurantService.getRestaurantByOwner(user.id);
-      if (rest?.id) {
-        setRestaurantId(rest.id);
-        const cats = await menuService.getCategories(rest.id);
-        setCategories(Array.isArray(cats) ? cats : []);
-      }
-    } catch (err) {
-      console.error('Error fetching initial data:', err);
-      setCategories([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // 1. Chỉ gọi khi Mount hoặc đổi User
   useEffect(() => {
-    initData();
-  }, [user]);
+    loadPageData(1, 'ALL', '');
+  }, [user?.id]);
 
-  // Fetch food items when restaurantId, page, or category filter changes
+  // 2. Debounced search khi gõ từ khóa tìm kiếm (400ms)
   useEffect(() => {
-    if (restaurantId) {
-      fetchFoodItemsBackend(currentPage);
-    }
-  }, [restaurantId, currentPage, selectedCatFilter]);
-
-  // Debounced search directly to backend DB
-  useEffect(() => {
+    if (!restaurantId || searchTerm === '') return;
     const timer = setTimeout(() => {
-      if (restaurantId && searchTerm !== undefined) {
-        setCurrentPage(1);
-        fetchFoodItemsBackend(1);
-      }
+      setCurrentPage(1);
+      loadPageData(1, selectedCatFilter, searchTerm);
     }, 400);
     return () => clearTimeout(timer);
-  }, [searchTerm, restaurantId]);
+  }, [searchTerm]);
+
+  // Handlers chuyển trang và chọn danh mục (Chỉ phát 1 Request duy nhất)
+  const handleCategoryChange = (catId: string) => {
+    setSelectedCatFilter(catId);
+    setCurrentPage(1);
+    loadPageData(1, catId, searchTerm);
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+    loadPageData(newPage, selectedCatFilter, searchTerm);
+  };
 
   const fetchData = async () => {
-    await fetchFoodItemsBackend(currentPage);
+    await loadPageData(currentPage, selectedCatFilter, searchTerm);
   };
 
   // Safe Arrays
@@ -352,7 +361,7 @@ export default function MerchantMenuPage() {
             {/* Category Filter */}
             <select
               value={selectedCatFilter}
-              onChange={(e) => setSelectedCatFilter(e.target.value)}
+              onChange={(e) => handleCategoryChange(e.target.value)}
               className="px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 focus:outline-none focus:border-cyan-500 cursor-pointer"
             >
               <option value="ALL">Tất cả danh mục ({categories.length})</option>
@@ -482,14 +491,14 @@ export default function MerchantMenuPage() {
                 <div className="flex items-center gap-2">
                   <button
                     disabled={currentPage <= 1}
-                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                     className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 font-bold rounded-xl border border-slate-700 transition-all cursor-pointer"
                   >
                     ◄ Trang Trước
                   </button>
                   <button
                     disabled={currentPage >= totalPages}
-                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                     className="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 disabled:cursor-not-allowed text-slate-200 font-bold rounded-xl border border-slate-700 transition-all cursor-pointer"
                   >
                     Trang Sau ►
