@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search, ChevronLeft, ChevronRight, Filter, Plus, Loader2, Inbox } from 'lucide-react';
+import { Search, Filter, Plus, Loader2, Inbox } from 'lucide-react';
+import Pagination from './Pagination';
 
 export interface Column<T> {
   header: string;
@@ -167,31 +168,16 @@ export function DataTable<T extends { id?: string | number }>({
         </div>
 
         {/* Pagination Footer */}
-        <div className="px-4 py-3 bg-slate-950/60 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-          <span>
-            Hiển thị <strong>{currentData.length}</strong> / <strong>{filteredData.length}</strong> kết quả
-          </span>
-
-          <div className="flex items-center gap-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="font-semibold font-mono text-slate-200">
-              {currentPage} / {totalPages}
-            </span>
-            <button
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              className="p-1.5 bg-slate-900 border border-slate-800 rounded-lg hover:text-slate-100 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredData.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+          itemLabel="kết quả"
+          accentColor="amber"
+          className="border-t border-slate-800 rounded-t-none bg-slate-950/60"
+        />
       </div>
     </div>
   );
