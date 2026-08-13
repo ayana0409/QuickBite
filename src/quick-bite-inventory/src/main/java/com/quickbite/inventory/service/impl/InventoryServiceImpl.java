@@ -105,7 +105,7 @@ public class InventoryServiceImpl implements InventoryService {
             InventoryItem item = optionalItem.get();
             int newQuantity = item.getQuantity() + request.getAdjustmentQuantity();
             if (newQuantity < item.getReservedQuantity()) {
-                throw new IllegalStateException("Cannot reduce stock below current reserved quantity (" + item.getReservedQuantity() + ")");
+                throw new IllegalStateException("Không thể giảm số lượng tồn kho thấp hơn số lượng đang giữ (" + item.getReservedQuantity() + ")");
             }
 
             item.setQuantity(Math.max(0, newQuantity));
@@ -113,7 +113,7 @@ public class InventoryServiceImpl implements InventoryService {
             return mapToResponse(savedItem);
         } else {
             if (request.getAdjustmentQuantity() < 0) {
-                throw new IllegalArgumentException("Cannot create new inventory item with a negative quantity: " + request.getAdjustmentQuantity());
+                throw new IllegalArgumentException("Mặt hàng này chưa có dữ liệu tồn kho. Không thể khởi tạo số lượng ban đầu là số âm (" + request.getAdjustmentQuantity() + ")");
             }
 
             InventoryItem newItem = InventoryItem.builder()

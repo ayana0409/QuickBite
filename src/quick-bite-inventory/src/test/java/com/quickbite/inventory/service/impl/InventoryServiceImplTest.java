@@ -189,7 +189,7 @@ class InventoryServiceImplTest {
             // Act & Assert
             assertThatThrownBy(() -> inventoryService.adjustStock(request))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Cannot create new inventory item with a negative quantity");
+                    .hasMessageContaining("Không thể khởi tạo số lượng ban đầu là số âm");
         }
 
         @Test
