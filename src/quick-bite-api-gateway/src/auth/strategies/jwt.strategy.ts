@@ -14,6 +14,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
       process.env.JWKS_URI ||
       `${identityUrl.replace(/\/$/, '')}/.well-known/jwks`;
 
+    // Log the resolved configuration
+    console.log(`[JwtStrategy] Initialized with Identity URL: ${identityUrl}`);
+    console.log(`[JwtStrategy] Fetching JWKS from: ${jwksUri}`);
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -22,6 +26,13 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         rateLimit: true,
         jwksRequestsPerMinute: 5,
         jwksUri,
+        handleSigningKeyError: (err, cb) => {
+          console.error(`[JwtStrategy] JWKS Fetch/Match Error:`, err);
+          if (err && err.name === 'SigningKeyNotFoundError') {
+            return cb(null); // passport-jwt expects null to return the correct error
+          }
+          return cb(err);
+        },
       }),
     });
   }
