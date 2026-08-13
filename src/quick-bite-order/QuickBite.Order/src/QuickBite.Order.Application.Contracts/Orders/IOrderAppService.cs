@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Application.Services;
 
 namespace QuickBite.Order.Orders;
@@ -14,6 +15,8 @@ public interface IOrderAppService : IApplicationService
     Task<OrderDto> UpdateAsync(Guid id, UpdateOrderDto input);
 
     Task<List<OrderDto>> GetMyOrdersAsync();
+
+    Task<PagedResultDto<OrderDto>> GetListByRestaurantAsync(GetOrdersByRestaurantInput input);
 
     Task SubmitAsync(Guid id);
 

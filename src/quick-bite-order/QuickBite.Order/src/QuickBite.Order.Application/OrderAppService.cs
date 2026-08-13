@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using QuickBite.Order.Extensions;
 using QuickBite.Order.Domain.Shared.Event;
 using Volo.Abp.Application.Services;
+using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Distributed;
 using Microsoft.AspNetCore.Authorization;
@@ -339,6 +340,48 @@ public class OrderAppService :
         }
 
         return orderDtos;
+    }
+
+    /// <summary>
+    /// Retrieves a paged list of orders belonging to a specific restaurant with optional status and search filtering.
+    /// Filtering, sorting, and pagination are executed directly on PostgreSQL database server via IQueryable.
+    /// </summary>
+    public async Task<PagedResultDto<OrderDto>> GetListByRestaurantAsync(GetOrdersByRestaurantInput input)
+    {
+        var query = await _orderRepository.GetQueryableAsync();
+
+        // 1. Mandatory filter by RestaurantId at DB level
+        query = query.Where(x => x.RestaurantId == input.RestaurantId);
+
+        // 2. Optional filter by OrderStatus enum at DB level
+        if (!string.IsNullOrWhiteSpace(input.Status))
+        {
+            if (Enum.TryParse<OrderStatus>(input.Status, ignoreCase: true, out var statusEnum))
+            {
+                query = query.Where(x => x.Status == statusEnum);
+            }
+        }
+
+        // 3. Optional filter by OrderCode search at DB level
+        if (!string.IsNullOrWhiteSpace(input.Search))
+        {
+            query = query.Where(x => x.OrderCode.Contains(input.Search));
+        }
+
+        // 4. Count total matching items in DB
+        var totalCount = await AsyncExecuter.CountAsync(query);
+
+        // 5. Apply sorting (newest orders first) and pagination in DB
+        query = query.OrderByDescending(x => x.CreationTime)
+                     .PageBy(input.SkipCount, input.MaxResultCount);
+
+        // 6. Fetch only paged orders from DB
+        var orders = await AsyncExecuter.ToListAsync(query);
+
+        // 7. Map to DTOs
+        var orderDtos = ObjectMapper.Map<List<OrderEntity>, List<OrderDto>>(orders);
+
+        return new PagedResultDto<OrderDto>(totalCount, orderDtos);
     }
 
     /// <summary>

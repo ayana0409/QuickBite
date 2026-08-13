@@ -625,6 +625,35 @@ Base path: `/v1/payments`
 
 ---
 
+#### `GET /api/app/order/by-restaurant`
+*Lấy danh sách đơn hàng theo nhà hàng (dành cho Merchant / Aggregation).*
+
+**Query Params:** `?restaurantId=uuid&status=...&search=...&skipCount=0&maxResultCount=10`
+
+**Response** `200`: `PagedResultDto<OrderDto>`
+```json
+{
+  "totalCount": 25,
+  "items": [
+    {
+      "id": "uuid",
+      "orderCode": "ORD-2026-XXXXX",
+      "customerId": "uuid",
+      "restaurantId": "uuid",
+      "status": "Draft | Submitted | Confirmed | Preparing | Delivering | Delivered | Cancelled | Refunded",
+      "totalAmount": 250000.00,
+      "deliveryAddress": { "receiverName": "...", "phoneNumber": "...", "addressLine": "...", "ward": "...", "district": "...", "province": "...", "note": "..." },
+      "items": [
+        { "foodItemId": "uuid", "foodName": "Pizza Margherita", "quantity": 2, "unitPrice": 120000, "totalPrice": 240000, "selectedVariantName": "Size L", "selectedToppings": ["Extra Cheese"] }
+      ],
+      "creationTime": "2026-08-12T..."
+    }
+  ]
+}
+```
+
+---
+
 #### `POST /api/app/order/{id}/submit`
 *Xác nhận đặt đơn (chuyển trạng thái Draft → Submitted).*
 **Params:** `id: UUID`
@@ -813,3 +842,60 @@ Base path: `/v1/payments`
 **Params:** `id: UUID`
 
 **Response** `200`: `void`
+
+---
+
+## 6. API Gateway Aggregation Services (`quick-bite-api-gateway` — NestJS, port 3000)
+
+> Các endpoint Aggregation trên API Gateway giúp tự động xử lý bảo mật chống lỗi IDOR và tổng hợp dữ liệu từ nhiều microservices.
+
+---
+
+### 🏪 Merchant API — `/api/merchant`
+
+#### `GET /api/merchant/orders`
+*Lấy danh sách đơn hàng cho Merchant hiện tại (Bảo mật chống lỗi IDOR).*
+*API Gateway tự động trích xuất `userId` từ JWT Token -> gọi Catalog Service lấy `restaurantId` -> query Order Service.*
+
+**Auth:** JWT Bearer Token (Bắt buộc)
+
+**Query Params:** `?status=...&search=...&page=1&limit=10`
+
+**Response** `200`: `PagedResultDto<OrderDto>`
+```json
+{
+  "totalCount": 25,
+  "items": [
+    {
+      "id": "uuid",
+      "orderCode": "ORD-2026-XXXXX",
+      "customerId": "uuid",
+      "restaurantId": "uuid",
+      "status": "Confirmed",
+      "totalAmount": 250000.00,
+      "deliveryAddress": {
+        "receiverName": "...",
+        "phoneNumber": "...",
+        "addressLine": "...",
+        "ward": "...",
+        "district": "...",
+        "province": "...",
+        "note": "..."
+      },
+      "items": [
+        {
+          "foodItemId": "uuid",
+          "foodName": "Pizza Margherita",
+          "quantity": 2,
+          "unitPrice": 120000,
+          "totalPrice": 240000,
+          "selectedVariantName": "Size L",
+          "selectedToppings": ["Extra Cheese"]
+        }
+      ],
+      "creationTime": "2026-08-12T..."
+    }
+  ]
+}
+```
+
