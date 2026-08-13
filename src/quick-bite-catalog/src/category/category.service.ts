@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 
 import { Category } from './entities/category.entity';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -65,10 +65,29 @@ export class CategoryService {
 
   async findAll(
     pagination: PaginationDto,
+    restaurantId?: string,
   ) {
+    const targetRestaurantId = restaurantId || pagination.restaurantId;
+    const whereCondition: any = {};
+
+    if (targetRestaurantId && targetRestaurantId !== 'ALL') {
+      whereCondition.restaurantId = targetRestaurantId;
+    }
+
+    if (pagination.search && pagination.search.trim() !== '') {
+      whereCondition.name = ILike(`%${pagination.search.trim()}%`);
+    }
+
     return PaginationHelper.paginate(
       this.categoryRepository,
       pagination,
+      {
+        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+        order: {
+          sortOrder: 'ASC',
+          createdAt: 'DESC',
+        },
+      },
     );
   }
 

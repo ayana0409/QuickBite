@@ -212,26 +212,33 @@ export class FoodItemService implements OnModuleInit {
     restaurantId: string,
     pagination: PaginationDto,
   ) {
-    const whereCondition: any = {
+    const baseCondition: any = {
       restaurantId,
     };
 
     if (pagination.categoryId && pagination.categoryId !== 'ALL') {
-      whereCondition.categoryId = pagination.categoryId;
+      baseCondition.categoryId = pagination.categoryId;
     }
 
+    let whereClause: any = baseCondition;
+
     if (pagination.search && pagination.search.trim() !== '') {
-      whereCondition.name = ILike(`%${pagination.search.trim()}%`);
+      const searchKeyword = ILike(`%${pagination.search.trim()}%`);
+      whereClause = [
+        { ...baseCondition, name: searchKeyword },
+        { ...baseCondition, description: searchKeyword },
+      ];
     }
 
     return PaginationHelper.paginate(
       this.foodItemRepository,
       pagination,
       {
-        where: whereCondition,
+        where: whereClause,
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           currency: true,
           images: true,

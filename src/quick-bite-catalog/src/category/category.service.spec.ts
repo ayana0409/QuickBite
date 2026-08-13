@@ -138,6 +138,11 @@ describe('CategoryService', () => {
       expect(categoryRepository.findAndCount).toHaveBeenCalledWith({
         skip: 0,
         take: 10,
+        where: undefined,
+        order: {
+          sortOrder: 'ASC',
+          createdAt: 'DESC',
+        },
       });
       expect(result).toEqual({
         data: [mockCategory],

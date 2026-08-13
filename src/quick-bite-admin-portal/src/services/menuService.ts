@@ -135,22 +135,65 @@ const normalizeFoodItem = (raw: any): FoodItem => {
   };
 };
 
+export interface GetCategoriesParams {
+  restaurantId: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
 export const menuService = {
   // --- CATEGORY API ---
-  // GET /catalog/categories (Tối ưu 1 Request duy nhất)
+  // GET /catalog/categories
   async getCategories(restaurantId: string): Promise<Category[]> {
     try {
-      const res: any = await axiosClient.get(`/catalog/categories?page=1&limit=100`);
+      const url = restaurantId 
+        ? `/catalog/categories?restaurantId=${restaurantId}&page=1&limit=100`
+        : `/catalog/categories?page=1&limit=100`;
+      const res: any = await axiosClient.get(url);
       const rawList = unwrapArray(res);
-      const list = rawList.map(normalizeCategory);
-
-      if (restaurantId && list.length > 0) {
-        return list.filter((c: Category) => !c.restaurantId || c.restaurantId === restaurantId);
-      }
-      return list;
+      return rawList.map(normalizeCategory);
     } catch (err) {
       console.warn('API GET /catalog/categories offline or error:', err);
       return [];
+    }
+  },
+
+  // Phân trang & Tìm kiếm Danh mục
+  async getCategoriesPaginated(params: GetCategoriesParams): Promise<PaginatedResult<Category>> {
+    const { restaurantId, page = 1, limit = 10, search = '' } = params;
+    try {
+      const queryParams = new URLSearchParams();
+      queryParams.set('page', page.toString());
+      queryParams.set('limit', limit.toString());
+      if (restaurantId) queryParams.set('restaurantId', restaurantId);
+      if (search && search.trim()) queryParams.set('search', search.trim());
+
+      const url = `/catalog/categories?${queryParams.toString()}`;
+      const res: any = await axiosClient.get(url);
+      const rawList = unwrapArray(res);
+      const items = rawList.map(normalizeCategory);
+
+      const meta = res?.data?.meta || res?.meta || {};
+      const total = typeof meta.total === 'number' ? meta.total : items.length;
+      const totalPages = typeof meta.totalPages === 'number' ? meta.totalPages : (Math.ceil(total / limit) || 1);
+
+      return {
+        items,
+        total,
+        page: typeof meta.page === 'number' ? meta.page : page,
+        limit: typeof meta.limit === 'number' ? meta.limit : limit,
+        totalPages,
+      };
+    } catch (err) {
+      console.warn(`API GET /catalog/categories paginated error:`, err);
+      return {
+        items: [],
+        total: 0,
+        page: 1,
+        limit,
+        totalPages: 1,
+      };
     }
   },
 

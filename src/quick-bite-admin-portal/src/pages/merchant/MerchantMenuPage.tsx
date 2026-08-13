@@ -45,13 +45,44 @@ export default function MerchantMenuPage() {
   const [foodToppings, setFoodToppings] = useState<FoodTopping[]>([]);
   const [foodIsAvailable, setFoodIsAvailable] = useState<boolean>(true);
 
-  // Pagination state
+  // Food Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize] = useState<number>(10);
   const [totalItems, setTotalItems] = useState<number>(0);
   const [totalPages, setTotalPages] = useState<number>(1);
 
-  // Tối ưu tuyệt đối: Master Loader nạp Nhà Hàng, Danh Mục & Món Ăn (Chỉ tốn tối đa 2 Requests khi vào trang)
+  // Category Pagination & Search state
+  const [catCurrentPage, setCatCurrentPage] = useState<number>(1);
+  const [catPageSize] = useState<number>(10);
+  const [catTotalItems, setCatTotalItems] = useState<number>(0);
+  const [catTotalPages, setCatTotalPages] = useState<number>(1);
+  const [catSearchTerm, setCatSearchTerm] = useState<string>('');
+  const [paginatedCategories, setPaginatedCategories] = useState<Category[]>([]);
+
+  // Tải danh mục phân trang
+  const loadCategoryData = async (
+    targetRestId: string = restaurantId,
+    targetPage: number = catCurrentPage,
+    targetSearch: string = catSearchTerm,
+  ) => {
+    if (!targetRestId) return;
+    try {
+      const res = await menuService.getCategoriesPaginated({
+        restaurantId: targetRestId,
+        page: targetPage,
+        limit: catPageSize,
+        search: targetSearch,
+      });
+      setPaginatedCategories(res.items);
+      setCatTotalItems(res.total);
+      setCatCurrentPage(res.page);
+      setCatTotalPages(res.totalPages);
+    } catch (err) {
+      console.error('Error in loadCategoryData:', err);
+    }
+  };
+
+  // Master Loader nạp Nhà Hàng, Danh Mục & Món Ăn
   const loadPageData = async (targetPage: number = 1, targetCat: string = selectedCatFilter, targetSearch: string = searchTerm) => {
     if (!user?.id) return;
     setIsLoading(true);
@@ -65,13 +96,6 @@ export default function MerchantMenuPage() {
         currentRestId = rest?.id || '';
         if (currentRestId) {
           setRestaurantId(currentRestId);
-          // Tận dụng mảng categories có sẵn trong object nhà hàng (nếu có)
-          if (Array.isArray((rest as any)?.categories) && (rest as any).categories.length > 0) {
-            setCategories((rest as any).categories);
-          } else {
-            const cats = await menuService.getCategories(currentRestId);
-            setCategories(Array.isArray(cats) ? cats : []);
-          }
         }
       }
 
@@ -80,19 +104,25 @@ export default function MerchantMenuPage() {
         return;
       }
 
-      // 2. Lấy danh sách món ăn phân trang trực tiếp từ Backend DB
-      const res = await menuService.getFoodItemsPaginated({
-        restaurantId: currentRestId,
-        page: targetPage,
-        limit: pageSize,
-        search: targetSearch,
-        categoryId: targetCat,
-      });
+      // 2. Lấy danh sách danh mục (đầy đủ cho dropdown) & món ăn phân trang trực tiếp từ Backend DB
+      const [cats, res] = await Promise.all([
+        menuService.getCategories(currentRestId),
+        menuService.getFoodItemsPaginated({
+          restaurantId: currentRestId,
+          page: targetPage,
+          limit: pageSize,
+          search: targetSearch,
+          categoryId: targetCat,
+        }),
+      ]);
 
+      setCategories(Array.isArray(cats) ? cats : []);
       setFoodItems(res.items);
       setTotalItems(res.total);
       setCurrentPage(res.page);
       setTotalPages(res.totalPages);
+
+      await loadCategoryData(currentRestId, catCurrentPage, catSearchTerm);
     } catch (err) {
       console.error('Error in loadPageData:', err);
     } finally {
@@ -105,9 +135,9 @@ export default function MerchantMenuPage() {
     loadPageData(1, 'ALL', '');
   }, [user?.id]);
 
-  // 2. Debounced search khi gõ từ khóa tìm kiếm (400ms)
+  // 2. Debounced search món ăn khi gõ từ khóa tìm kiếm (400ms)
   useEffect(() => {
-    if (!restaurantId || searchTerm === '') return;
+    if (!restaurantId) return;
     const timer = setTimeout(() => {
       setCurrentPage(1);
       loadPageData(1, selectedCatFilter, searchTerm);
@@ -115,7 +145,17 @@ export default function MerchantMenuPage() {
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
-  // Handlers chuyển trang và chọn danh mục (Chỉ phát 1 Request duy nhất)
+  // 3. Debounced search danh mục khi gõ từ khóa tìm kiếm (400ms)
+  useEffect(() => {
+    if (!restaurantId) return;
+    const timer = setTimeout(() => {
+      setCatCurrentPage(1);
+      loadCategoryData(restaurantId, 1, catSearchTerm);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [catSearchTerm]);
+
+  // Handlers chuyển trang và chọn danh mục
   const handleCategoryChange = (catId: string) => {
     setSelectedCatFilter(catId);
     setCurrentPage(1);
@@ -127,12 +167,26 @@ export default function MerchantMenuPage() {
     loadPageData(newPage, selectedCatFilter, searchTerm);
   };
 
+  const handleCatPageChange = (newPage: number) => {
+    setCatCurrentPage(newPage);
+    loadCategoryData(restaurantId, newPage, catSearchTerm);
+  };
+
+  const refreshCategories = async () => {
+    if (restaurantId) {
+      const cats = await menuService.getCategories(restaurantId);
+      setCategories(Array.isArray(cats) ? cats : []);
+      await loadCategoryData(restaurantId, catCurrentPage, catSearchTerm);
+    }
+  };
+
   const fetchData = async () => {
     await loadPageData(currentPage, selectedCatFilter, searchTerm);
   };
 
   // Safe Arrays
   const safeCategories = Array.isArray(categories) ? categories : [];
+  const safePaginatedCategories = Array.isArray(paginatedCategories) ? paginatedCategories : [];
   const safeFoodItems = Array.isArray(foodItems) ? foodItems : [];
 
   // --- Category Handlers ---
@@ -162,6 +216,7 @@ export default function MerchantMenuPage() {
     }
 
     setIsCatModalOpen(false);
+    await refreshCategories();
     await fetchData();
   };
 
@@ -169,6 +224,7 @@ export default function MerchantMenuPage() {
     if (window.confirm('Bạn có chắc muốn xóa danh mục này? Các món thuộc danh mục cũng sẽ bị ảnh hưởng.')) {
       await menuService.deleteCategory(id);
       toast.success('Đã xóa danh mục thành công!');
+      await refreshCategories();
       await fetchData();
     }
   };
@@ -211,7 +267,7 @@ export default function MerchantMenuPage() {
     } else {
       setEditingFood(null);
       setFoodName('');
-      setFoodCategoryId(safeCategories[0]?.id || '');
+      setFoodCategoryId(categories[0]?.id || '');
       setFoodPrice('');
       setFoodCurrency('VND');
       setFoodPrepTime('15');
@@ -286,7 +342,7 @@ export default function MerchantMenuPage() {
       toast.success(`Đã cập nhật món "${foodName}" thành công!`);
     } else {
       await menuService.createFoodItem(dto);
-      toast.success(`Đã thêm món "${foodName}" mới vào thực đơn!`);
+      toast.success(`Đã thêm món "${foodName}" vào thực đơn!`);
     }
 
     setIsFoodModalOpen(false);
@@ -350,7 +406,7 @@ export default function MerchantMenuPage() {
               }`}
           >
             <FolderPlus className="w-3.5 h-3.5" />
-            <span>Danh Mục ({safeCategories.length})</span>
+            <span>Danh Mục ({catTotalItems})</span>
           </button>
         </div>
       </div>
@@ -515,57 +571,83 @@ export default function MerchantMenuPage() {
       {/* TAB 2: CATEGORY MANAGEMENT */}
       {activeTab === 'category' && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
-            <div>
-              <h2 className="font-bold text-sm text-slate-200">Danh Sách Nhóm / Danh Mục Món</h2>
-              <p className="text-xs text-slate-400">Tổ chức món ăn theo nhóm (Ví dụ: Cơm, Phở, Món thêm, Đồ uống...)</p>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-slate-900/60 p-4 rounded-2xl border border-slate-800">
+            {/* Search Input for Category */}
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={catSearchTerm}
+                onChange={(e) => setCatSearchTerm(e.target.value)}
+                placeholder="Tìm kiếm danh mục theo tên..."
+                className="w-full pl-9 pr-4 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+              />
             </div>
 
             <button
               onClick={() => handleOpenCatModal()}
-              className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all cursor-pointer"
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-400 hover:to-blue-400 text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-cyan-500/20 transition-all cursor-pointer shrink-0"
             >
               <Plus className="w-4 h-4" /> Thêm Danh Mục
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {safeCategories.map((cat) => {
-              const count = safeFoodItems.filter((f) => f && f.categoryId === cat.id).length;
-              return (
-                <div key={cat.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3 relative overflow-hidden group hover:border-cyan-500/40 transition-all">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="p-2 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/30">
-                        <FolderPlus className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-100 text-sm">{cat.name}</h3>
-                        <span className="text-[10px] text-slate-400 font-mono">{count} món ăn</span>
-                      </div>
-                    </div>
+          {safePaginatedCategories.length === 0 ? (
+            <div className="bg-slate-900/40 border border-slate-800/80 rounded-2xl p-12 text-center text-slate-400 text-xs">
+              Không tìm thấy danh mục nào. Bấm nút <strong>"Thêm Danh Mục"</strong> để bắt đầu!
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {safePaginatedCategories.map((cat) => {
+                  const count = safeFoodItems.filter((f) => f && f.categoryId === cat.id).length;
+                  return (
+                    <div key={cat.id} className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 shadow-xl space-y-3 relative overflow-hidden group hover:border-cyan-500/40 transition-all">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div className="flex items-center gap-2.5">
+                          <div className="p-2 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/30">
+                            <FolderPlus className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-slate-100 text-sm">{cat.name}</h3>
+                            <span className="text-[10px] text-slate-400 font-mono">{count} món ăn</span>
+                          </div>
+                        </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => handleOpenCatModal(cat)}
-                        className="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-lg border border-slate-700 transition-all cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteCategory(cat.id)}
-                        className="p-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg border border-slate-700 hover:border-red-500/30 transition-all cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleOpenCatModal(cat)}
+                            className="p-1.5 bg-slate-800 hover:bg-slate-700 text-cyan-300 rounded-lg border border-slate-700 transition-all cursor-pointer"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteCategory(cat.id)}
+                            className="p-1.5 bg-slate-800 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg border border-slate-700 hover:border-red-500/30 transition-all cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
 
-                  <p className="text-xs text-slate-400">{cat.description || 'Chưa có mô tả nhóm món.'}</p>
-                </div>
-              );
-            })}
-          </div>
+                      <p className="text-xs text-slate-400">{cat.description || 'Chưa có mô tả nhóm món.'}</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Category Pagination Bar */}
+              <Pagination
+                currentPage={catCurrentPage}
+                totalPages={catTotalPages}
+                totalItems={catTotalItems}
+                pageSize={catPageSize}
+                onPageChange={handleCatPageChange}
+                itemLabel="danh mục"
+                accentColor="cyan"
+              />
+            </div>
+          )}
         </div>
       )}
 

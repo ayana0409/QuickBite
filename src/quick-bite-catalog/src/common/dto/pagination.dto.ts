@@ -22,4 +22,8 @@ export class PaginationDto {
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  @IsOptional()
+  @IsString()
+  restaurantId?: string;
 }
