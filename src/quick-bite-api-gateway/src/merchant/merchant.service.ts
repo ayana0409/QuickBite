@@ -18,7 +18,7 @@ export class MerchantService {
    * @param userId The ID extracted from the authenticated user's JWT (sub claim)
    * @param query Query parameters containing pagination, status, and search filters
    */
-  async getMerchantOrders(userId: string, query: GetMerchantOrdersQueryDto) {
+  async getMerchantOrders(userId: string, query: GetMerchantOrdersQueryDto, authHeader?: string) {
     // Step 1: Fetch restaurant details by owner ID from Catalog Service
     const catalogBaseUrl = await this.configService.getAsync('CATALOG_URL', 'http://localhost:3000');
     const cleanCatalogUrl = catalogBaseUrl.replace(/\/$/, '');
@@ -30,6 +30,7 @@ export class MerchantService {
     try {
       catalogResponse = await firstValueFrom(
         this.httpService.get(catalogEndpoint, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
           validateStatus: () => true,
           timeout: 10000,
         }),
@@ -88,6 +89,7 @@ export class MerchantService {
       orderResponse = await firstValueFrom(
         this.httpService.get(orderTargetUrl, {
           params,
+          headers: authHeader ? { Authorization: authHeader } : undefined,
           validateStatus: () => true,
           timeout: 15000,
         }),

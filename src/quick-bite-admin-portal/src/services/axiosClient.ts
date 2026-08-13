@@ -120,10 +120,15 @@ axiosClient.interceptors.response.use(
 
     if (error.response?.status === 401) {
       console.warn('Unauthorized! Logging out and redirecting to login...');
-      useAuthStore.getState().logout();
       
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login';
+      const url = error.config?.url || '';
+      // Don't aggressive logout if the merchant orders API returns 401 due to misconfiguration 
+      if (!url.includes('/api/merchant/orders')) {
+        useAuthStore.getState().logout();
+        
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login';
+        }
       }
     }
     return Promise.reject(error);

@@ -88,6 +88,27 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
             ❌ Đã hủy
           </span>
         );
+      case 'refunded':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pink-500/10 text-pink-400 border border-pink-500/30">
+            💸 Đã hoàn tiền
+          </span>
+        );
+      case 'draft':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/30">
+            📝 Đơn nháp
+          </span>
+        );
+      case 'awaitingrestaurantacceptance':
+      case 'waitinginventory':
+      case 'waitingpayment':
+      case 'waitingstock':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+            ⏳ Đang chờ xác minh
+          </span>
+        );
       default:
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-800 text-slate-300 border border-slate-700">

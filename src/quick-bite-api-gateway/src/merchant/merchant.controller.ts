@@ -25,6 +25,7 @@ export class MerchantController {
       throw new UnauthorizedException('Invalid JWT payload: Missing user ID claim');
     }
 
-    return this.merchantService.getMerchantOrders(userId, query);
+    const authHeader = req.headers.authorization;
+    return this.merchantService.getMerchantOrders(userId, query, authHeader);
   }
 }

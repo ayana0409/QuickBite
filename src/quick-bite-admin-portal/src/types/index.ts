@@ -21,26 +21,75 @@ export interface Restaurant {
   createdAt: string;
 }
 
-export type OrderStatus = 'Pending' | 'Confirmed' | 'Preparing' | 'Delivering' | 'Completed' | 'Cancelled';
+export type OrderStatus =
+  | 'Draft'
+  | 'Pending'
+  | 'Confirmed'
+  | 'AwaitingRestaurantAcceptance'
+  | 'Preparing'
+  | 'Delivering'
+  | 'Completed'
+  | 'Cancelled'
+  | 'Refunded'
+  | 'WaitingInventory'
+  | 'WaitingPayment'
+  | 'WaitingStock';
 
 export interface OrderItem {
-  id: string;
-  productId: string;
-  productName: string;
+  id?: string;
+  foodItemId: string;
+  foodName: string;
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  selectedVariantName?: string | null;
+  selectedToppings?: string[] | null;
+  // Backward compatibility fields for legacy mock objects
+  productId?: string;
+  productName?: string;
+}
+
+export interface DeliveryAddressDetails {
+  receiverName?: string;
+  fullName?: string;
+  phoneNumber?: string;
+  addressLine?: string;
+  ward?: string;
+  district?: string;
+  province?: string;
+  note?: string;
 }
 
 export interface Order {
   id: string;
-  restaurantId: string;
+  orderCode: string;
   customerId: string;
+  restaurantId: string;
   status: OrderStatus;
   totalAmount: number;
+  creationTime: string;
+  createdAt?: string;
   items: OrderItem[];
-  deliveryAddress: string;
-  createdAt: string;
+  deliveryAddress?: DeliveryAddressDetails | string;
+}
+
+export interface OrderPaginatedData {
+  items: Order[];
+  totalCount: number;
+}
+
+export interface OrderResponse {
+  success: boolean;
+  statusCode: number;
+  message: string;
+  data: OrderPaginatedData;
+}
+
+export interface MerchantOrdersParams {
+  search?: string;
+  status?: string;
+  page?: number;
+  limit?: number;
 }
 
 // OpenIddict /connect/token Response
@@ -73,4 +122,3 @@ export interface LoginRequest {
   username: string;
   password: string;
 }
-
