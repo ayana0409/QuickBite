@@ -36,7 +36,7 @@ export class MerchantService {
         }),
       );
     } catch (error: any) {
-      this.logger.error(`❌ [MERCHANT AGGREGATION] Failed to contact Catalog Service: ${error.message}`);
+      this.logger.error(`❌ [MERCHANT SERVICE] Failed to fetch catalog. Status: ${error.response?.status}, Data: ${JSON.stringify(error.response?.data) || error.message}`);
       throw new HttpException(
         'Catalog Service is currently unavailable',
         HttpStatus.SERVICE_UNAVAILABLE,
@@ -95,7 +95,7 @@ export class MerchantService {
         }),
       );
     } catch (error: any) {
-      this.logger.error(`❌ [MERCHANT AGGREGATION] Failed to contact Order Service: ${error.message}`);
+      this.logger.error(`❌ [MERCHANT SERVICE] Failed to fetch orders. Status: ${error.response?.status}, Data: ${JSON.stringify(error.response?.data) || error.message}`);
       throw new HttpException(
         'Order Service is currently unavailable',
         HttpStatus.SERVICE_UNAVAILABLE,
