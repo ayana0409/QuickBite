@@ -109,7 +109,7 @@ export const orderService = {
     status: OrderStatus,
     note?: string
   ): Promise<Order | null> {
-    const res: any = await axiosClient.put(`/order/${orderId}/status`, {
+    const res: any = await axiosClient.put(`/order/api/app/order/${orderId}/status`, {
       status,
       note,
     });
