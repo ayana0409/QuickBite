@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../stores/authStore';
+import { toast } from '../../stores/toastStore';
 import { restaurantService } from '../../services/restaurantService';
 import { menuService } from '../../services/menuService';
 import type { Category, FoodItem, FoodVariant, FoodTopping, CreateFoodItemDto } from '../../services/menuService';
@@ -154,8 +155,10 @@ export default function MerchantMenuPage() {
 
     if (editingCat) {
       await menuService.updateCategory(editingCat.id, { name: catName, description: catDesc });
+      toast.success(`Đã cập nhật danh mục "${catName}" thành công!`);
     } else {
       await menuService.createCategory({ restaurantId, name: catName, description: catDesc });
+      toast.success(`Đã tạo mới danh mục "${catName}"!`);
     }
 
     setIsCatModalOpen(false);
@@ -165,6 +168,7 @@ export default function MerchantMenuPage() {
   const handleDeleteCategory = async (id: string) => {
     if (window.confirm('Bạn có chắc muốn xóa danh mục này? Các món thuộc danh mục cũng sẽ bị ảnh hưởng.')) {
       await menuService.deleteCategory(id);
+      toast.success('Đã xóa danh mục thành công!');
       await fetchData();
     }
   };
@@ -279,8 +283,10 @@ export default function MerchantMenuPage() {
 
     if (editingFood) {
       await menuService.updateFoodItem(editingFood.id, dto);
+      toast.success(`Đã cập nhật món "${foodName}" thành công!`);
     } else {
       await menuService.createFoodItem(dto);
+      toast.success(`Đã thêm món "${foodName}" mới vào thực đơn!`);
     }
 
     setIsFoodModalOpen(false);
@@ -289,12 +295,14 @@ export default function MerchantMenuPage() {
 
   const handleToggleAvailability = async (id: string, currentAvailable?: boolean) => {
     await menuService.toggleAvailability(id, currentAvailable);
+    toast.success(currentAvailable ? 'Đã chuyển món ăn sang Tạm Hết' : 'Đã mở bán lại món ăn!');
     await fetchData();
   };
 
   const handleDeleteFood = async (id: string) => {
     if (window.confirm('Xác nhận xóa món ăn này khỏi thực đơn?')) {
       await menuService.deleteFoodItem(id);
+      toast.success('Đã xóa món ăn khỏi thực đơn!');
       await fetchData();
     }
   };

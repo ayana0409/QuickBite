@@ -1,6 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sparkles, CheckCircle2, XCircle, Clock, Tag, Layers, Coins } from 'lucide-react';
 import type { Category, FoodItem, FoodVariant, FoodTopping } from '../../../services/menuService';
+import Input from '../../common/Form/Input';
+import Textarea from '../../common/Form/Textarea';
+import Select from '../../common/Form/Select';
 
 export interface FoodItemModalProps {
   isOpen: boolean;
@@ -73,7 +76,32 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
   if (!isOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+
+    if (!foodName.trim()) {
+      newErrors.name = 'Tên món ăn không được để trống!';
+    }
+    if (!foodPrice.trim() || isNaN(parseFloat(foodPrice)) || parseFloat(foodPrice) < 0) {
+      newErrors.price = 'Giá bán phải là số hợp lệ (>= 0)!';
+    }
+    if (!foodCategoryId) {
+      newErrors.categoryId = 'Vui lòng chọn danh mục món!';
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setErrors({});
+    onSave(e);
+  };
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
@@ -92,7 +120,7 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={onSave} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 text-xs">
           {/* Trạng thái Mở Bán Toggle Switch */}
           <div className="flex items-center justify-between p-3.5 bg-slate-950 border border-slate-800 rounded-2xl">
             <div className="flex items-center gap-2.5">
@@ -128,125 +156,112 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
 
           {/* Tên & SKU */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-2 space-y-1">
-              <label className="font-bold text-slate-300">Tên Món Ăn *</label>
-              <input
-                type="text"
-                value={foodName}
-                onChange={(e) => setFoodName(e.target.value)}
-                placeholder="Ví dụ: Trà Sữa Trân Châu Hoàng Kim"
-                required
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Mã SKU</label>
-              <input
-                type="text"
-                value={foodSku}
-                onChange={(e) => setFoodSku(e.target.value)}
-                placeholder="MILKTEA-L-70"
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+            <Input
+              label="Tên Món Ăn"
+              required
+              value={foodName}
+              onChange={(e) => {
+                setFoodName(e.target.value);
+                if (e.target.value.trim()) setErrors((prev) => ({ ...prev, name: '' }));
+              }}
+              placeholder="Ví dụ: Trà Sữa Trân Châu Hoàng Kim"
+              error={errors.name}
+              containerClassName="sm:col-span-2"
+              accentColor="emerald"
+            />
+
+            <Input
+              label="Mã SKU"
+              value={foodSku}
+              onChange={(e) => setFoodSku(e.target.value)}
+              placeholder="MILKTEA-L-70"
+              accentColor="emerald"
+            />
           </div>
 
           {/* Danh mục, Giá, Loại tiền, Thời gian làm */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Danh Mục *</label>
-              <select
-                value={foodCategoryId}
-                onChange={(e) => setFoodCategoryId(e.target.value)}
-                required
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-500 cursor-pointer"
-              >
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Select
+              label="Danh Mục"
+              required
+              value={foodCategoryId}
+              onChange={(e) => {
+                setFoodCategoryId(e.target.value);
+                if (e.target.value) setErrors((prev) => ({ ...prev, categoryId: '' }));
+              }}
+              error={errors.categoryId}
+              options={categories.map((c) => ({ label: c.name, value: c.id }))}
+              accentColor="emerald"
+            />
 
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Giá Bán *</label>
-              <input
-                type="number"
-                value={foodPrice}
-                onChange={(e) => setFoodPrice(e.target.value)}
-                placeholder="55000"
-                required
-                min="0"
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+            <Input
+              label="Giá Bán"
+              type="number"
+              required
+              min="0"
+              value={foodPrice}
+              onChange={(e) => {
+                setFoodPrice(e.target.value);
+                if (e.target.value.trim()) setErrors((prev) => ({ ...prev, price: '' }));
+              }}
+              placeholder="55000"
+              error={errors.price}
+              accentColor="emerald"
+            />
 
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">Đơn Vị</label>
-              <select
-                value={foodCurrency}
-                onChange={(e) => setFoodCurrency(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-emerald-500 font-mono cursor-pointer"
-              >
-                <option value="VND">VND (₫)</option>
-                <option value="USD">USD ($)</option>
-              </select>
-            </div>
+            <Select
+              label="Đơn Vị"
+              value={foodCurrency}
+              onChange={(e) => setFoodCurrency(e.target.value)}
+              options={[
+                { label: 'VND (₫)', value: 'VND' },
+                { label: 'USD ($)', value: 'USD' },
+              ]}
+              accentColor="emerald"
+            />
 
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300 flex items-center gap-1">
-                <Clock className="w-3 h-3 text-cyan-400" /> Làm (phút)
-              </label>
-              <input
-                type="number"
-                value={foodPrepTime}
-                onChange={(e) => setFoodPrepTime(e.target.value)}
-                placeholder="15"
-                min="1"
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+            <Input
+              label="Làm (phút)"
+              type="number"
+              min="1"
+              icon={<Clock className="w-3 h-3 text-cyan-400" />}
+              value={foodPrepTime}
+              onChange={(e) => setFoodPrepTime(e.target.value)}
+              placeholder="15"
+              accentColor="emerald"
+            />
           </div>
 
           {/* URL Hình ảnh & Tags */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300">URL Hình Ảnh</label>
-              <input
-                type="url"
-                value={foodImageUrl}
-                onChange={(e) => setFoodImageUrl(e.target.value)}
-                placeholder="https://images.unsplash.com/..."
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500 font-mono"
-              />
-            </div>
+            <Input
+              label="URL Hình Ảnh"
+              type="url"
+              value={foodImageUrl}
+              onChange={(e) => setFoodImageUrl(e.target.value)}
+              placeholder="https://images.unsplash.com/..."
+              accentColor="emerald"
+            />
 
-            <div className="space-y-1">
-              <label className="font-bold text-slate-300 flex items-center gap-1">
-                <Tag className="w-3 h-3 text-amber-400" /> Thẻ / Tags (cách dấu phẩy)
-              </label>
-              <input
-                type="text"
-                value={foodTags}
-                onChange={(e) => setFoodTags(e.target.value)}
-                placeholder="best-seller, milk-tea, sweet"
-                className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500"
-              />
-            </div>
+            <Input
+              label="Thẻ / Tags (cách dấu phẩy)"
+              icon={<Tag className="w-3 h-3 text-amber-400" />}
+              value={foodTags}
+              onChange={(e) => setFoodTags(e.target.value)}
+              placeholder="best-seller, milk-tea, sweet"
+              accentColor="emerald"
+            />
           </div>
 
           {/* Mô tả món */}
-          <div className="space-y-1">
-            <label className="font-bold text-slate-300">Mô Tả Chi Tiết Món Ăn</label>
-            <textarea
-              value={foodDesc}
-              onChange={(e) => setFoodDesc(e.target.value)}
-              rows={2}
-              placeholder="Thành phần chính, hương vị, khuyến mại đi kèm..."
-              className="w-full px-3.5 py-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:outline-none focus:border-emerald-500"
-            />
-          </div>
+          <Textarea
+            label="Mô Tả Chi Tiết Món Ăn"
+            rows={2}
+            value={foodDesc}
+            onChange={(e) => setFoodDesc(e.target.value)}
+            placeholder="Thành phần chính, hương vị, khuyến mại đi kèm..."
+            accentColor="emerald"
+          />
 
           {/* SECTION: VARIANTS (Size, Đường, Đá...) */}
           <div className="p-3 bg-slate-950/60 border border-slate-800 rounded-2xl space-y-2">
@@ -269,24 +284,25 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
               <div className="space-y-2">
                 {foodVariants.map((v, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
+                    <Input
                       value={v.name}
                       onChange={(e) => handleUpdateVariant(idx, 'name', e.target.value)}
                       placeholder="Tên biến thể (VD: Size L)"
-                      className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-200"
+                      containerClassName="flex-1"
+                      accentColor="emerald"
                     />
-                    <input
+                    <Input
                       type="number"
                       value={v.priceDelta}
                       onChange={(e) => handleUpdateVariant(idx, 'priceDelta', e.target.value)}
                       placeholder="+ VNĐ (VD: 10000)"
-                      className="w-28 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-amber-400 font-mono"
+                      containerClassName="w-28"
+                      accentColor="emerald"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveVariant(idx)}
-                      className="p-1.5 text-slate-500 hover:text-red-400 cursor-pointer"
+                      className="p-1.5 text-slate-500 hover:text-red-400 cursor-pointer shrink-0"
                     >
                       ✕
                     </button>
@@ -317,24 +333,25 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
               <div className="space-y-2">
                 {foodToppings.map((t, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <input
-                      type="text"
+                    <Input
                       value={t.name}
                       onChange={(e) => handleUpdateTopping(idx, 'name', e.target.value)}
                       placeholder="Tên topping (VD: Trân châu trắng)"
-                      className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-slate-200"
+                      containerClassName="flex-1"
+                      accentColor="emerald"
                     />
-                    <input
+                    <Input
                       type="number"
                       value={t.price}
                       onChange={(e) => handleUpdateTopping(idx, 'price', e.target.value)}
                       placeholder="Giá VNĐ (VD: 5000)"
-                      className="w-28 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-lg text-emerald-400 font-mono"
+                      containerClassName="w-28"
+                      accentColor="emerald"
                     />
                     <button
                       type="button"
                       onClick={() => handleRemoveTopping(idx)}
-                      className="p-1.5 text-slate-500 hover:text-red-400 cursor-pointer"
+                      className="p-1.5 text-slate-500 hover:text-red-400 cursor-pointer shrink-0"
                     >
                       ✕
                     </button>

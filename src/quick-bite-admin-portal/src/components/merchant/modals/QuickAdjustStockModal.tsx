@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
 import type { InventoryItem } from '../../../services/inventoryService';
+import Input from '../../common/Form/Input';
 
 export interface QuickAdjustStockModalProps {
   isOpen: boolean;
@@ -25,7 +26,27 @@ export const QuickAdjustStockModal: React.FC<QuickAdjustStockModalProps> = ({
   isSubmitting,
   onClose,
 }) => {
+  const [errorQty, setErrorQty] = useState<string>('');
+
   if (!isOpen || !item) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const numQty = parseInt(qty, 10);
+    if (isNaN(numQty) || numQty < 0) {
+      setErrorQty('Vui lòng nhập số lượng hợp lệ (>= 0)!');
+      return;
+    }
+    setErrorQty('');
+    onSubmit(e);
+  };
+
+  const labelText =
+    mode === 'ADD'
+      ? 'Số Lượng Nhập Thêm'
+      : mode === 'SUBTRACT'
+      ? 'Số Lượng Xuất/Giảm Kho'
+      : 'Thiết Lập Số Lượng Tồn Tuyệt Đối';
 
   return (
     <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
@@ -44,7 +65,7 @@ export const QuickAdjustStockModal: React.FC<QuickAdjustStockModalProps> = ({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="space-y-4 text-xs">
+        <form onSubmit={handleSubmit} noValidate className="space-y-4 text-xs">
           {/* Current Stock Display */}
           <div className="bg-slate-950 border border-slate-800 p-3 rounded-2xl flex items-center justify-between font-mono">
             <span className="text-slate-400 font-sans">Kho hiện tại:</span>
@@ -98,23 +119,20 @@ export const QuickAdjustStockModal: React.FC<QuickAdjustStockModalProps> = ({
           </div>
 
           {/* Quantity Input */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-300">
-              {mode === 'ADD'
-                ? 'Số Lượng Nhập Thêm:'
-                : mode === 'SUBTRACT'
-                ? 'Số Lượng Xuất/Giảm Kho:'
-                : 'Thiết Lập Số Lượng Tồn Tuyệt Đối:'}
-            </label>
-            <input
-              type="number"
-              min="0"
-              required
-              value={qty}
-              onChange={(e) => setQty(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl font-mono text-sm text-cyan-300 focus:outline-none focus:border-cyan-500"
-            />
-          </div>
+          <Input
+            label={labelText}
+            type="number"
+            min="0"
+            required
+            value={qty}
+            onChange={(e) => {
+              setQty(e.target.value);
+              if (e.target.value.trim()) setErrorQty('');
+            }}
+            error={errorQty}
+            accentColor="cyan"
+            className="font-mono text-sm text-cyan-300"
+          />
 
           {/* Modal Footer */}
           <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-800">

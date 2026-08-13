@@ -10,6 +10,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { toast } from '../../stores/toastStore';
 import { restaurantService } from '../../services/restaurantService';
 import { menuService } from '../../services/menuService';
 import type { Category, FoodItem } from '../../services/menuService';
@@ -196,10 +197,10 @@ export default function MerchantInventoryPage() {
         }
       }
       setIsImportModalOpen(false);
+      toast.success(`Đã nhập bổ sung kho thành công cho ${selectedEntries.length} sản phẩm!`);
       await loadInventoryData(currentPage, selectedCatFilter, searchTerm);
     } catch (err) {
       console.error('Error submitting import stock:', err);
-      alert('Đã xảy ra lỗi khi nhập hàng. Vui lòng thử lại!');
     } finally {
       setIsSubmittingImport(false);
     }
@@ -228,23 +229,25 @@ export default function MerchantInventoryPage() {
           foodItemId: quickAdjustItem.foodItemId,
           adjustmentQuantity: numQty,
         });
+        toast.success(`Đã nhập thêm ${numQty} vào kho cho "${quickAdjustItem.name || 'Món ăn'}"!`);
       } else if (quickAdjustMode === 'SUBTRACT') {
         await inventoryService.adjustStock({
           foodItemId: quickAdjustItem.foodItemId,
           adjustmentQuantity: -numQty,
         });
+        toast.success(`Đã giảm/xuất ${numQty} khỏi kho của "${quickAdjustItem.name || 'Món ăn'}"!`);
       } else if (quickAdjustMode === 'SET') {
         await inventoryService.createInventory({
           foodItemId: quickAdjustItem.foodItemId,
           quantity: numQty,
         });
+        toast.success(`Đã thiết lập kho tuyệt đối thành ${numQty} cho "${quickAdjustItem.name || 'Món ăn'}"!`);
       }
 
       setIsQuickAdjustModalOpen(false);
       await loadInventoryData(currentPage, selectedCatFilter, searchTerm);
     } catch (err) {
       console.error('Error quick adjusting stock:', err);
-      alert('Không thể cập nhật số lượng tồn kho. Vui lòng kiểm tra lại!');
     } finally {
       setIsSubmittingQuick(false);
     }
@@ -257,6 +260,7 @@ export default function MerchantInventoryPage() {
     }
     try {
       await inventoryService.deleteInventoryItem(foodItemId);
+      toast.success(`Đã xóa bản ghi kho của "${name || foodItemId}"!`);
       await loadInventoryData(currentPage, selectedCatFilter, searchTerm);
     } catch (err) {
       console.error('Error deleting inventory:', err);

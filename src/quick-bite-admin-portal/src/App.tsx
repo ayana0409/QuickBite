@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import BootScreen from './components/BootScreen';
+import ToastContainer from './components/common/ToastContainer';
 import { useAuthStore } from './stores/authStore';
 
 // Layouts
@@ -55,6 +56,7 @@ export default function App() {
 
   return (
     <BrowserRouter>
+      <ToastContainer />
       <Routes>
         {/* Public Root Redirect */}
         <Route path="/" element={<SmartRootRedirect />} />
