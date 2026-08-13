@@ -94,17 +94,37 @@ public class InventoryServiceImpl implements InventoryService {
     @Transactional
     public InventoryItemResponse adjustStock(StockAdjustmentRequest request) {
         log.info("Adjusting stock for food item: {}, adjustment: {}", request.getFoodItemId(), request.getAdjustmentQuantity());
-        InventoryItem item = inventoryItemRepository.findByFoodItemIdWithLock(request.getFoodItemId())
-                .orElseThrow(() -> new IllegalArgumentException("Inventory item not found for food item ID: " + request.getFoodItemId()));
 
-        int newQuantity = item.getQuantity() + request.getAdjustmentQuantity();
-        if (newQuantity < item.getReservedQuantity()) {
-            throw new IllegalStateException("Cannot reduce stock below current reserved quantity (" + item.getReservedQuantity() + ")");
+        if (!inventoryFoodItemRepository.existsById(request.getFoodItemId())) {
+            throw new IllegalArgumentException("Food item not found with ID: " + request.getFoodItemId());
         }
 
-        item.setQuantity(Math.max(0, newQuantity));
-        InventoryItem savedItem = inventoryItemRepository.save(item);
-        return mapToResponse(savedItem);
+        Optional<InventoryItem> optionalItem = inventoryItemRepository.findByFoodItemIdWithLock(request.getFoodItemId());
+
+        if (optionalItem.isPresent()) {
+            InventoryItem item = optionalItem.get();
+            int newQuantity = item.getQuantity() + request.getAdjustmentQuantity();
+            if (newQuantity < item.getReservedQuantity()) {
+                throw new IllegalStateException("Cannot reduce stock below current reserved quantity (" + item.getReservedQuantity() + ")");
+            }
+
+            item.setQuantity(Math.max(0, newQuantity));
+            InventoryItem savedItem = inventoryItemRepository.save(item);
+            return mapToResponse(savedItem);
+        } else {
+            if (request.getAdjustmentQuantity() < 0) {
+                throw new IllegalArgumentException("Cannot create new inventory item with a negative quantity: " + request.getAdjustmentQuantity());
+            }
+
+            InventoryItem newItem = InventoryItem.builder()
+                    .foodItemId(request.getFoodItemId())
+                    .quantity(request.getAdjustmentQuantity())
+                    .reservedQuantity(0)
+                    .build();
+
+            InventoryItem savedItem = inventoryItemRepository.save(newItem);
+            return mapToResponse(savedItem);
+        }
     }
 
     @Override

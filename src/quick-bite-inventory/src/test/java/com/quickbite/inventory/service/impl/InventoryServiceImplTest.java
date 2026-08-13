@@ -122,7 +122,7 @@ class InventoryServiceImplTest {
     class StockAdjustmentTests {
 
         @Test
-        @DisplayName("Should adjust stock successfully")
+        @DisplayName("Should adjust stock successfully when item exists")
         void shouldAdjustStockSuccessfully() {
             // Arrange
             StockAdjustmentRequest request = new StockAdjustmentRequest();
@@ -136,6 +136,7 @@ class InventoryServiceImplTest {
                     .reservedQuantity(10)
                     .build();
 
+            when(inventoryFoodItemRepository.existsById(foodItemId)).thenReturn(true);
             when(inventoryItemRepository.findByFoodItemIdWithLock(foodItemId))
                     .thenReturn(Optional.of(existingItem));
             when(inventoryItemRepository.save(any(InventoryItem.class)))
@@ -147,6 +148,48 @@ class InventoryServiceImplTest {
             // Assert
             assertThat(response.getQuantity()).isEqualTo(70);
             verify(inventoryItemRepository).save(existingItem);
+        }
+
+        @Test
+        @DisplayName("Should create new inventory item when item does not exist and adjustment is positive")
+        void shouldCreateNewItemWhenAdjustmentIsPositive() {
+            // Arrange
+            StockAdjustmentRequest request = new StockAdjustmentRequest();
+            request.setFoodItemId(foodItemId);
+            request.setAdjustmentQuantity(15);
+
+            when(inventoryFoodItemRepository.existsById(foodItemId)).thenReturn(true);
+            when(inventoryItemRepository.findByFoodItemIdWithLock(foodItemId))
+                    .thenReturn(Optional.empty());
+            when(inventoryItemRepository.save(any(InventoryItem.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // Act
+            InventoryItemResponse response = inventoryService.adjustStock(request);
+
+            // Assert
+            assertThat(response).isNotNull();
+            assertThat(response.getQuantity()).isEqualTo(15);
+            assertThat(response.getReservedQuantity()).isEqualTo(0);
+            verify(inventoryItemRepository).save(any(InventoryItem.class));
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException when creating new item with negative adjustment quantity")
+        void shouldThrowExceptionWhenCreatingNewItemWithNegativeQuantity() {
+            // Arrange
+            StockAdjustmentRequest request = new StockAdjustmentRequest();
+            request.setFoodItemId(foodItemId);
+            request.setAdjustmentQuantity(-10);
+
+            when(inventoryFoodItemRepository.existsById(foodItemId)).thenReturn(true);
+            when(inventoryItemRepository.findByFoodItemIdWithLock(foodItemId))
+                    .thenReturn(Optional.empty());
+
+            // Act & Assert
+            assertThatThrownBy(() -> inventoryService.adjustStock(request))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Cannot create new inventory item with a negative quantity");
         }
 
         @Test
@@ -164,6 +207,7 @@ class InventoryServiceImplTest {
                     .reservedQuantity(10)
                     .build();
 
+            when(inventoryFoodItemRepository.existsById(foodItemId)).thenReturn(true);
             when(inventoryItemRepository.findByFoodItemIdWithLock(foodItemId))
                     .thenReturn(Optional.of(existingItem));
 
