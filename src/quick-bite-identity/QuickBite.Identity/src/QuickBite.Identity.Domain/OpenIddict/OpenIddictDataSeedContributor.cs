@@ -79,7 +79,7 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
 
         var configurationSection = _configuration.GetSection("OpenIddict:Applications");
 
-        //Web Client
+        //Web Client (Identity_Web)
         var webClientId = configurationSection["Identity_Web:ClientId"];
         if (!webClientId.IsNullOrWhiteSpace())
         {
@@ -95,14 +95,31 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 secret: configurationSection["Identity_Web:ClientSecret"] ?? "1q2w3e*",
                 grantTypes: new List<string> //Hybrid flow
                 {
-                    OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit
+                    OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.RefreshToken
                 },
                 scopes: commonScopes,
-                redirectUri: $"{webClientRootUrl}api/auth/callback/oidc",
+                redirectUri: $"{webClientRootUrl}api/auth/callback/oidc,http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,https://localhost:44391/signin-oidc,{webClientRootUrl}signin-oidc",
                 clientUri: webClientRootUrl,
-                postLogoutRedirectUri: $"{webClientRootUrl}signout-callback-oidc"
+                postLogoutRedirectUri: $"{webClientRootUrl}signout-callback-oidc,http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc"
             );
         }
+
+        // Customer Web Client (quickbite_web)
+        await CreateApplicationAsync(
+            name: "quickbite_web",
+            type: OpenIddictConstants.ClientTypes.Confidential,
+            consentType: OpenIddictConstants.ConsentTypes.Implicit,
+            displayName: "QuickBite Customer Web Application",
+            secret: "1q2w3e*",
+            grantTypes: new List<string>
+            {
+                OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.Password, OpenIddictConstants.GrantTypes.RefreshToken
+            },
+            scopes: commonScopes,
+            redirectUri: "http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,http://localhost:3002/signin-oidc,http://localhost:3000/signin-oidc",
+            clientUri: "http://localhost:3002",
+            postLogoutRedirectUri: "http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc"
+        );
 
 
 
@@ -277,33 +294,36 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
 
         if (redirectUri != null)
         {
-            if (!redirectUri.IsNullOrEmpty())
+            var uris = redirectUri.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var rUri in uris)
             {
-                if (!Uri.TryCreate(redirectUri, UriKind.Absolute, out var uri) || !uri.IsWellFormedOriginalString())
+                if (!rUri.IsNullOrWhiteSpace())
                 {
-                    throw new BusinessException(L["InvalidRedirectUri", redirectUri]);
-                }
-
-                if (application.RedirectUris.All(x => x != uri))
-                {
-                    application.RedirectUris.Add(uri);
+                    if (Uri.TryCreate(rUri.Trim(), UriKind.Absolute, out var uri) && uri.IsWellFormedOriginalString())
+                    {
+                        if (application.RedirectUris.All(x => x != uri))
+                        {
+                            application.RedirectUris.Add(uri);
+                        }
+                    }
                 }
             }
         }
 
         if (postLogoutRedirectUri != null)
         {
-            if (!postLogoutRedirectUri.IsNullOrEmpty())
+            var uris = postLogoutRedirectUri.Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var pUri in uris)
             {
-                if (!Uri.TryCreate(postLogoutRedirectUri, UriKind.Absolute, out var uri) ||
-                    !uri.IsWellFormedOriginalString())
+                if (!pUri.IsNullOrWhiteSpace())
                 {
-                    throw new BusinessException(L["InvalidPostLogoutRedirectUri", postLogoutRedirectUri]);
-                }
-
-                if (application.PostLogoutRedirectUris.All(x => x != uri))
-                {
-                    application.PostLogoutRedirectUris.Add(uri);
+                    if (Uri.TryCreate(pUri.Trim(), UriKind.Absolute, out var uri) && uri.IsWellFormedOriginalString())
+                    {
+                        if (application.PostLogoutRedirectUris.All(x => x != uri))
+                        {
+                            application.PostLogoutRedirectUris.Add(uri);
+                        }
+                    }
                 }
             }
         }
