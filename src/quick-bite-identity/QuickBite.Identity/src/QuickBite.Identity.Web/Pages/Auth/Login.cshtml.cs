@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using QuickBite.Identity.Application.Contracts.Auth;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
+
 namespace QuickBite.Identity.Web.Pages.Auth;
 
 public class LoginModel : AbpPageModel
@@ -16,6 +17,9 @@ public class LoginModel : AbpPageModel
 
     [BindProperty]
     public LoginInputDto LoginInput { get; set; } = new();
+
+    [BindProperty(SupportsGet = true)]
+    public string? ReturnUrl { get; set; }
 
     public void OnGet()
     {
@@ -32,7 +36,13 @@ public class LoginModel : AbpPageModel
         {
             var result = await _authService.LoginAsync(LoginInput);
             if (result.Success)
+            {
+                if (!string.IsNullOrWhiteSpace(ReturnUrl))
+                {
+                    return Redirect(ReturnUrl);
+                }
                 return Redirect("~/");
+            }
             else
             {
                 ModelState.AddModelError(

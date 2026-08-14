@@ -46,7 +46,8 @@
                             </p>
                         </div>
 
-                        <form method="post">
+                        <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
+                            <input type="hidden" asp-for="ReturnUrl" />
 
                             <!-- Show errors -->
                             @if (!ViewData.ModelState.IsValid)
