@@ -43,8 +43,6 @@ export class FoodItemController {
   }
 
   @Get()
-  @UseGuards(JwtAuthGuard,PermissionGuard)
-  @Permissions(PermissionKeys.FOOD_ITEM_READ)
   findAll(
     @Query()
     pagination: PaginationDto,
@@ -55,8 +53,6 @@ export class FoodItemController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
-  @Permissions(PermissionKeys.FOOD_ITEM_READ)
   findOne(
     @Param('id')
     id: string,
@@ -67,8 +63,6 @@ export class FoodItemController {
   }
 
   @Get('/restaurant/:restaurantId')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
-  @Permissions(PermissionKeys.FOOD_ITEM_READ)
   findByRestaurant(
     @Param('restaurantId')
     restaurantId: string,
@@ -83,8 +77,6 @@ export class FoodItemController {
   }
 
   @Get('/category/:categoryId')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
-  @Permissions(PermissionKeys.FOOD_ITEM_READ)
   findByCategory(
     @Param('categoryId')
     categoryId: string,

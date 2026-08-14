@@ -63,8 +63,6 @@ export class RestaurantController {
   }
 
   @Get(':id')
-  @UseGuards(JwtAuthGuard, PermissionGuard)
-  @Permissions(PermissionKeys.RESTAURANT_READ)
   findOne(
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string
   ) {

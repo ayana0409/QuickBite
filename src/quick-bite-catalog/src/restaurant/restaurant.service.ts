@@ -83,9 +83,17 @@ export class RestaurantService {
       .leftJoinAndSelect("restaurant.categories", "category")
       .select([
         "restaurant.id",
+        "restaurant.ownerId",
         "restaurant.name",
+        "restaurant.slug",
+        "restaurant.address",
+        "restaurant.status",
+        "restaurant.rating",
+        "restaurant.createdAt",
+        "restaurant.updatedAt",
         "category.id",
-        "category.name"
+        "category.name",
+        "category.sortOrder",
       ])
       .where("restaurant.id = :id", { id })
       .getOne();
