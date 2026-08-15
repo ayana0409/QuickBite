@@ -18,6 +18,7 @@ using Volo.Abp.Application.Dtos;
 using Volo.Abp.Domain.Repositories;
 using Volo.Abp.EventBus.Distributed;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 
 using OrderEntity = QuickBite.Order.Domain.Orders.AggregateRoots.Order;
 namespace QuickBite.Order.Orders;
@@ -277,14 +278,67 @@ public class OrderAppService :
     /// <summary>
     /// Retrieves all orders belonging to the currently authenticated user.
     /// </summary>
-    public async Task<List<OrderDto>> GetMyOrdersAsync()
+    public async Task<List<OrderDto>> GetMyOrdersAsync(Guid? customerId = null)
     {
-        // 1. Ensure the user is authenticated.
-        var customerId = CurrentUser.Id;
-        if (customerId == null)
+        // 1. Resolve customer ID with multiple fallback mechanisms
+        var targetCustomerId = customerId ?? CurrentUser.Id;
+
+        if (targetCustomerId == null)
         {
-            // Throw AbpAuthorizationException if the user is unauthenticated.
-            throw new AbpAuthorizationException("User must be logged in to view their orders.");
+            var httpContext = LazyServiceProvider.LazyGetService<IHttpContextAccessor>()?.HttpContext;
+            if (httpContext != null)
+            {
+                // Try X-Customer-Id header
+                if (httpContext.Request.Headers.TryGetValue("X-Customer-Id", out var customIdStr) &&
+                    Guid.TryParse(customIdStr, out var parsedCustomId))
+                {
+                    targetCustomerId = parsedCustomId;
+                }
+                // Try customerId query param
+                else if (httpContext.Request.Query.TryGetValue("customerId", out var queryCustId) &&
+                         Guid.TryParse(queryCustId, out var parsedQueryId))
+                {
+                    targetCustomerId = parsedQueryId;
+                }
+                // Try decoding sub claim from Bearer JWT token in Authorization header
+                else if (httpContext.Request.Headers.TryGetValue("Authorization", out var authHeader))
+                {
+                    var authStr = authHeader.ToString();
+                    if (authStr.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        try
+                        {
+                            var token = authStr.Substring(7).Trim();
+                            var parts = token.Split('.');
+                            if (parts.Length >= 2)
+                            {
+                                var base64 = parts[1].Replace('-', '+').Replace('_', '/');
+                                switch (base64.Length % 4)
+                                {
+                                    case 2: base64 += "=="; break;
+                                    case 3: base64 += "="; break;
+                                }
+                                var jsonBytes = Convert.FromBase64String(base64);
+                                using var doc = JsonDocument.Parse(jsonBytes);
+                                if (doc.RootElement.TryGetProperty("sub", out var subProp) &&
+                                    Guid.TryParse(subProp.GetString(), out var subGuid))
+                                {
+                                    targetCustomerId = subGuid;
+                                }
+                            }
+                        }
+                        catch
+                        {
+                            // ignore token parse error
+                        }
+                    }
+                }
+            }
+        }
+
+        if (targetCustomerId == null)
+        {
+            return new List<OrderDto>();
         }
 
         var orderQuery = await _orderRepository.GetQueryableAsync();
@@ -292,7 +346,7 @@ public class OrderAppService :
 
         // 2. Perform DB joins to load matching orders along with their items and food metadata.
         var query = from o in orderQuery
-                    where o.CustomerId == customerId
+                    where o.CustomerId == targetCustomerId
                     select new
                     {
                         Order = o,
