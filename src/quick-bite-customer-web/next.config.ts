@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "**",
+      },
+    ],
+  },
   async rewrites() {
     const gatewayUrl =
       process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quickbite-gateway.onrender.com";

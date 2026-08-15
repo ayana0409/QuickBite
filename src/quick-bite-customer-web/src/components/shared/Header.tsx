@@ -13,6 +13,7 @@ import {
   ChevronDown,
   Sparkles,
 } from "lucide-react";
+import { useCartStore } from "@/src/store/cart.store";
 import AuthModal from "./AuthModal";
 
 export default function Header() {
@@ -20,7 +21,16 @@ export default function Header() {
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [mounted, setMounted] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const items = useCartStore((state) => state.items);
+  const setCartOpen = useCartStore((state) => state.setCartOpen);
+  const totalCartCount = items.reduce((sum, item) => sum + item.quantity, 0);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -81,16 +91,20 @@ export default function Header() {
           <div className="flex items-center gap-3 shrink-0">
             
             {/* Cart Button */}
-            <Link
-              href="/cart"
-              className="relative p-2.5 text-slate-700 hover:text-orange-500 bg-slate-50 hover:bg-orange-50 rounded-full border border-slate-200/80 hover:border-orange-200 transition-colors focus:outline-none group"
+            <button
+              type="button"
+              onClick={() => setCartOpen(true)}
+              className="relative p-2.5 text-slate-700 hover:text-orange-500 bg-slate-50 hover:bg-orange-50 rounded-full border border-slate-200/80 hover:border-orange-200 transition-colors focus:outline-none group cursor-pointer"
               title="Giỏ hàng"
+              aria-label="Mở giỏ hàng"
             >
               <ShoppingCart className="w-5 h-5 transition-transform group-hover:scale-110" />
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[11px] font-bold rounded-full flex items-center justify-center shadow-xs">
-                0
-              </span>
-            </Link>
+              {mounted && totalCartCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-orange-500 to-red-500 text-white text-[11px] font-black rounded-full flex items-center justify-center shadow-xs animate-in zoom-in-50 duration-150">
+                  {totalCartCount > 99 ? '99+' : totalCartCount}
+                </span>
+              )}
+            </button>
 
             {/* User Profile / Auth State */}
             {status === "loading" ? (
