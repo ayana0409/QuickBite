@@ -27,7 +27,7 @@ public class PaymentOutboxScheduler {
     @Value("${app.kafka.topics.publish:fulfillment-events}")
     private String topicName;
 
-    @Scheduled(fixedDelay = 3000)
+    @Scheduled(initialDelay = 30000, fixedDelay = 3000)
     @Transactional
     public void processOutboxMessages() {
         List<PaymentOutboxEntity> pendingMessages = outboxRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING");
