@@ -177,6 +177,7 @@ export class FoodItemService implements OnModuleInit {
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           currency: true,
           images: true,
@@ -184,6 +185,10 @@ export class FoodItemService implements OnModuleInit {
           totalSold: true,
           restaurantId: true,
           categoryId: true,
+          variants: true,
+          toppings: true,
+          tags: true,
+          preparationTime: true,
         },
       },
     );
@@ -246,6 +251,10 @@ export class FoodItemService implements OnModuleInit {
           totalSold: true,
           categoryId: true,
           restaurantId: true,
+          variants: true,
+          toppings: true,
+          tags: true,
+          preparationTime: true,
         },
       },
     );
@@ -265,11 +274,16 @@ export class FoodItemService implements OnModuleInit {
         select: {
           id: true,
           name: true,
+          description: true,
           price: true,
           currency: true,
           images: true,
           isAvailable: true,
           totalSold: true,
+          variants: true,
+          toppings: true,
+          tags: true,
+          preparationTime: true,
         },
       },
     );

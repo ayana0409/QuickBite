@@ -97,6 +97,9 @@ public class OrderAppService :
         // 5. Insert the order aggregate root into database (in Draft state).
         await _orderRepository.InsertAsync(order, autoSave: true);
 
+        // Submit order for demo only
+        await SubmitAsync(order.Id);
+
         // 6. Map the domain aggregate root to the response DTO.
         return ObjectMapper.Map<OrderEntity, OrderDto>(order);
     }
