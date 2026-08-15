@@ -20,7 +20,7 @@ public class OutboxScheduler {
     private final OutboxMessageRepository outboxMessageRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    @Scheduled(fixedDelay = 3000)
+    @Scheduled(initialDelay = 30000, fixedDelay = 3000)
     @Transactional
     public void processOutboxMessages() {
         List<OutboxMessage> pendingMessages = outboxMessageRepository.findTop50ByStatusOrderByCreatedAtAsc("PENDING");
@@ -41,7 +41,8 @@ public class OutboxScheduler {
                 kafkaTemplate.send(message.getTopic(), key, message.getPayload())
                         .whenComplete((result, ex) -> {
                             if (ex != null) {
-                                log.error("[Outbox Scheduler] Failed to publish outbox message ID: {}", message.getId(), ex);
+                                log.error("[Outbox Scheduler] Failed to publish outbox message ID: {}", message.getId(),
+                                        ex);
                             }
                         });
 
