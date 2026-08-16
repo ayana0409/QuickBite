@@ -42,35 +42,17 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       deliveryAddress: body.deliveryAddress || body,
     };
 
-    let targetUrl = `${ORDER_SERVICE_URL}/order/${orderId}/address`;
-    console.log(`📍 [PUT /api/order/[orderId]/address] Calling: ${targetUrl}`);
-
+    const targetUrl = `${GATEWAY_URL}/order/order/${orderId}/address`;
+    console.log(`📍 [PUT /api/order/[orderId]/address] Calling Gateway: ${targetUrl}`);
+    
     let response = await fetch(targetUrl, {
       method: 'PUT',
       headers,
       body: JSON.stringify(payload),
     }).catch((err) => {
-      console.warn(`[Order Direct PUT address] Failed, trying Gateway fallback:`, err);
+      console.error(`[Order Gateway PUT address] Failed:`, err);
       return null;
     });
-
-    if (!response || !response.ok) {
-      // Fallback via Gateway
-      const gatewayUrl = `${GATEWAY_URL}/order/order/${orderId}/address`;
-      console.log(`🔄 [Order Gateway Fallback PUT address] Calling: ${gatewayUrl}`);
-      try {
-        const gwRes = await fetch(gatewayUrl, {
-          method: 'PUT',
-          headers,
-          body: JSON.stringify(payload),
-        });
-        if (gwRes.ok) {
-          response = gwRes;
-        }
-      } catch (gwErr) {
-        console.error(`[Order Gateway PUT address] Also failed:`, gwErr);
-      }
-    }
 
     if (!response || !response.ok) {
       const errorText = response ? await response.text().catch(() => '') : 'No response';

@@ -41,35 +41,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       reason: body.reason || 'Hoàn tiền theo yêu cầu của khách hàng',
     };
 
-    let targetUrl = `${ORDER_SERVICE_URL}/order/${orderId}/refund`;
-    console.log(`💸 [POST /api/order/[orderId]/refund] Calling: ${targetUrl}`, payload);
-
+    const targetUrl = `${GATEWAY_URL}/order/order/${orderId}/refund`;
+    console.log(`💸 [POST /api/order/[orderId]/refund] Calling Gateway: ${targetUrl}`, payload);
+    
     let response = await fetch(targetUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(payload),
     }).catch((err) => {
-      console.warn(`[Order Direct Refund] Failed, trying Gateway fallback:`, err);
+      console.error(`[Order Gateway POST refund] Failed:`, err);
       return null;
     });
-
-    if (!response || !response.ok) {
-      // Fallback via Gateway
-      const gatewayUrl = `${GATEWAY_URL}/order/order/${orderId}/refund`;
-      console.log(`🔄 [Order Gateway Fallback Refund] Calling: ${gatewayUrl}`);
-      try {
-        const gwRes = await fetch(gatewayUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(payload),
-        });
-        if (gwRes.ok) {
-          response = gwRes;
-        }
-      } catch (gwErr) {
-        console.error(`[Order Gateway Refund] Also failed:`, gwErr);
-      }
-    }
 
     if (!response || !response.ok) {
       const errorText = response ? await response.text().catch(() => '') : 'No response';

@@ -37,39 +37,17 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const baseUrl = PAYMENT_SERVICE_BASE_URL.endsWith('/v1')
-      ? `${PAYMENT_SERVICE_BASE_URL}/payments`
-      : `${PAYMENT_SERVICE_BASE_URL}/v1/payments`;
-
-    let targetUrl = `${baseUrl}/${paymentId}/mock-process`;
-    console.log(`💳 [POST /api/payment/mock-process] Calling: ${targetUrl}`, body);
+    const targetUrl = `${GATEWAY_URL}/payments/payments/${paymentId}/mock-process`;
+    console.log(`💳 [POST /api/payment/mock-process] Calling Gateway: ${targetUrl}`, body);
 
     let response = await fetch(targetUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify(body),
     }).catch((err) => {
-      console.warn(`[Payment Direct POST mock-process] Failed, trying Gateway fallback:`, err);
+      console.error(`[Payment Gateway POST mock-process] Failed:`, err);
       return null;
     });
-
-    if (!response || !response.ok) {
-      // Fallback via Gateway
-      const gatewayUrl = `${GATEWAY_URL}/payment/v1/payments/${paymentId}/mock-process`;
-      console.log(`🔄 [Payment Gateway Fallback POST mock-process] Calling: ${gatewayUrl}`);
-      try {
-        const gwRes = await fetch(gatewayUrl, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(body),
-        });
-        if (gwRes.ok) {
-          response = gwRes;
-        }
-      } catch (gwErr) {
-        console.error(`[Payment Gateway POST mock-process] Also failed:`, gwErr);
-      }
-    }
 
     if (!response || !response.ok) {
       const errorText = response ? await response.text().catch(() => '') : 'No response';

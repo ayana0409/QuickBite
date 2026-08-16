@@ -35,33 +35,16 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    let targetUrl = `${ORDER_SERVICE_URL}/order/${orderId}/cancel`;
-    console.log(`🚫 [POST /api/order/[orderId]/cancel] Calling: ${targetUrl}`);
-
+    const targetUrl = `${GATEWAY_URL}/order/order/${orderId}/cancel`;
+    console.log(`🚫 [POST /api/order/[orderId]/cancel] Calling Gateway: ${targetUrl}`);
+    
     let response = await fetch(targetUrl, {
       method: 'POST',
       headers,
     }).catch((err) => {
-      console.warn(`[Order Direct Cancel] Failed, trying Gateway fallback:`, err);
+      console.error(`[Order Gateway POST cancel] Failed:`, err);
       return null;
     });
-
-    if (!response || !response.ok) {
-      // Fallback via Gateway
-      const gatewayUrl = `${GATEWAY_URL}/order/order/${orderId}/cancel`;
-      console.log(`🔄 [Order Gateway Fallback Cancel] Calling: ${gatewayUrl}`);
-      try {
-        const gwRes = await fetch(gatewayUrl, {
-          method: 'POST',
-          headers,
-        });
-        if (gwRes.ok) {
-          response = gwRes;
-        }
-      } catch (gwErr) {
-        console.error(`[Order Gateway Cancel] Also failed:`, gwErr);
-      }
-    }
 
     if (!response || !response.ok) {
       const errorText = response ? await response.text().catch(() => '') : 'No response';

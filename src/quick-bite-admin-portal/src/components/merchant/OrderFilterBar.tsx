@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, X, Filter } from 'lucide-react';
-import type { OrderStatus } from '../../types';
 
 export interface OrderFilterValues {
   search: string;

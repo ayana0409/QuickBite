@@ -51,14 +51,24 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
   // 3. Order & Saga Statuses
   if (type === 'order') {
     switch (normalized) {
-      case 'pending':
+      case 'draft':
+      case 'waitinginventory':
+      case 'waitingstock':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            ⏳ Chờ xử lý
+            📝 Chờ xác nhận (nháp)
           </span>
         );
+      case 'waitingpayment':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-orange-500/10 text-orange-400 border border-orange-500/30">
+            💳 Chờ thanh toán
+          </span>
+        );
+      case 'pending':
       case 'stockreserved':
       case 'confirmed':
+      case 'awaitingrestaurantacceptance':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30">
             📦 Đã xác nhận
@@ -67,22 +77,25 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
       case 'preparing':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-purple-500/10 text-purple-300 border border-purple-500/30">
-            🍳 Đang chế biến
+            🍳 Đang chuẩn bị
           </span>
         );
       case 'delivering':
+      case 'ontheway':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
             🛵 Đang giao hàng
           </span>
         );
       case 'completed':
+      case 'delivered':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-            ✅ Hoàn tất
+            ✅ Giao thành công
           </span>
         );
       case 'cancelled':
+      case 'rejected':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-500/10 text-red-400 border border-red-500/30">
             ❌ Đã hủy
@@ -92,21 +105,6 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-pink-500/10 text-pink-400 border border-pink-500/30">
             💸 Đã hoàn tiền
-          </span>
-        );
-      case 'draft':
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-500/10 text-slate-400 border border-slate-500/30">
-            📝 Đơn nháp
-          </span>
-        );
-      case 'awaitingrestaurantacceptance':
-      case 'waitinginventory':
-      case 'waitingpayment':
-      case 'waitingstock':
-        return (
-          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
-            ⏳ Đang chờ xác minh
           </span>
         );
       default:

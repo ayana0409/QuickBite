@@ -211,28 +211,16 @@ function SandboxPaymentContent() {
           Thanh toán thất bại!
         </h2>
         <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto mb-6">
-          {failureReason || 'Giao dịch bị từ chối theo kịch bản giả lập thất bại.'}
+          {failureReason || 'Giao dịch bị từ chối theo kịch bản giả lập thất bại. Đơn hàng đã được tự động chuyển sang trạng thái Hủy.'}
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              setResultState('IDLE');
-              setProcessing(false);
-            }}
-            className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <RotateCcw className="w-4 h-4" />
-            <span>Thử lại Sandbox</span>
-          </button>
-
+        <div>
           <button
             type="button"
             onClick={() => router.push(orderId ? `/order/${orderId}` : '/orders')}
-            className="flex-1 py-3 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-2xl transition-all flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-2xl shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
           >
-            <span>Quay lại đơn hàng</span>
+            <span>Quay lại chi tiết đơn hàng</span>
             <ChevronLeft className="w-4 h-4" />
           </button>
         </div>

@@ -34,34 +34,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
       headers['Authorization'] = `Bearer ${token}`;
     }
 
-    // Try direct Order Service first
-    let targetUrl = `${ORDER_SERVICE_URL}/order/${orderId}`;
+    const targetUrl = `${GATEWAY_URL}/order/order/${orderId}`;
+    console.log(`📍 [GET /api/order/[orderId]] Calling Gateway: ${targetUrl}`);
+    
     let response = await fetch(targetUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',
     }).catch((err) => {
-      console.warn(`[Order Direct GET by id] Failed, trying Gateway fallback:`, err);
+      console.error(`[Order Gateway GET] Failed:`, err);
       return null;
     });
-
-    if (!response || !response.ok) {
-      // Fallback via Gateway
-      const gatewayOrderUrl = `${GATEWAY_URL}/order/order/${orderId}`;
-      console.log(`🔄 [Order Gateway Fallback GET by id] Calling: ${gatewayOrderUrl}`);
-      try {
-        const gwRes = await fetch(gatewayOrderUrl, {
-          method: 'GET',
-          headers,
-          cache: 'no-store',
-        });
-        if (gwRes.ok) {
-          response = gwRes;
-        }
-      } catch (gwErr) {
-        console.error(`[Order Gateway GET by id] Also failed:`, gwErr);
-      }
-    }
 
     if (!response || !response.ok) {
       const errorText = response ? await response.text().catch(() => '') : 'No response';

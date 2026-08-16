@@ -50,8 +50,14 @@ export const OrdersPage = () => {
       header: 'Khách Hàng',
       cell: (row) => (
         <div>
-          <p className="font-bold text-slate-200">{row.customerName}</p>
-          <p className="text-[10px] text-slate-400 max-w-[150px] truncate">{row.deliveryAddress}</p>
+          <p className="font-bold text-slate-200">{row.customerName || 'Khách hàng'}</p>
+          <p className="text-[10px] text-slate-400 max-w-[150px] truncate">
+            {typeof row.deliveryAddress === 'string'
+              ? row.deliveryAddress
+              : row.deliveryAddress
+              ? `${row.deliveryAddress.addressLine || ''}`
+              : 'N/A'}
+          </p>
         </div>
       ),
     },
@@ -76,7 +82,9 @@ export const OrdersPage = () => {
       header: 'Thời Gian',
       cell: (row) => (
         <span className="text-slate-400 font-mono text-[11px]">
-          {new Date(row.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+          {row.createdAt
+            ? new Date(row.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })
+            : 'N/A'}
         </span>
       ),
     },

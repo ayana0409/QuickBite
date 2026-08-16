@@ -35,39 +35,17 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     }
 
     // Determine correct endpoint URL
-    const baseUrl = PAYMENT_SERVICE_BASE_URL.endsWith('/v1')
-      ? `${PAYMENT_SERVICE_BASE_URL}/payments`
-      : `${PAYMENT_SERVICE_BASE_URL}/v1/payments`;
-
-    let targetUrl = `${baseUrl}/order/${orderId}`;
-    console.log(`💳 [GET /api/payment/order] Calling: ${targetUrl}`);
+    const targetUrl = `${GATEWAY_URL}/payments/payments/order/${orderId}`;
+    console.log(`💳 [GET /api/payment/order] Calling Gateway: ${targetUrl}`);
 
     let response = await fetch(targetUrl, {
       method: 'GET',
       headers,
       cache: 'no-store',
     }).catch((err) => {
-      console.warn(`[Payment Direct GET] Failed, trying Gateway fallback:`, err);
+      console.error(`[Payment Gateway GET] Failed:`, err);
       return null;
     });
-
-    if (!response || !response.ok) {
-      // Fallback via Gateway
-      const gatewayUrl = `${GATEWAY_URL}/payment/v1/payments/order/${orderId}`;
-      console.log(`🔄 [Payment Gateway Fallback GET] Calling: ${gatewayUrl}`);
-      try {
-        const gwRes = await fetch(gatewayUrl, {
-          method: 'GET',
-          headers,
-          cache: 'no-store',
-        });
-        if (gwRes.ok) {
-          response = gwRes;
-        }
-      } catch (gwErr) {
-        console.error(`[Payment Gateway GET] Also failed:`, gwErr);
-      }
-    }
 
     if (!response || !response.ok) {
       const errorText = response ? await response.text().catch(() => '') : 'No response';

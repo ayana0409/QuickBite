@@ -1,14 +1,19 @@
 import { PaymentDto } from '@/src/types/order.type';
 
+const GATEWAY_URL =
+  process.env.NEXT_PUBLIC_API_GATEWAY_URL?.replace(/\/$/, '') ||
+  'https://quick-bite-gw.onrender.com';
+
 /**
  * Fetch payment session information by Order ID
- * Calls Next.js proxy API /api/payment/order/[orderId]
+ * Calls API Gateway GET /payments/order/[orderId]
  */
 export async function getPaymentByOrderId(orderId: string): Promise<PaymentDto | null> {
   if (!orderId) return null;
 
   try {
-    const res = await fetch(`/api/payment/order/${orderId}`, {
+    const url = `${GATEWAY_URL}/payments/payments/order/${orderId}`;
+    const res = await fetch(url, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -38,7 +43,7 @@ export async function getPaymentByOrderId(orderId: string): Promise<PaymentDto |
 
 /**
  * Simulate processing a mock payment (Success or Failure)
- * Calls Next.js proxy API /api/payment/[paymentId]/mock-process
+ * Calls API Gateway POST /payments/[paymentId]/mock-process
  */
 export async function processMockPayment(
   paymentId: string,
@@ -50,7 +55,8 @@ export async function processMockPayment(
   }
 
   try {
-    const res = await fetch(`/api/payment/${paymentId}/mock-process`, {
+    const url = `${GATEWAY_URL}/payments/payments/${paymentId}/mock-process`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

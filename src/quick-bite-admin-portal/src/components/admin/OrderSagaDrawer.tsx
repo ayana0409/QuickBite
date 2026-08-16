@@ -25,7 +25,7 @@ export const OrderSagaDrawer: React.FC<OrderSagaDrawerProps> = ({ order, isOpen,
               <ShoppingBag className="w-5 h-5 text-amber-400" />
               <div>
                 <h3 className="text-sm font-extrabold text-white font-mono">{order.orderCode}</h3>
-                <p className="text-[10px] text-slate-400">Tạo lúc: {new Date(order.createdAt).toLocaleString('vi-VN')}</p>
+                <p className="text-[10px] text-slate-400">Tạo lúc: {order.createdAt ? new Date(order.createdAt).toLocaleString('vi-VN') : 'N/A'}</p>
               </div>
             </div>
             <button
@@ -49,18 +49,24 @@ export const OrderSagaDrawer: React.FC<OrderSagaDrawerProps> = ({ order, isOpen,
               <div className="flex items-center gap-2 text-slate-200 font-bold border-b border-slate-800 pb-2">
                 <User className="w-4 h-4 text-cyan-400" />
                 <span>Khách hàng:</span>
-                <span className="text-cyan-300 font-extrabold">{order.customerName}</span>
+                <span className="text-cyan-300 font-extrabold">{order.customerName || 'Khách hàng'}</span>
               </div>
 
               <div className="flex items-center gap-2 text-slate-200 font-bold border-b border-slate-800 pb-2">
                 <Store className="w-4 h-4 text-amber-400" />
                 <span>Nhà hàng:</span>
-                <span className="text-amber-300 font-extrabold">{order.restaurantName}</span>
+                <span className="text-amber-300 font-extrabold">{order.restaurantName || 'Nhà hàng'}</span>
               </div>
 
               <div className="flex items-start gap-2 text-slate-300">
                 <MapPin className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span>{order.deliveryAddress}</span>
+                <span>
+                  {typeof order.deliveryAddress === 'string'
+                    ? order.deliveryAddress
+                    : order.deliveryAddress
+                    ? `${order.deliveryAddress.addressLine || ''} ${order.deliveryAddress.district || ''}`
+                    : 'N/A'}
+                </span>
               </div>
             </div>
 
@@ -71,7 +77,7 @@ export const OrderSagaDrawer: React.FC<OrderSagaDrawerProps> = ({ order, isOpen,
                 {order.items.map((item) => (
                   <div key={item.id} className="p-3 flex items-center justify-between">
                     <div>
-                      <p className="font-bold text-slate-200">{item.productName}</p>
+                      <p className="font-bold text-slate-200">{item.foodName || item.productName}</p>
                       <p className="text-[10px] text-slate-400">
                         {item.quantity} x {item.unitPrice.toLocaleString('vi-VN')}đ
                       </p>
@@ -95,12 +101,12 @@ export const OrderSagaDrawer: React.FC<OrderSagaDrawerProps> = ({ order, isOpen,
                   <Clock className="w-4 h-4 text-purple-400" /> Saga State Machine Visualizer
                 </h4>
                 <span className="text-[10px] font-mono text-purple-400 px-2 py-0.5 bg-purple-500/10 rounded border border-purple-500/30">
-                  State: {order.sagaState}
+                  State: {order.sagaState || 'N/A'}
                 </span>
               </div>
 
               <div className="space-y-3 pl-2 relative before:absolute before:left-3.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-800">
-                {order.timeline.map((step, idx) => {
+                {(order.timeline || []).map((step, idx) => {
                   const isDone = step.status === 'done';
                   const isActive = step.status === 'active';
                   const isFailed = step.status === 'failed';

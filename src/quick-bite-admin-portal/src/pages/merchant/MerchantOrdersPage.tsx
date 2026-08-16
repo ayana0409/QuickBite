@@ -9,6 +9,7 @@ import {
   AlertCircle,
   FileText,
   Clock,
+  Send,
 } from 'lucide-react';
 import { orderService } from '../../services/orderService';
 import type { Order, OrderStatus } from '../../types';
@@ -17,6 +18,7 @@ import OrderFilterBar, { type OrderFilterValues } from '../../components/merchan
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { Pagination } from '../../components/common/Pagination';
+import OrderDetailModal from '../../components/merchant/modals/OrderDetailModal';
 
 const PAGE_SIZE = 10;
 
@@ -26,6 +28,10 @@ export default function MerchantOrdersPage() {
   // State management
   const [filters, setFilters] = useState<OrderFilterValues>({ search: '', status: '' });
   const [page, setPage] = useState<number>(1);
+
+  // Selected Order for Detail View
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
 
   // Cancel order modal state
   const [cancelModal, setCancelModal] = useState<{
@@ -53,7 +59,7 @@ export default function MerchantOrdersPage() {
     placeholderData: keepPreviousData,
   });
 
-  // Mutation to update order status
+  // Mutation to update order status (e.g. Delivering)
   const { mutate: updateStatus, isPending: isUpdating } = useMutation({
     mutationFn: ({
       orderId,
@@ -68,12 +74,49 @@ export default function MerchantOrdersPage() {
       queryClient.invalidateQueries({ queryKey: ['merchant-orders'] });
       toast.success('Cập nhật trạng thái đơn hàng thành công!');
       closeCancelModal();
+      setDetailModalOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể cập nhật trạng thái đơn hàng');
+    },
+  });
+
+  // Mutation to submit a draft / pending order
+  const { mutate: submitOrder, isPending: isSubmitting } = useMutation({
+    mutationFn: (orderId: string) => orderService.submitOrder(orderId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-orders'] });
+      toast.success('Submit đơn hàng thành công! Đơn đã được chuyển vào quy trình xử lý.');
+      setDetailModalOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể submit đơn hàng');
+    },
+  });
+
+  // Mutation to cancel an order
+  const { mutate: cancelOrderMutate, isPending: isCancelling } = useMutation({
+    mutationFn: ({ orderId, reason }: { orderId: string; reason?: string }) =>
+      orderService.cancelOrder(orderId, reason),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['merchant-orders'] });
+      toast.success('Hủy đơn hàng thành công!');
+      closeCancelModal();
+      setDetailModalOpen(false);
+    },
+    onError: (err: any) => {
+      toast.error(err?.message || 'Không thể hủy đơn hàng');
     },
   });
 
   const handleFilterChange = (newFilters: OrderFilterValues) => {
     setFilters(newFilters);
     setPage(1); // Reset to page 1 when filter changes
+  };
+
+  const handleViewDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setDetailModalOpen(true);
   };
 
   const openCancelModal = (order: Order) => {
@@ -102,10 +145,9 @@ export default function MerchantOrdersPage() {
       return;
     }
 
-    updateStatus({
+    cancelOrderMutate({
       orderId: cancelModal.orderId,
-      status: 'Cancelled',
-      note: cancelModal.note.trim(),
+      reason: cancelModal.note.trim(),
     });
   };
 
@@ -142,6 +184,7 @@ export default function MerchantOrdersPage() {
   const orders = data?.items || [];
   const totalItems = data?.totalCount || 0;
   const totalPages = Math.ceil(totalItems / PAGE_SIZE) || 1;
+  const isAnyActionPending = isUpdating || isSubmitting || isCancelling;
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
@@ -165,7 +208,7 @@ export default function MerchantOrdersPage() {
 
         <button
           onClick={() => refetch()}
-          disabled={isLoading || isUpdating}
+          disabled={isLoading || isAnyActionPending}
           className="self-start sm:self-auto inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-medium rounded-xl transition-all disabled:opacity-50 cursor-pointer"
         >
           <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -192,7 +235,7 @@ export default function MerchantOrdersPage() {
               onClick={() => refetch()}
               className="inline-flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-xl transition-all cursor-pointer"
             >
-               Thử lại
+              Thử lại
             </button>
           </div>
         )}
@@ -250,7 +293,10 @@ export default function MerchantOrdersPage() {
               </thead>
               <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800 text-sm">
                 {orders.map((order) => {
-                  const isPreparing = order.status === 'Preparing';
+                  const statusLower = (order.status || '').toLowerCase().trim();
+                  const isDraftOrPending = ['draft', 'pending', 'waitinginventory', 'waitingstock'].includes(statusLower);
+                  const isPreparing = statusLower === 'preparing';
+                  const canCancel = ['draft', 'pending', 'waitingpayment', 'waitingstock', 'waitinginventory', 'confirmed', 'preparing'].includes(statusLower);
 
                   return (
                     <tr
@@ -286,42 +332,57 @@ export default function MerchantOrdersPage() {
 
                       {/* Thao tác */}
                       <td className="py-4 px-4 text-right">
-                        <div className="inline-flex items-center justify-end gap-2">
-                          {isPreparing ? (
-                            <>
-                              {/* Chuẩn bị xong -> Delivering */}
-                              <button
-                                type="button"
-                                onClick={() => handleCompletePreparing(order.id)}
-                                disabled={isUpdating}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
-                                title="Đánh dấu đã chế biến xong, chuyển sang đang giao"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                                <span>Chuẩn bị xong</span>
-                              </button>
+                        <div className="inline-flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* 1. Nút Xem chi tiết */}
+                          <button
+                            type="button"
+                            onClick={() => handleViewDetails(order)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                            title="Xem thông tin chi tiết đơn hàng"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span>Chi tiết</span>
+                          </button>
 
-                              {/* Hủy đơn -> Cancelled with Note */}
-                              <button
-                                type="button"
-                                onClick={() => openCancelModal(order)}
-                                disabled={isUpdating}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
-                                title="Hủy đơn hàng này"
-                              >
-                                <XCircle className="w-3.5 h-3.5" />
-                                <span>Hủy đơn</span>
-                              </button>
-                            </>
-                          ) : (
-                            /* Visual Action for non-preparing orders */
+                          {/* 2. Nút Submit đơn (nếu là Draft / Pending / Chờ xác nhận) */}
+                          {isDraftOrPending && (
                             <button
                               type="button"
-                              disabled
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-medium rounded-lg cursor-not-allowed opacity-75"
+                              onClick={() => submitOrder(order.id)}
+                              disabled={isAnyActionPending}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
+                              title="Submit đơn hàng vào quy trình"
                             >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>Xem chi tiết</span>
+                              <Send className="w-3.5 h-3.5" />
+                              <span>Submit</span>
+                            </button>
+                          )}
+
+                          {/* 3. Nút Chuẩn bị xong (nếu là Preparing) */}
+                          {isPreparing && (
+                            <button
+                              type="button"
+                              onClick={() => handleCompletePreparing(order.id)}
+                              disabled={isAnyActionPending}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
+                              title="Đánh dấu đã chế biến xong, chuyển sang đang giao"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Xong</span>
+                            </button>
+                          )}
+
+                          {/* 4. Nút Hủy đơn */}
+                          {canCancel && (
+                            <button
+                              type="button"
+                              onClick={() => openCancelModal(order)}
+                              disabled={isAnyActionPending}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-red-500/10 hover:bg-red-500 text-red-600 hover:text-white border border-red-500/30 disabled:opacity-50 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                              title="Hủy đơn hàng này"
+                            >
+                              <XCircle className="w-3.5 h-3.5" />
+                              <span>Hủy</span>
                             </button>
                           )}
                         </div>
@@ -349,6 +410,17 @@ export default function MerchantOrdersPage() {
           </div>
         )}
       </div>
+
+      {/* Order Detail Modal */}
+      <OrderDetailModal
+        isOpen={detailModalOpen}
+        onClose={() => setDetailModalOpen(false)}
+        orderSummary={selectedOrder}
+        onOpenCancel={openCancelModal}
+        onSubmitOrder={(id) => submitOrder(id)}
+        onCompletePreparing={handleCompletePreparing}
+        isActionLoading={isAnyActionPending}
+      />
 
       {/* Cancel Order Modal */}
       <Modal
@@ -385,18 +457,18 @@ export default function MerchantOrdersPage() {
             <button
               type="button"
               onClick={closeCancelModal}
-              disabled={isUpdating}
-              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all"
+              disabled={isAnyActionPending}
+              className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all cursor-pointer"
             >
               Bỏ qua
             </button>
 
             <button
               type="submit"
-              disabled={isUpdating || !cancelModal.note.trim()}
+              disabled={isAnyActionPending || !cancelModal.note.trim()}
               className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white text-xs font-semibold rounded-xl shadow-xs transition-all cursor-pointer"
             >
-              {isUpdating ? (
+              {isCancelling ? (
                 <>
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>Đang xử lý...</span>
