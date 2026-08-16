@@ -31,6 +31,7 @@ public class Payment {
     public void markAsSuccess(String transactionId) {
         this.status = PaymentStatus.SUCCESS;
         this.transactionId = transactionId;
+        this.failureReason = null;
         this.updatedAt = LocalDateTime.now();
     }
 

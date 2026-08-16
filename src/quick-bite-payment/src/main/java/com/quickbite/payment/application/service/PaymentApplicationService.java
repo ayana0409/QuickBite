@@ -29,6 +29,21 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
     public Payment createPayment(CreatePaymentCommand command) {
         // Retrieve existing payment for this order if already present, or build a new one
         Payment payment = persistencePort.findByOrderId(command.getOrderId())
+                .map(existingPayment -> {
+                    // If existing payment is FAILED or PENDING, allow updating method/amount and resetting
+                    if (existingPayment.getStatus() == PaymentStatus.FAILED || existingPayment.getStatus() == PaymentStatus.PENDING) {
+                        existingPayment.setStatus(PaymentStatus.PENDING);
+                        if (command.getAmount() != null) {
+                            existingPayment.setAmount(command.getAmount());
+                        }
+                        if (command.getMethod() != null) {
+                            existingPayment.setMethod(command.getMethod());
+                        }
+                        existingPayment.setFailureReason(null);
+                        existingPayment.setUpdatedAt(LocalDateTime.now());
+                    }
+                    return existingPayment;
+                })
                 .orElseGet(() -> Payment.builder()
                         .id(UUID.randomUUID())
                         .orderId(command.getOrderId())
@@ -65,8 +80,9 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
     public Payment processMockPayment(UUID paymentId, boolean success, String reason) {
         Payment payment = getPaymentById(paymentId);
 
-        if (payment.getStatus() != PaymentStatus.PENDING) {
-            throw new IllegalStateException("Payment is already processed with status: " + payment.getStatus());
+        // Allow retry and processing when payment is PENDING or FAILED
+        if (payment.getStatus() != PaymentStatus.PENDING && payment.getStatus() != PaymentStatus.FAILED) {
+            throw new IllegalStateException("Payment is already finalized with status: " + payment.getStatus());
         }
 
         if (success) {
