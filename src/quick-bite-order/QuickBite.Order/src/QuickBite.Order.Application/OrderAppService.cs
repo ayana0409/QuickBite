@@ -262,6 +262,29 @@ public class OrderAppService :
     }
 
     /// <summary>
+    /// Updates only the delivery address of an order before delivery.
+    /// </summary>
+    public async Task<OrderDto> UpdateAddressAsync(Guid id, UpdateDeliveryAddressDto input)
+    {
+        var order = await _orderRepository.GetAsync(id, includeDetails: true);
+
+        var deliveryAddress = new DeliveryAddress(
+            input.DeliveryAddress.ReceiverName,
+            input.DeliveryAddress.PhoneNumber,
+            input.DeliveryAddress.AddressLine,
+            input.DeliveryAddress.Ward,
+            input.DeliveryAddress.District,
+            input.DeliveryAddress.Province,
+            input.DeliveryAddress.Note ?? string.Empty
+        );
+
+        order.SetDeliveryAddress(deliveryAddress);
+        await _orderRepository.UpdateAsync(order, autoSave: true);
+
+        return ObjectMapper.Map<OrderEntity, OrderDto>(order);
+    }
+
+    /// <summary>
     /// Updates an existing order's status (for processing orders).
     /// </summary>
     public async Task<OrderDto> UpdateStatusAsync(Guid id, UpdateOrderStatusDto input)

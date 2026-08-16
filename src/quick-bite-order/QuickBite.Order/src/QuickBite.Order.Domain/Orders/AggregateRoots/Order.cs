@@ -124,7 +124,7 @@ public class Order : FullAuditedAggregateRoot<Guid>
 
     public void SetDeliveryAddress(DeliveryAddress deliveryAddress)
     {
-        EnsureIsDraft();
+        EnsureCanUpdateAddress();
 
         DeliveryAddress = Check.NotNull(deliveryAddress, nameof(deliveryAddress));
     }
@@ -209,6 +209,27 @@ public class Order : FullAuditedAggregateRoot<Guid>
                 code: OrderDomainErrorCodes.CannotUpdateNonDraftOrder,
                 message: "Không thể chỉnh sửa thông tin đơn hàng khi đơn đã vào quy trình xử lý. Chỉ được chỉnh sửa khi đơn ở trạng thái Nháp (Draft)."
             ).WithData("CurrentStatus", Status);
+        }
+    }
+
+    private void EnsureCanUpdateAddress()
+    {
+        var addressModifiableStatuses = new[]
+        {
+            OrderStatus.Draft,
+            OrderStatus.Pending,
+            OrderStatus.WaitingInventory,
+            OrderStatus.WaitingStock,
+            OrderStatus.WaitingPayment,
+            OrderStatus.Confirmed
+        };
+
+        if (!addressModifiableStatuses.Contains(Status))
+        {
+            throw new BusinessException(
+                code: OrderDomainErrorCodes.InvalidOrderStatus,
+                message: $"Không thể cập nhật địa chỉ giao hàng khi đơn hàng ở trạng thái '{Status}'."
+            );
         }
     }
 
