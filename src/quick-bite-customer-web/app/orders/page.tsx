@@ -21,6 +21,7 @@ import {
   Store,
   ArrowRight,
   CreditCard,
+  RotateCcw,
 } from 'lucide-react';
 import { OrderDto, OrderStatus } from '@/src/types/order.type';
 import { getMyOrders } from '@/src/lib/api/order';
@@ -70,34 +71,34 @@ export default function OrdersPage() {
   const getStatusBadge = (status: OrderStatus | string) => {
     const s = status?.toLowerCase() || '';
 
-    if (s === 'draft') {
+    if (s === 'draft' || s === 'waitinginventory' || s === 'waitingstock') {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-          <Clock className="w-3.5 h-3.5 text-amber-500" />
-          Đơn nháp
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+          <Clock className="w-3.5 h-3.5 text-amber-600" />
+          Chờ xác nhận (nháp)
         </span>
       );
     }
-    if (s === 'submitted' || s === 'pending' || s === 'waitingpayment') {
+    if (s === 'confirmed' || s === 'awaitingrestaurantacceptance' || s === 'submitted' || s === 'pending') {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
           <FileCheck className="w-3.5 h-3.5 text-blue-500" />
-          {s === 'waitingpayment' ? 'Chờ thanh toán' : 'Đã gửi đơn'}
+          Đã xác nhận
         </span>
       );
     }
-    if (s === 'confirmed' || s === 'awaitingrestaurantacceptance') {
+    if (s === 'waitingpayment') {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-          Quán tiếp nhận
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-800 border border-orange-300 animate-pulse">
+          <CreditCard className="w-3.5 h-3.5 text-orange-600" />
+          Chờ thanh toán
         </span>
       );
     }
     if (s === 'preparing') {
       return (
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">
-          <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           Đang chuẩn bị
         </span>
       );
@@ -118,7 +119,15 @@ export default function OrdersPage() {
         </span>
       );
     }
-    if (s === 'cancelled' || s === 'rejected' || s === 'refunded') {
+    if (s === 'refunded') {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+          <RotateCcw className="w-3.5 h-3.5 text-purple-600" />
+          Đã hoàn tiền
+        </span>
+      );
+    }
+    if (s === 'cancelled' || s === 'rejected') {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
           <AlertCircle className="w-3.5 h-3.5 text-red-500" />

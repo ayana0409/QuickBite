@@ -23,12 +23,18 @@ import {
   CreditCard,
   ArrowRight,
   ExternalLink,
+  Edit3,
+  XCircle,
+  RotateCcw,
+  AlertTriangle,
 } from 'lucide-react';
-import { OrderDto, OrderStatus, PaymentDto } from '@/src/types/order.type';
-import { getOrderById } from '@/src/lib/api/order';
+import { OrderDto, OrderStatus, PaymentDto, DeliveryAddress } from '@/src/types/order.type';
+import { getOrderById, cancelOrder } from '@/src/lib/api/order';
 import { getPaymentByOrderId } from '@/src/lib/api/payment';
 import { useToast } from '@/src/components/shared/ToastProvider';
 import OrderStatusStepper from '@/src/components/shared/OrderStatusStepper';
+import UpdateAddressModal from '@/src/components/shared/UpdateAddressModal';
+import RefundOrderModal from '@/src/components/shared/RefundOrderModal';
 
 interface PageProps {
   params: Promise<{ orderId: string }>;
@@ -45,6 +51,12 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Modals state
+  const [isAddressModalOpen, setIsAddressModalOpen] = useState(false);
+  const [isRefundModalOpen, setIsRefundModalOpen] = useState(false);
+  const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
 
   // Fetch Order Data & Payment Info
   const loadOrder = async (isManualRefresh = false) => {
@@ -89,42 +101,34 @@ export default function OrderDetailPage({ params }: PageProps) {
   const getStatusBadge = (status?: OrderStatus | string) => {
     const s = status?.toLowerCase() || '';
 
-    if (s === 'draft') {
+    if (s === 'draft' || s === 'waitinginventory' || s === 'waitingstock') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
-          <Clock className="w-3.5 h-3.5 text-amber-500" />
-          Đơn hàng nháp
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+          <Clock className="w-3.5 h-3.5 text-amber-600" />
+          Chờ xác nhận
+        </span>
+      );
+    }
+    if (s === 'confirmed' || s === 'awaitingrestaurantacceptance' || s === 'submitted' || s === 'pending') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+          <FileCheck className="w-3.5 h-3.5 text-blue-500" />
+          Đã xác nhận
         </span>
       );
     }
     if (s === 'waitingpayment') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 animate-pulse">
-          <Clock className="w-3.5 h-3.5 text-amber-600" />
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-800 border border-orange-300 animate-pulse">
+          <CreditCard className="w-3.5 h-3.5 text-orange-600" />
           Chờ thanh toán
-        </span>
-      );
-    }
-    if (s === 'submitted' || s === 'pending') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
-          <FileCheck className="w-3.5 h-3.5 text-blue-500" />
-          Đã gửi đơn hàng
-        </span>
-      );
-    }
-    if (s === 'confirmed' || s === 'awaitingrestaurantacceptance') {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
-          Quán tiếp nhận
         </span>
       );
     }
     if (s === 'preparing') {
       return (
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-orange-50 text-orange-700 border border-orange-200">
-          <Sparkles className="w-3.5 h-3.5 text-orange-500" />
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
           Đang chuẩn bị
         </span>
       );
@@ -145,7 +149,15 @@ export default function OrderDetailPage({ params }: PageProps) {
         </span>
       );
     }
-    if (s === 'cancelled' || s === 'rejected' || s === 'refunded') {
+    if (s === 'refunded') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200">
+          <RotateCcw className="w-3.5 h-3.5 text-purple-600" />
+          Đã hoàn tiền
+        </span>
+      );
+    }
+    if (s === 'cancelled' || s === 'rejected') {
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-red-50 text-red-700 border border-red-200">
           <AlertCircle className="w-3.5 h-3.5 text-red-500" />
@@ -165,9 +177,50 @@ export default function OrderDetailPage({ params }: PageProps) {
     const finalAmount = order?.totalAmount || 0;
     const targetPaymentId = payment?.id || '';
 
-    // If payment record already exists, pass its id
     const sandboxUrl = `/payment/sandbox?paymentId=${targetPaymentId}&orderId=${orderId}&amount=${finalAmount}`;
     router.push(sandboxUrl);
+  };
+
+  // Handle Cancel Order Confirmation
+  const handleConfirmCancel = async () => {
+    if (!order) return;
+    setCancelling(true);
+    try {
+      const res = await cancelOrder(order.id);
+      if (res.success) {
+        success('Đã hủy đơn hàng thành công!');
+        setOrder({
+          ...order,
+          status: 'Cancelled',
+        });
+        setIsCancelConfirmOpen(false);
+      } else {
+        toastError(res.message || 'Không thể hủy đơn hàng');
+      }
+    } catch (err: any) {
+      console.error('Cancel order error:', err);
+      toastError('Lỗi kết nối khi gửi yêu cầu hủy đơn');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleAddressUpdated = (newAddress: DeliveryAddress) => {
+    if (order) {
+      setOrder({
+        ...order,
+        deliveryAddress: newAddress,
+      });
+    }
+  };
+
+  const handleRefundSuccess = () => {
+    if (order) {
+      setOrder({
+        ...order,
+        status: 'Refunded',
+      });
+    }
   };
 
   if (loading) {
@@ -215,13 +268,20 @@ export default function OrderDetailPage({ params }: PageProps) {
   const itemsSubtotal = items.reduce((sum, i) => sum + (i.totalPrice || i.unitPrice * i.quantity || 0), 0);
   const deliveryFee = 15000;
   const totalAmount = order.totalAmount || (itemsSubtotal + deliveryFee);
-  const isWaitingPayment = order.status?.toLowerCase() === 'waitingpayment';
+
+  const statusLower = (order.status || '').toLowerCase().trim();
+  const isWaitingPayment = statusLower === 'waitingpayment';
+
+  // Rules for available actions
+  const canUpdateAddress = ['draft', 'waitingpayment', 'pending', 'submitted', 'confirmed'].includes(statusLower);
+  const canCancelOrder = ['draft', 'waitingpayment', 'pending', 'submitted', 'confirmed', 'preparing'].includes(statusLower);
+  const canRefundOrder = ['delivered', 'completed'].includes(statusLower);
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] py-8 sm:py-12 text-slate-900">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Navigation & Refresh Bar */}
-        <div className="flex items-center justify-between mb-6">
+        {/* Navigation & Action Bar */}
+        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
           <div className="flex items-center gap-3">
             <Link
               href="/orders"
@@ -239,15 +299,42 @@ export default function OrderDetailPage({ params }: PageProps) {
             </Link>
           </div>
 
-          <button
-            type="button"
-            onClick={() => loadOrder(true)}
-            disabled={refreshing}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-orange-600 hover:border-orange-200 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-500' : ''}`} />
-            <span>Làm mới trạng thái</span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Cancel Button (available before delivery) */}
+            {canCancelOrder && (
+              <button
+                type="button"
+                onClick={() => setIsCancelConfirmOpen(true)}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 border border-red-200 text-xs font-bold text-red-700 transition-all cursor-pointer"
+              >
+                <XCircle className="w-3.5 h-3.5" />
+                <span>Hủy đơn hàng</span>
+              </button>
+            )}
+
+            {/* Refund Button (available when delivered/completed) */}
+            {canRefundOrder && (
+              <button
+                type="button"
+                onClick={() => setIsRefundModalOpen(true)}
+                className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-100 border border-purple-200 text-xs font-bold text-purple-700 shadow-2xs transition-all cursor-pointer"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Yêu cầu hoàn tiền</span>
+              </button>
+            )}
+
+            {/* Refresh Button */}
+            <button
+              type="button"
+              onClick={() => loadOrder(true)}
+              disabled={refreshing}
+              className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-white border border-slate-200 text-xs font-bold text-slate-600 hover:text-orange-600 hover:border-orange-200 shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin text-orange-500' : ''}`} />
+              <span>Làm mới</span>
+            </button>
+          </div>
         </div>
 
         {/* Order Header Card */}
@@ -319,10 +406,25 @@ export default function OrderDetailPage({ params }: PageProps) {
           <div className="py-6 border-b border-slate-100 grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Delivery Address */}
             <div>
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-orange-500" />
-                <span>Địa chỉ nhận hàng</span>
-              </h3>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <MapPin className="w-3.5 h-3.5 text-orange-500" />
+                  <span>Địa chỉ nhận hàng</span>
+                </h3>
+
+                {/* Edit Address button if status permits */}
+                {canUpdateAddress && (
+                  <button
+                    type="button"
+                    onClick={() => setIsAddressModalOpen(true)}
+                    className="inline-flex items-center gap-1 text-[11px] font-bold text-orange-600 hover:text-orange-700 bg-orange-50 hover:bg-orange-100 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span>Thay đổi</span>
+                  </button>
+                )}
+              </div>
+
               {address ? (
                 <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-sm space-y-1.5">
                   <div className="flex items-center gap-2 font-bold text-slate-900">
@@ -343,7 +445,9 @@ export default function OrderDetailPage({ params }: PageProps) {
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic">Chưa có thông tin địa chỉ</p>
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-xs text-slate-400 italic">
+                  Chưa có thông tin địa chỉ
+                </div>
               )}
             </div>
 
@@ -381,13 +485,17 @@ export default function OrderDetailPage({ params }: PageProps) {
               <div>
                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
                   <ShoppingBag className="w-3.5 h-3.5 text-orange-500" />
-                  <span>Ghi chú đơn</span>
+                  <span>Trạng thái đơn hàng</span>
                 </h3>
                 <div className="bg-orange-50/50 rounded-2xl p-3.5 border border-orange-100/80 text-xs text-slate-600">
                   <p className="font-bold text-orange-950">
                     {isWaitingPayment
                       ? 'Đơn hàng đang chờ bạn thanh toán trên cổng Sandbox.'
-                      : 'Đơn hàng đã được tiếp nhận và chuyển đến nhà hàng xử lý.'}
+                      : statusLower === 'cancelled'
+                        ? 'Đơn hàng đã bị hủy.'
+                        : statusLower === 'refunded'
+                          ? 'Đơn hàng đã được xử lý hoàn tiền thành công.'
+                          : 'Đơn hàng đã được tiếp nhận và xử lý theo quy trình.'}
                   </p>
                   <p className="text-[11px] text-slate-500 mt-0.5">
                     Thời gian giao hàng dự kiến: 20 - 30 phút kể từ lúc quán xác nhận.
@@ -467,6 +575,72 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
         </div>
       </div>
+
+      {/* Update Address Modal */}
+      <UpdateAddressModal
+        isOpen={isAddressModalOpen}
+        onClose={() => setIsAddressModalOpen(false)}
+        orderId={order.id}
+        currentAddress={order.deliveryAddress}
+        onSuccess={handleAddressUpdated}
+      />
+
+      {/* Refund Order Modal */}
+      <RefundOrderModal
+        isOpen={isRefundModalOpen}
+        onClose={() => setIsRefundModalOpen(false)}
+        orderId={order.id}
+        totalAmount={totalAmount}
+        onSuccess={handleRefundSuccess}
+      />
+
+      {/* Cancel Confirmation Modal */}
+      {isCancelConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div
+            className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-red-100 text-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-4 shadow-md shadow-red-500/20">
+              <AlertTriangle className="w-7 h-7" />
+            </div>
+
+            <h3 className="text-lg font-black text-slate-900 mb-1.5">
+              Xác nhận hủy đơn hàng?
+            </h3>
+            <p className="text-xs text-slate-500 mb-6 leading-relaxed">
+              Bạn có chắc chắn muốn hủy đơn hàng <strong>#{order.orderCode || order.id.slice(0, 8)}</strong> không? Thao tác này không thể hoàn tác.
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setIsCancelConfirmOpen(false)}
+                disabled={cancelling}
+                className="flex-1 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Giữ lại đơn
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConfirmCancel}
+                disabled={cancelling}
+                className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold shadow-md shadow-red-600/25 active:scale-98 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-60"
+              >
+                {cancelling ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>Đang hủy...</span>
+                  </>
+                ) : (
+                  <span>Xác nhận hủy</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,9 +1,5 @@
-import { OrderDto } from '@/src/types/order.type';
+import { OrderDto, DeliveryAddress } from '@/src/types/order.type';
 
-/**
- * Fetch all orders for the currently authenticated user
- * Calls Next.js proxy API /api/order
- */
 /**
  * Fetch all orders for the currently authenticated user
  * Calls Next.js proxy API /api/order
@@ -95,5 +91,126 @@ export async function getOrderById(id: string): Promise<OrderDto | null> {
   } catch (error) {
     console.error(`[getOrderById] Failed to fetch order ${id}:`, error);
     return null;
+  }
+}
+
+/**
+ * Update delivery address for an existing order before delivery
+ * Calls Next.js proxy API PUT /api/order/${orderId}/address
+ */
+export async function updateOrderDeliveryAddress(
+  orderId: string,
+  deliveryAddress: DeliveryAddress
+): Promise<{ success: boolean; data?: OrderDto; message?: string }> {
+  if (!orderId) return { success: false, message: 'Thiếu mã đơn hàng' };
+
+  try {
+    const res = await fetch(`/api/order/${orderId}/address`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ deliveryAddress }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: json?.message || 'Không thể cập nhật địa chỉ giao hàng',
+      };
+    }
+
+    const orderData = json?.data || json;
+    return {
+      success: true,
+      data: orderData,
+    };
+  } catch (error: any) {
+    console.error(`[updateOrderDeliveryAddress] Failed for order ${orderId}:`, error);
+    return {
+      success: false,
+      message: error?.message || 'Lỗi mạng khi cập nhật địa chỉ',
+    };
+  }
+}
+
+/**
+ * Cancel an order before it is dispatched
+ * Calls Next.js proxy API POST /api/order/${orderId}/cancel
+ */
+export async function cancelOrder(
+  orderId: string
+): Promise<{ success: boolean; message?: string }> {
+  if (!orderId) return { success: false, message: 'Thiếu mã đơn hàng' };
+
+  try {
+    const res = await fetch(`/api/order/${orderId}/cancel`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+      },
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: json?.message || 'Không thể hủy đơn hàng này',
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Hủy đơn hàng thành công',
+    };
+  } catch (error: any) {
+    console.error(`[cancelOrder] Failed for order ${orderId}:`, error);
+    return {
+      success: false,
+      message: error?.message || 'Lỗi mạng khi gửi yêu cầu hủy đơn',
+    };
+  }
+}
+
+/**
+ * Request a refund for a delivered/completed order with reason
+ * Calls Next.js proxy API POST /api/order/${orderId}/refund
+ */
+export async function refundOrder(
+  orderId: string,
+  reason: string
+): Promise<{ success: boolean; message?: string }> {
+  if (!orderId) return { success: false, message: 'Thiếu mã đơn hàng' };
+
+  try {
+    const res = await fetch(`/api/order/${orderId}/refund`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify({ reason }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      return {
+        success: false,
+        message: json?.message || 'Không thể gửi yêu cầu hoàn tiền',
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Gửi yêu cầu hoàn tiền thành công',
+    };
+  } catch (error: any) {
+    console.error(`[refundOrder] Failed for order ${orderId}:`, error);
+    return {
+      success: false,
+      message: error?.message || 'Lỗi mạng khi gửi yêu cầu hoàn tiền',
+    };
   }
 }
