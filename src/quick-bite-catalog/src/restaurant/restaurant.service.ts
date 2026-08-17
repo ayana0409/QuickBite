@@ -70,6 +70,15 @@ export class RestaurantService {
   }
 
   async findByOwner(ownerId: string): Promise<Restaurant | null> {
+    if (!ownerId || ownerId === 'undefined') {
+      return null;
+    }
+
+    const uuidRegex = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
+    if (!uuidRegex.test(ownerId)) {
+      return null;
+    }
+
     return await this.restaurantRepository.findOne({
       where: { ownerId },
     });
