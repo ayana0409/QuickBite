@@ -16,11 +16,11 @@ export interface ExtendedOrder extends Order {
 
 export const orderService = {
   /**
-   * Lấy danh sách đơn hàng của Merchant từ API Gateway (GET /api/merchant/orders)
+   * Lấy danh sách đơn hàng của Merchant từ API Gateway (GET /merchant/orders)
    * Tự động trích xuất userId từ JWT -> lấy restaurantId -> lấy danh sách đơn từ Order Service
    */
   async getMerchantOrders(params?: MerchantOrdersParams): Promise<OrderPaginatedData> {
-    const res: any = await axiosClient.get('/api/merchant/orders', {
+    const res: any = await axiosClient.get('/merchant/orders', {
       params: {
         search: params?.search || undefined,
         status: params?.status || undefined,
@@ -54,7 +54,7 @@ export const orderService = {
       return unwrapData<Order>(res);
     } catch {
       // Fallback via alternative route if needed
-      const res: any = await axiosClient.get(`/api/merchant/orders/${orderId}`);
+      const res: any = await axiosClient.get(`/merchant/orders/${orderId}`);
       return unwrapData<Order>(res);
     }
   },
@@ -90,6 +90,15 @@ export const orderService = {
       note,
     });
     return unwrapData<Order>(res);
+  },
+
+  /**
+   * Lấy dữ liệu thống kê tổng hợp cho Merchant Dashboard thông qua API Gateway (GET /merchant/dashboard)
+   * Tự động trích xuất thông tin userId từ JWT, kết hợp số liệu từ Catalog & Order Service
+   */
+  async getMerchantDashboard(): Promise<any> {
+    const res: any = await axiosClient.get('/merchant/dashboard');
+    return unwrapData<any>(res);
   },
 
   /**

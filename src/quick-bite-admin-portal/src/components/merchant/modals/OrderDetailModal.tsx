@@ -37,7 +37,7 @@ export default function OrderDetailModal({
   isActionLoading = false,
 }: OrderDetailModalProps) {
   // Fetch full order details when modal opens
-  const { data: orderDetail, isLoading, isError, refetch } = useQuery({
+  const { data: orderDetail, isLoading, isError } = useQuery({
     queryKey: ['merchant-order-detail', orderSummary?.id],
     queryFn: () => orderService.getOrderById(orderSummary!.id),
     enabled: isOpen && !!orderSummary?.id,
