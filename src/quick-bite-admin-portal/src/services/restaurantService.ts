@@ -111,6 +111,27 @@ export const restaurantService = {
     return res?.data || res;
   },
 
+  // Lấy thông tin nhà hàng của Merchant đang đăng nhập (GET /catalog/restaurants/me)
+  async getMerchantProfile(): Promise<Restaurant | null> {
+    try {
+      const res: any = await axiosClient.get('/catalog/restaurants/me');
+      const data = unwrapData<Restaurant>(res);
+      if (data && data.id) {
+        return data;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  // Cập nhật thông tin nhà hàng của Merchant đang đăng nhập (PUT /catalog/restaurants/me)
+  async updateMerchantProfile(dto: Partial<CreateRestaurantDto> & { status?: string }): Promise<Restaurant> {
+    const res: any = await axiosClient.put('/catalog/restaurants/me', dto);
+    const data = unwrapData<Restaurant>(res) || res;
+    return data;
+  },
+
   // Khóa / Mở khóa hoạt động nhà hàng
   async toggleStatus(id: string): Promise<any> {
     const res: any = await axiosClient.patch(`/catalog/restaurants/${id}`, { status: 'closed' });
