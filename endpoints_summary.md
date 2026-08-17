@@ -851,9 +851,9 @@ Base path: `/v1/payments`
 
 ---
 
-### 🏪 Merchant API — `/api/merchant`
+### 🏪 Merchant API — `/merchant`
 
-#### `GET /api/merchant/orders`
+#### `GET /merchant/orders`
 *Lấy danh sách đơn hàng cho Merchant hiện tại (Bảo mật chống lỗi IDOR).*
 *API Gateway tự động trích xuất `userId` từ JWT Token -> gọi Catalog Service lấy `restaurantId` -> query Order Service.*
 
@@ -896,6 +896,100 @@ Base path: `/v1/payments`
       "creationTime": "2026-08-12T..."
     }
   ]
+}
+```
+
+#### `GET /merchant/dashboard`
+*Lấy toàn bộ số liệu thống kê Dashboard tổng hợp thời gian thực cho Merchant (Doanh thu hôm nay, KPI so sánh với hôm qua, Biểu đồ doanh thu 7 ngày, Phân loại lý do hủy, 5 đơn hàng mới nhất).*
+*API Gateway tự động trích xuất `userId` từ JWT -> gọi Catalog Service lấy `restaurantId` + Đánh giá sao (`rating.avg`) -> gọi Order Service tính toán dữ liệu tổng hợp.*
+
+**Auth:** JWT Bearer Token (Bắt buộc)
+
+**Response** `200`:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "data": {
+    "kpiSummary": {
+      "revenueToday": 2580000.0,
+      "revenueYesterday": 2290000.0,
+      "revenueChange": "+12.5%",
+      "isRevenuePositive": true,
+      "ordersToday": 45,
+      "ordersYesterday": 41,
+      "ordersChange": "+8.2%",
+      "isOrdersPositive": true,
+      "cancelRateToday": 4.4,
+      "cancelRateYesterday": 5.9,
+      "cancelRateChange": "-1.5%",
+      "isCancelRatePositive": true,
+      "averageRating": 4.8,
+      "ratingChange": "+0.2",
+      "totalReviews": 128
+    },
+    "revenueData": [
+      {
+        "date": "11/08",
+        "dayName": "T2",
+        "revenue": 1850000.0,
+        "ordersCount": 32
+      },
+      {
+        "date": "17/08",
+        "dayName": "CN",
+        "revenue": 2580000.0,
+        "ordersCount": 45
+      }
+    ],
+    "cancelReasonData": [
+      {
+        "name": "Khách đổi ý",
+        "value": 40.0,
+        "color": "#f97316",
+        "count": 8
+      },
+      {
+        "name": "Hết món ăn",
+        "value": 30.0,
+        "color": "#ef4444",
+        "count": 6
+      }
+    ],
+    "recentOrders": [
+      {
+        "id": "uuid",
+        "orderCode": "QB-2026-8841",
+        "customerName": "Nguyễn Văn An",
+        "itemsSummary": "2x Cơm Tấm Sườn Bì, 1x Trà Đào Cam Sả",
+        "itemsCount": 3,
+        "time": "5 phút trước",
+        "total": 145000.0,
+        "status": "PENDING"
+      }
+    ]
+  }
+}
+```
+
+---
+
+## 4. Order Service (`quick-bite-order` — .NET 10 ABP Framework)
+
+### 📁 Order App Service — `/api/app/order`
+
+#### `GET /api/app/order/statistics`
+*Tính toán và tổng hợp dữ liệu thống kê doanh thu, tỷ lệ hủy, danh sách đơn gần đây cho một nhà hàng cụ thể (Domain: Order & Restaurant Statistics).*
+
+**Query Params:** `?restaurantId=uuid` (Bắt buộc)
+
+**Response** `200`: `RestaurantOrderStatisticsDto`
+```json
+{
+  "kpiSummary": { ... },
+  "revenueData": [ ... ],
+  "cancelReasonData": [ ... ],
+  "recentOrders": [ ... ]
 }
 ```
 

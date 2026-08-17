@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { MerchantService } from './merchant.service';
 import { GetMerchantOrdersQueryDto } from './dto/get-merchant-orders.query.dto';
 
-@Controller('api/merchant')
+@Controller(['merchant', 'api/merchant'])
 @UseGuards(JwtAuthGuard)
 export class MerchantController {
   constructor(private readonly merchantService: MerchantService) {}
@@ -27,5 +27,22 @@ export class MerchantController {
 
     const authHeader = req.headers.authorization;
     return this.merchantService.getMerchantOrders(userId, query, authHeader);
+  }
+
+  /**
+   * GET /api/merchant/dashboard
+   * Aggregated dashboard analytics for the authenticated merchant's restaurant.
+   */
+  @Get('dashboard')
+  async getMerchantDashboard(@Req() req: Request) {
+    const user = (req as any).user;
+    const userId = user?.sub || user?.id;
+
+    if (!userId) {
+      throw new UnauthorizedException('Invalid JWT payload: Missing user ID claim');
+    }
+
+    const authHeader = req.headers.authorization;
+    return this.merchantService.getMerchantDashboard(userId, authHeader);
   }
 }
