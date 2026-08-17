@@ -167,14 +167,15 @@ export class ProxyController {
       return;
     }
 
-    // 6. Restaurant single update or delete (PATCH or DELETE /restaurants/:id)
+    // 6. Restaurant single update or delete (PATCH, PUT or DELETE /restaurants/:id or /restaurants/me)
     const restaurantSingleMatch = pathname.match(/^\/restaurants\/([^\/]+)$/);
-    if (restaurantSingleMatch && (method === 'PATCH' || method === 'DELETE')) {
+    if (restaurantSingleMatch && (method === 'PATCH' || method === 'PUT' || method === 'DELETE')) {
       const restId = restaurantSingleMatch[1];
-      this.logger.log(`⚡ [CACHE INVALIDATION] Restaurant update/delete for ID [${restId}]`);
+      this.logger.log(`⚡ [CACHE INVALIDATION] Restaurant update/delete for Target [${restId}]`);
       await this.redisCacheService.del(`catalog:restaurant:${restId}`);
       await this.redisCacheService.delByPattern('catalog:restaurant:owner:*');
       await this.redisCacheService.delByPattern('catalog:restaurants:list:*');
+      await this.redisCacheService.delByPattern('catalog:restaurant:*');
       if (method === 'DELETE') {
         await this.redisCacheService.delByPattern('catalog:categories:*');
         await this.redisCacheService.delByPattern('catalog:food-items:*');

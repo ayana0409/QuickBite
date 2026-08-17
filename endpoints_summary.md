@@ -91,6 +91,36 @@
 
 ---
 
+#### `GET /restaurants/me`
+*Lấy thông tin nhà hàng thuộc quyền sở hữu của Merchant đang đăng nhập (Trích xuất `userId` từ JWT token).*
+**Auth:** Bearer JWT
+
+**Response** `200`: Object `Restaurant` hoặc 404 nếu chưa có nhà hàng.
+
+---
+
+#### `PUT /restaurants/me` (hoặc `PATCH /restaurants/me`)
+*Cập nhật tên, trạng thái hoạt động (open/closed), và địa chỉ của nhà hàng thuộc sở hữu của Merchant đang đăng nhập.*
+**Auth:** Bearer JWT
+
+**Request Body:**
+```json
+{
+  "name": "Tên nhà hàng mới",
+  "status": "open",
+  "address": {
+    "line1": "123 Đường ABC",
+    "ward": "Phường 1",
+    "district": "Quận 1",
+    "city": "Hồ Chí Minh"
+  }
+}
+```
+
+**Response** `200`: Object `Restaurant` sau khi cập nhật.
+
+---
+
 #### `GET /restaurants/owner/:ownerId`
 **Params:** `ownerId: string`
 

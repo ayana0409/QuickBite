@@ -6,10 +6,13 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Put,
   Post,
   Query,
   UseGuards,
-  Request
+  Request,
+  UnauthorizedException,
+  NotFoundException,
 } from '@nestjs/common';
 
 import { RestaurantService } from './restaurant.service';
@@ -29,7 +32,7 @@ export class RestaurantController {
   ) {}
 
   @Post()
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.RESTAURANT_CREATE)
   create(
     @Body() createRestaurantDto: CreateRestaurantDto,
@@ -50,6 +53,46 @@ export class RestaurantController {
     return this.restaurantService.findAll(
       pagination || new PaginationDto(),
     );
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  async getMyRestaurant(@Request() req: any) {
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Invalid JWT: User ID not found');
+    }
+    const restaurant = await this.restaurantService.findByOwner(userId);
+    if (!restaurant) {
+      throw new NotFoundException('Restaurant not found for authenticated user');
+    }
+    return restaurant;
+  }
+
+  @Put('me')
+  @UseGuards(JwtAuthGuard)
+  async updateMyRestaurant(
+    @Request() req: any,
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Invalid JWT: User ID not found');
+    }
+    return this.restaurantService.updateByOwner(userId, updateRestaurantDto);
+  }
+
+  @Patch('me')
+  @UseGuards(JwtAuthGuard)
+  async patchMyRestaurant(
+    @Request() req: any,
+    @Body() updateRestaurantDto: UpdateRestaurantDto,
+  ) {
+    const userId = req.user?.sub || req.user?.id;
+    if (!userId) {
+      throw new UnauthorizedException('Invalid JWT: User ID not found');
+    }
+    return this.restaurantService.updateByOwner(userId, updateRestaurantDto);
   }
 
   @Get('owner/:ownerId')

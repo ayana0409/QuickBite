@@ -75,6 +75,54 @@ export class RestaurantService {
     });
   }
 
+  async updateByOwner(
+    ownerId: string,
+    updateRestaurantDto: UpdateRestaurantDto,
+  ): Promise<Restaurant> {
+    const restaurant = await this.findByOwner(ownerId);
+    if (!restaurant) {
+      throw new NotFoundException('Restaurant not found for this merchant.');
+    }
+
+    if (
+      updateRestaurantDto.slug &&
+      updateRestaurantDto.slug !== restaurant.slug
+    ) {
+      const existedRestaurant = await this.restaurantRepository.findOne({
+        where: {
+          slug: updateRestaurantDto.slug,
+        },
+      });
+
+      if (existedRestaurant && existedRestaurant.id !== restaurant.id) {
+        throw new ConflictException('Restaurant slug already exists.');
+      }
+    }
+
+    if (updateRestaurantDto.address) {
+      const geoData = updateRestaurantDto.address.geo
+        ? {
+            type: 'Point' as const,
+            coordinates: updateRestaurantDto.address.geo.coordinates,
+          }
+        : restaurant.address?.geo ?? {
+            type: 'Point' as const,
+            coordinates: [106.660172, 10.762622] as [number, number],
+          };
+
+      restaurant.address = {
+        ...restaurant.address,
+        ...updateRestaurantDto.address,
+        geo: geoData,
+      };
+      delete (updateRestaurantDto as any).address;
+    }
+
+    Object.assign(restaurant, updateRestaurantDto);
+
+    return await this.restaurantRepository.save(restaurant);
+  }
+
   async findOne(
     id: string,
   ): Promise<Restaurant> {
