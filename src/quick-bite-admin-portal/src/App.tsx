@@ -25,6 +25,7 @@ import MerchantMenuPage from './pages/merchant/MerchantMenuPage';
 import MerchantInventoryPage from './pages/merchant/MerchantInventoryPage';
 import MerchantOrdersPage from './pages/merchant/MerchantOrdersPage';
 import MerchantProfilePage from './pages/merchant/MerchantProfilePage';
+import MerchantRevenuePage from './pages/merchant/MerchantRevenuePage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 
 /**
@@ -91,7 +92,7 @@ export default function App() {
               <Route path="menu" element={<MerchantMenuPage />} />
               <Route path="orders" element={<MerchantOrdersPage />} />
               <Route path="inventory" element={<MerchantInventoryPage />} />
-              <Route path="revenue" element={<MerchantDashboardPage />} />
+              <Route path="revenue" element={<MerchantRevenuePage />} />
               <Route path="profile" element={<MerchantProfilePage />} />
             </Route>
           </Route>
