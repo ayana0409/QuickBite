@@ -118,6 +118,7 @@ public class IdentityWebModule : AbpModule
                 OpenIddictConstants.Scopes.Email,
                 OpenIddictConstants.Scopes.Phone,
                 OpenIddictConstants.Scopes.Roles,
+                "Identity",
                 "quickbite.api",
                 "permissions"
             );
