@@ -25,6 +25,7 @@ using QuickBite.Identity.Web.Middleware;
 using System;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Volo.Abp;
 using Volo.Abp.Account.Web;
@@ -123,19 +124,65 @@ public class IdentityWebModule : AbpModule
 
             if (!hostingEnvironment.IsDevelopment())
             {
-                var certFileName = "openiddict.pfx";
-                var certPath = System.IO.Path.Combine(hostingEnvironment.ContentRootPath, certFileName);
-                var renderSecretPath = System.IO.Path.Combine("/etc/secrets", certFileName);
+                var certBase64 = configuration["OpenIddict:CertificateBase64"] 
+                    ?? configuration["OPENIDDICT_CERTIFICATE_BASE64"];
+                var certPass = configuration["OpenIddict:CertificatePassword"] 
+                    ?? configuration["OPENIDDICT_CERTIFICATE_PASSWORD"] 
+                    ?? string.Empty;
+                var loaded = false;
 
-                if (System.IO.File.Exists(certPath))
+                // 1. Prioritize loading from Environment Variable (Base64 encoded PFX)
+                if (!string.IsNullOrWhiteSpace(certBase64))
                 {
-                    serverBuilder.AddProductionEncryptionAndSigningCertificate(certFileName, "241169aa-a9c9-463e-a110-afa15c634ead");
+                    try
+                    {
+                        var certBytes = Convert.FromBase64String(certBase64.Trim());
+                        if (certBytes.Length > 0)
+                        {
+                            var cert = X509CertificateLoader.LoadPkcs12(certBytes, certPass, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+                            serverBuilder.AddEncryptionCertificate(cert);
+                            serverBuilder.AddSigningCertificate(cert);
+                            loaded = true;
+                            Console.WriteLine("✅ [OpenIddict] Successfully loaded persistent production certificate from OPENIDDICT_CERTIFICATE_BASE64 environment variable.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"⚠️ [OpenIddict Certificate Warning] Could not load certificate from OPENIDDICT_CERTIFICATE_BASE64: {ex.Message}");
+                    }
                 }
-                else if (System.IO.File.Exists(renderSecretPath))
+
+                // 2. Fallback to loading from file if not loaded from Base64
+                if (!loaded)
                 {
-                    serverBuilder.AddProductionEncryptionAndSigningCertificate(renderSecretPath, "241169aa-a9c9-463e-a110-afa15c634ead");
+                    var certFileName = "openiddict.pfx";
+                    var certPath = System.IO.Path.Combine(hostingEnvironment.ContentRootPath, certFileName);
+                    var renderSecretPath = System.IO.Path.Combine("/etc/secrets", certFileName);
+                    var fileToLoad = System.IO.File.Exists(certPath) ? certPath : (System.IO.File.Exists(renderSecretPath) ? renderSecretPath : null);
+
+                    if (fileToLoad != null)
+                    {
+                        try
+                        {
+                            var bytes = System.IO.File.ReadAllBytes(fileToLoad);
+                            if (bytes.Length > 0)
+                            {
+                                var cert = X509CertificateLoader.LoadPkcs12(bytes, certPass, X509KeyStorageFlags.Exportable | X509KeyStorageFlags.EphemeralKeySet);
+                                serverBuilder.AddEncryptionCertificate(cert);
+                                serverBuilder.AddSigningCertificate(cert);
+                                loaded = true;
+                                Console.WriteLine($"✅ [OpenIddict] Successfully loaded production certificate from '{fileToLoad}'.");
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"⚠️ [OpenIddict Certificate Warning] Could not load production certificate '{fileToLoad}': {ex.Message}. Falling back to development certificates.");
+                        }
+                    }
                 }
-                else
+
+                // 3. Fallback to development certificates if neither is provided
+                if (!loaded)
                 {
                     serverBuilder.AddDevelopmentEncryptionCertificate();
                     serverBuilder.AddDevelopmentSigningCertificate();
