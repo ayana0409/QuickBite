@@ -32,8 +32,9 @@ export const authOptions: NextAuthOptions = {
 
         const params = new URLSearchParams();
         params.append("grant_type", "password");
-        params.append("client_id", "Identity_Swagger");
-        params.append("scope", "openid profile email roles Identity");
+        params.append("client_id", process.env.OIDC_CLIENT_ID || "quickbite_web");
+        params.append("client_secret", process.env.OIDC_CLIENT_SECRET || "1q2w3e*");
+        params.append("scope", "openid profile email phone roles Identity");
         params.append("username", credentials.username.trim());
         params.append("password", credentials.password);
 
@@ -54,6 +55,7 @@ export const authOptions: NextAuthOptions = {
           }
 
           const tokenData = await res.json();
+          console.log("🔑 [NextAuth Credentials] Token received from /connect/token. Has access_token:", !!tokenData?.access_token);
           const claims =
             parseJwt(tokenData.access_token) || parseJwt(tokenData.id_token) || {};
 
@@ -79,6 +81,7 @@ export const authOptions: NextAuthOptions = {
             refreshToken: tokenData.refresh_token,
           };
         } catch (e: any) {
+          console.error("❌ [NextAuth Credentials Error]:", e.message);
           throw new Error(e.message || "Không thể kết nối đến Identity Service");
         }
       },
@@ -135,20 +138,26 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, account }) {
+      // Credentials provider: accessToken is on the user object returned from authorize()
       if (user) {
         token.id = user.id;
         token.role = user.role;
         token.roles = user.roles;
-        token.accessToken = user.accessToken;
-        token.idToken = user.idToken;
-        token.refreshToken = user.refreshToken;
+        token.accessToken = (user as any).accessToken;
+        token.idToken = (user as any).idToken;
+        token.refreshToken = (user as any).refreshToken;
+        console.log("🎫 [JWT Callback] User logged in. Token has accessToken:", !!token.accessToken);
       }
 
-      if (account) {
+      // SSO provider: accessToken comes from account.access_token — only overwrite when it exists.
+      // CredentialsProvider does NOT provide account.access_token, so skipping it prevents
+      // accidentally overwriting the accessToken set above with undefined.
+      if (account && account.access_token) {
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
         token.refreshToken = account.refresh_token;
         token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : 0;
+        console.log("🎫 [JWT Callback] SSO Account connected. Token has accessToken:", !!token.accessToken);
       }
 
       return token;
