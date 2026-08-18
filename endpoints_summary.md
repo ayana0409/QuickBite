@@ -875,6 +875,65 @@ Base path: `/v1/payments`
 
 ---
 
+### 👤 My Profile API — `/api/app/my-profile` (Self-Service)
+
+> Endpoints cho phép người dùng tự xem, cập nhật thông tin cá nhân và đổi mật khẩu an toàn. 
+> Hệ thống **tự động trích xuất `userId` từ JWT Token** (`CurrentUser.Id`), **chống lỗi IDOR 100%**.
+
+#### `GET /api/app/my-profile`
+*Lấy thông tin tài khoản của user đang đăng nhập.*
+**Auth:** Bearer JWT
+
+**Response** `200`:
+```json
+{
+  "id": "uuid",
+  "userName": "customer_demo",
+  "email": "customer@quickbite.vn",
+  "name": "Nguyễn",
+  "surname": "Văn A",
+  "phoneNumber": "0901234567",
+  "phoneNumberConfirmed": false,
+  "emailConfirmed": true
+}
+```
+
+---
+
+#### `PUT /api/app/my-profile`
+*Cập nhật thông tin cá nhân (UserName, PhoneNumber, Name, Surname) của user đang đăng nhập.*
+**Auth:** Bearer JWT
+
+**Request Body:**
+```json
+{
+  "userName": "customer_updated",
+  "phoneNumber": "0912345678",
+  "name": "Nguyễn",
+  "surname": "Văn B"
+}
+```
+
+**Response** `200`: Object `MyProfileDto` sau khi cập nhật.
+
+---
+
+#### `POST /api/app/my-profile/change-password`
+*Đổi mật khẩu cho user đang đăng nhập.*
+**Auth:** Bearer JWT
+
+**Request Body:**
+```json
+{
+  "currentPassword": "OldPassword@123",
+  "newPassword": "NewPassword@456"
+}
+```
+
+**Response** `200`: `void`
+
+---
+
 ## 6. API Gateway Aggregation Services (`quick-bite-api-gateway` — NestJS, port 3000)
 
 > Các endpoint Aggregation trên API Gateway giúp tự động xử lý bảo mật chống lỗi IDOR và tổng hợp dữ liệu từ nhiều microservices.
