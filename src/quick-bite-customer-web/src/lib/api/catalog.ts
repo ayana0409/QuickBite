@@ -1,4 +1,5 @@
 import { Restaurant, RestaurantDetail, FoodItem, ApiResponse, PaginatedResult } from '@/src/types/catalog.type';
+import { apiClient } from './apiClient';
 
 const GATEWAY_URL =
   process.env.NEXT_PUBLIC_API_GATEWAY_URL?.replace(/\/$/, '') ||
@@ -10,29 +11,17 @@ const GATEWAY_URL =
  */
 export async function getRestaurants(page = 1, limit = 8): Promise<Restaurant[]> {
   try {
-    const url = `${GATEWAY_URL}/restaurants?page=${page}&limit=${limit}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+    const url = `${GATEWAY_URL}/restaurants`;
+    const json = await apiClient<ApiResponse<PaginatedResult<Restaurant> | Restaurant[]> | Restaurant[]>(url, {
+      params: { page, limit },
       next: { revalidate: 60 },
     });
 
-    if (!res.ok) {
-      console.error(`[getRestaurants] Gateway error status: ${res.status} (${url})`);
-      return [];
-    }
-
-    const json: ApiResponse<PaginatedResult<Restaurant> | Restaurant[]> = await res.json();
-    
-    if (json?.data) {
-      if (Array.isArray(json.data)) {
-        return json.data;
-      }
-      if ('data' in json.data && Array.isArray(json.data.data)) {
-        return json.data.data;
-      }
+    if (Array.isArray(json)) return json;
+    if ((json as any)?.data) {
+      const data = (json as any).data;
+      if (Array.isArray(data)) return data;
+      if (data?.data && Array.isArray(data.data)) return data.data;
     }
 
     return [];
@@ -48,33 +37,23 @@ export async function getRestaurants(page = 1, limit = 8): Promise<Restaurant[]>
  */
 export async function getFeaturedFoods(page = 1, limit = 8): Promise<FoodItem[]> {
   try {
-    const url = `${GATEWAY_URL}/food-items?page=${page}&limit=${limit}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
+    const url = `${GATEWAY_URL}/food-items`;
+    const json = await apiClient<ApiResponse<PaginatedResult<FoodItem> | FoodItem[]> | FoodItem[]>(url, {
+      params: { page, limit },
       next: { revalidate: 60 },
     });
 
-    if (!res.ok) {
-      console.error(`[getFeaturedFoods] Gateway error status: ${res.status} (${url})`);
-      return [];
+    let items: FoodItem[] = [];
+    if (Array.isArray(json)) {
+      items = json;
+    } else if ((json as any)?.data) {
+      const data = (json as any).data;
+      if (Array.isArray(data)) items = data;
+      else if (data?.data && Array.isArray(data.data)) items = data.data;
     }
 
-    const json: ApiResponse<PaginatedResult<FoodItem> | FoodItem[]> = await res.json();
-
-    if (json?.data) {
-      let items: FoodItem[] = [];
-      if (Array.isArray(json.data)) {
-        items = json.data;
-      } else if ('data' in json.data && Array.isArray(json.data.data)) {
-        items = json.data.data;
-      }
-
-      if (items.length > 0) {
-        return items.sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0));
-      }
+    if (items.length > 0) {
+      return items.sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0));
     }
 
     return [];
@@ -91,19 +70,10 @@ export async function getFeaturedFoods(page = 1, limit = 8): Promise<FoodItem[]>
 export async function getRestaurantById(id: string): Promise<RestaurantDetail | null> {
   try {
     const url = `${GATEWAY_URL}/restaurants/${id}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
+    const json = await apiClient<ApiResponse<RestaurantDetail> | RestaurantDetail>(url, {
       next: { revalidate: 60 },
     });
-
-    if (!res.ok) {
-      console.error(`[getRestaurantById] Gateway error status: ${res.status} (${url})`);
-      return null;
-    }
-
-    const json: ApiResponse<RestaurantDetail> = await res.json();
-    return json?.data ?? null;
+    return ((json as any)?.data ?? json) || null;
   } catch (error) {
     console.error(`[getRestaurantById] Failed to fetch (${GATEWAY_URL}/restaurants/${id}):`, error);
     return null;
@@ -119,23 +89,17 @@ export async function getFoodsByRestaurant(
   limit = 20,
 ): Promise<FoodItem[]> {
   try {
-    const url = `${GATEWAY_URL}/food-items/restaurant/${restaurantId}?page=${page}&limit=${limit}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
+    const url = `${GATEWAY_URL}/food-items/restaurant/${restaurantId}`;
+    const json = await apiClient<ApiResponse<PaginatedResult<FoodItem> | FoodItem[]> | FoodItem[]>(url, {
+      params: { page, limit },
       next: { revalidate: 60 },
     });
 
-    if (!res.ok) {
-      console.error(`[getFoodsByRestaurant] Gateway error status: ${res.status} (${url})`);
-      return [];
-    }
-
-    const json: ApiResponse<PaginatedResult<FoodItem> | FoodItem[]> = await res.json();
-
-    if (json?.data) {
-      if (Array.isArray(json.data)) return json.data;
-      if ('data' in json.data && Array.isArray(json.data.data)) return json.data.data;
+    if (Array.isArray(json)) return json;
+    if ((json as any)?.data) {
+      const data = (json as any).data;
+      if (Array.isArray(data)) return data;
+      if (data?.data && Array.isArray(data.data)) return data.data;
     }
 
     return [];
@@ -151,22 +115,12 @@ export async function getFoodsByRestaurant(
 export async function getFoodById(id: string): Promise<FoodItem | null> {
   try {
     const url = `${GATEWAY_URL}/food-items/${id}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: { 'Accept': 'application/json' },
+    const json = await apiClient<ApiResponse<FoodItem> | FoodItem>(url, {
       next: { revalidate: 60 },
     });
-
-    if (!res.ok) {
-      console.error(`[getFoodById] Gateway error status: ${res.status} (${url})`);
-      return null;
-    }
-
-    const json: ApiResponse<FoodItem> = await res.json();
-    return json?.data ?? null;
+    return ((json as any)?.data ?? json) || null;
   } catch (error) {
     console.error(`[getFoodById] Failed to fetch (${GATEWAY_URL}/food-items/${id}):`, error);
     return null;
   }
 }
-

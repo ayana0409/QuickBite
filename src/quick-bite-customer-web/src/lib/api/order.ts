@@ -1,52 +1,18 @@
 import { OrderDto, DeliveryAddress } from '@/src/types/order.type';
+import { apiClient } from './apiClient';
 
 /**
  * Fetch all orders for the currently authenticated user
- * Calls Next.js proxy API /api/order
+ * Calls Next.js proxy API GET /api/order
  */
 export async function getMyOrders(): Promise<OrderDto[]> {
   try {
-    const res = await fetch('/api/order', {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      console.warn(`[getMyOrders] HTTP error ${res.status}`);
-      return [];
+    const data = await apiClient.get<OrderDto[] | { items?: OrderDto[]; data?: OrderDto[] }>('/api/order');
+    if (Array.isArray(data)) return data;
+    if (data && typeof data === 'object') {
+      if (Array.isArray((data as any).items)) return (data as any).items;
+      if (Array.isArray((data as any).data)) return (data as any).data;
     }
-
-    const json = await res.json();
-    console.log('📦 [getMyOrders] Raw API response:', json);
-
-    // 1. Direct array
-    if (Array.isArray(json)) {
-      return json;
-    }
-
-    // 2. Wrapped in { data: [...] } (e.g. standard ApiResponse / ResponseWrapperMiddleware)
-    if (json?.data && Array.isArray(json.data)) {
-      return json.data;
-    }
-
-    // 3. Nested { data: { data: [...] } } or { data: { items: [...] } }
-    if (json?.data?.data && Array.isArray(json.data.data)) {
-      return json.data.data;
-    }
-
-    // 4. Wrapped in { items: [...] } (ABP paged result)
-    if (json?.items && Array.isArray(json.items)) {
-      return json.items;
-    }
-
-    // 5. Wrapped in { result: [...] }
-    if (json?.result && Array.isArray(json.result)) {
-      return json.result;
-    }
-
     return [];
   } catch (error) {
     console.error('[getMyOrders] Failed to fetch orders:', error);
@@ -56,38 +22,12 @@ export async function getMyOrders(): Promise<OrderDto[]> {
 
 /**
  * Fetch a single order by ID
- * Calls Next.js proxy API /api/order/${id}
+ * Calls Next.js proxy API GET /api/order/${id}
  */
 export async function getOrderById(id: string): Promise<OrderDto | null> {
   if (!id) return null;
-
   try {
-    const res = await fetch(`/api/order/${id}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      cache: 'no-store',
-    });
-
-    if (!res.ok) {
-      console.warn(`[getOrderById] HTTP error ${res.status} for order: ${id}`);
-      return null;
-    }
-
-    const json = await res.json();
-    console.log(`📦 [getOrderById:${id}] Raw API response:`, json);
-
-    // If wrapped in { success: true, data: { ... } }
-    if (json?.data && typeof json.data === 'object' && !Array.isArray(json.data)) {
-      return json.data as OrderDto;
-    }
-
-    if (json?.result && typeof json.result === 'object') {
-      return json.result as OrderDto;
-    }
-
-    return (json as OrderDto) || null;
+    return await apiClient.get<OrderDto>(`/api/order/${id}`);
   } catch (error) {
     console.error(`[getOrderById] Failed to fetch order ${id}:`, error);
     return null;
@@ -105,33 +45,13 @@ export async function updateOrderDeliveryAddress(
   if (!orderId) return { success: false, message: 'Thiếu mã đơn hàng' };
 
   try {
-    const res = await fetch(`/api/order/${orderId}/address`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ deliveryAddress }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      return {
-        success: false,
-        message: json?.message || 'Không thể cập nhật địa chỉ giao hàng',
-      };
-    }
-
-    const orderData = json?.data || json;
-    return {
-      success: true,
-      data: orderData,
-    };
+    const data = await apiClient.put<OrderDto>(`/api/order/${orderId}/address`, { deliveryAddress });
+    return { success: true, data };
   } catch (error: any) {
     console.error(`[updateOrderDeliveryAddress] Failed for order ${orderId}:`, error);
     return {
       success: false,
-      message: error?.message || 'Lỗi mạng khi cập nhật địa chỉ',
+      message: error?.message || 'Lỗi khi cập nhật địa chỉ giao hàng',
     };
   }
 }
@@ -146,21 +66,7 @@ export async function cancelOrder(
   if (!orderId) return { success: false, message: 'Thiếu mã đơn hàng' };
 
   try {
-    const res = await fetch(`/api/order/${orderId}/cancel`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-      },
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      return {
-        success: false,
-        message: json?.message || 'Không thể hủy đơn hàng này',
-      };
-    }
-
+    await apiClient.post(`/api/order/${orderId}/cancel`);
     return {
       success: true,
       message: 'Hủy đơn hàng thành công',
@@ -169,7 +75,7 @@ export async function cancelOrder(
     console.error(`[cancelOrder] Failed for order ${orderId}:`, error);
     return {
       success: false,
-      message: error?.message || 'Lỗi mạng khi gửi yêu cầu hủy đơn',
+      message: error?.message || 'Lỗi khi gửi yêu cầu hủy đơn',
     };
   }
 }
@@ -185,23 +91,7 @@ export async function refundOrder(
   if (!orderId) return { success: false, message: 'Thiếu mã đơn hàng' };
 
   try {
-    const res = await fetch(`/api/order/${orderId}/refund`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-      },
-      body: JSON.stringify({ reason }),
-    });
-
-    const json = await res.json();
-    if (!res.ok) {
-      return {
-        success: false,
-        message: json?.message || 'Không thể gửi yêu cầu hoàn tiền',
-      };
-    }
-
+    await apiClient.post(`/api/order/${orderId}/refund`, { reason });
     return {
       success: true,
       message: 'Gửi yêu cầu hoàn tiền thành công',
@@ -210,7 +100,7 @@ export async function refundOrder(
     console.error(`[refundOrder] Failed for order ${orderId}:`, error);
     return {
       success: false,
-      message: error?.message || 'Lỗi mạng khi gửi yêu cầu hoàn tiền',
+      message: error?.message || 'Lỗi khi gửi yêu cầu hoàn tiền',
     };
   }
 }

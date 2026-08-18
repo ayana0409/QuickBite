@@ -1,8 +1,5 @@
-/**
- * identity.ts
- * API client for Identity Service self-service profile endpoints.
- * Interacts directly with Identity Service endpoints via Next.js proxy route handlers.
- */
+import { apiClient } from './apiClient';
+import { HttpMethod } from './httpMethod';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,23 +33,7 @@ export interface ChangePasswordDto {
  * Calls Next.js proxy: GET /api/identity/my-profile
  */
 export async function getMyProfile(): Promise<MyProfileDto> {
-  const res = await fetch('/api/identity/my-profile', {
-    method: 'GET',
-    headers: { Accept: 'application/json' },
-    cache: 'no-store',
-  });
-
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error(json?.message || `Lỗi ${res.status}: Không thể tải thông tin tài khoản`);
-  }
-
-  const json = await res.json();
-
-  // Handle ABP wrapped response { result: {...} } or { data: {...} } or direct object
-  if (json?.result && typeof json.result === 'object') return json.result as MyProfileDto;
-  if (json?.data && typeof json.data === 'object') return json.data as MyProfileDto;
-  return json as MyProfileDto;
+  return apiClient.get<MyProfileDto>('/api/identity/my-profile');
 }
 
 /**
@@ -60,21 +41,7 @@ export async function getMyProfile(): Promise<MyProfileDto> {
  * Calls Next.js proxy: PUT /api/identity/my-profile
  */
 export async function updateMyProfile(data: UpdateMyProfileDto): Promise<MyProfileDto> {
-  const res = await fetch('/api/identity/my-profile', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error(json?.message || `Lỗi ${res.status}: Không thể cập nhật thông tin`);
-  }
-
-  const json = await res.json();
-  if (json?.result && typeof json.result === 'object') return json.result as MyProfileDto;
-  if (json?.data && typeof json.data === 'object') return json.data as MyProfileDto;
-  return json as MyProfileDto;
+  return apiClient.put<MyProfileDto>('/api/identity/my-profile', data);
 }
 
 /**
@@ -82,19 +49,5 @@ export async function updateMyProfile(data: UpdateMyProfileDto): Promise<MyProfi
  * Calls Next.js proxy: POST /api/identity/my-profile/change-password
  */
 export async function changePassword(data: ChangePasswordDto): Promise<void> {
-  const res = await fetch('/api/identity/my-profile/change-password', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(data),
-  });
-
-  if (!res.ok) {
-    const json = await res.json().catch(() => ({}));
-    throw new Error(
-      json?.message ||
-        json?.error?.message ||
-        `Lỗi ${res.status}: Không thể đổi mật khẩu`
-    );
-  }
+  return apiClient.post<void>('/api/identity/my-profile/change-password', data);
 }
-
