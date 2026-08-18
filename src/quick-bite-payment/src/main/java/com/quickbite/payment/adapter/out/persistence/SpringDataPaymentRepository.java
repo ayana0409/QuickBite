@@ -11,4 +11,5 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SpringDataPaymentRepository extends JpaRepository<PaymentEntity, UUID> {
     Optional<PaymentEntity> findByOrderId(UUID orderId);
+    java.util.List<PaymentEntity> findByOrderIdIn(java.util.List<UUID> orderIds);
 }

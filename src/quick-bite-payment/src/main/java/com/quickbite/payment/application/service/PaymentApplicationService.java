@@ -76,6 +76,15 @@ public class PaymentApplicationService implements ProcessPaymentUseCase {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public java.util.List<Payment> getPaymentsByOrderIds(java.util.List<UUID> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return persistencePort.findByOrderIds(orderIds);
+    }
+
+    @Override
     @Transactional
     public Payment processMockPayment(UUID paymentId, boolean success, String reason) {
         Payment payment = getPaymentById(paymentId);

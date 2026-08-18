@@ -33,6 +33,16 @@ public class PaymentPersistenceAdapter implements PaymentPersistencePort {
         return repository.findByOrderId(orderId).map(this::toDomain);
     }
 
+    @Override
+    public java.util.List<Payment> findByOrderIds(java.util.List<UUID> orderIds) {
+        if (orderIds == null || orderIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return repository.findByOrderIdIn(orderIds).stream()
+                .map(this::toDomain)
+                .toList();
+    }
+
     private PaymentEntity toEntity(Payment domain) {
         return PaymentEntity.builder()
                 .id(domain.getId())

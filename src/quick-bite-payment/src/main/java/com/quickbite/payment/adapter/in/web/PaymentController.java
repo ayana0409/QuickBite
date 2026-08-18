@@ -45,6 +45,13 @@ public class PaymentController {
         return ResponseEntity.ok(PaymentResponseDto.fromDomain(payment));
     }
 
+    @PostMapping("/batch")
+    @Operation(summary = "Get payments by list of Order IDs")
+    public ResponseEntity<java.util.List<PaymentResponseDto>> getPaymentsByOrderIds(@RequestBody java.util.List<UUID> orderIds) {
+        java.util.List<Payment> payments = processPaymentUseCase.getPaymentsByOrderIds(orderIds);
+        return ResponseEntity.ok(payments.stream().map(PaymentResponseDto::fromDomain).toList());
+    }
+
     @PostMapping("/{id}/mock-process")
     @Operation(summary = "Simulate payment result (Success or Fail) from Sandbox UI")
     public ResponseEntity<PaymentResponseDto> processMockPayment(
