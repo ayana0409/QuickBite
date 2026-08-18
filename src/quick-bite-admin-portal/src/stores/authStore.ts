@@ -8,6 +8,7 @@ interface AuthState {
   idToken: string | null;
   isAuthenticated: boolean;
   setAuth: (user: User, accessToken: string, idToken?: string) => void;
+  updateUser: (updatedFields: Partial<User>) => void;
   logout: () => void;
 }
 
@@ -25,6 +26,10 @@ export const useAuthStore = create<AuthState>()(
           idToken: idToken || null,
           isAuthenticated: true,
         }),
+      updateUser: (updatedFields) =>
+        set((state) => ({
+          user: state.user ? { ...state.user, ...updatedFields } : null,
+        })),
       logout: () =>
         set({
           user: null,
