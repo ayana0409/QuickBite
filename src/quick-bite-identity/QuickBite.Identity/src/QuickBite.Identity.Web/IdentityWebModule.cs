@@ -87,7 +87,6 @@ public class IdentityWebModule : AbpModule
         {
             builder.AddValidation(options =>
             {
-                options.AddAudiences("Identity", "quickbite.api", "quickbite_swagger");
                 options.UseLocalServer();
                 options.UseAspNetCore();
             });
@@ -96,9 +95,8 @@ public class IdentityWebModule : AbpModule
         PreConfigure<OpenIddictServerBuilder>(serverBuilder =>
         {
             serverBuilder.UseAspNetCore()
-                        . EnableAuthorizationEndpointPassthrough()
-                        .EnableAuthorizationEndpointPassthrough()
-                        .DisableTransportSecurityRequirement();
+                .EnableAuthorizationEndpointPassthrough()
+                .DisableTransportSecurityRequirement();
                         
             serverBuilder.SetTokenEndpointUris("/connect/token");
             serverBuilder.SetRevocationEndpointUris("/connect/revocation");
