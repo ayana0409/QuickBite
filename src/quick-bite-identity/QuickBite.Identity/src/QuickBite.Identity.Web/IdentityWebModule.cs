@@ -87,7 +87,7 @@ public class IdentityWebModule : AbpModule
         {
             builder.AddValidation(options =>
             {
-                options.AddAudiences("Identity");
+                options.AddAudiences("Identity", "quickbite.api", "quickbite_swagger");
                 options.UseLocalServer();
                 options.UseAspNetCore();
             });
@@ -358,7 +358,10 @@ public class IdentityWebModule : AbpModule
 
         if (!env.IsDevelopment())
         {
-            app.UseErrorPage();
+            app.UseWhen(
+                context => !context.Request.Path.StartsWithSegments("/api"),
+                appBuilder => appBuilder.UseErrorPage()
+            );
         }
 
         app.UseForwardedHeaders(new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
