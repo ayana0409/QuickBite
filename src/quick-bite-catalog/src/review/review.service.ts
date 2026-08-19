@@ -142,19 +142,29 @@ export class ReviewService {
    * @param restaurantId ID of the restaurant
    * @param page Page number (1-based)
    * @param limit Number of items per page
+   * @param restaurantId ID of the restaurant
+   * @param page Page number (1-based)
+   * @param limit Number of items per page
+   * @param rating Optional rating filter (1-5)
    * @returns Paginated list of reviews
    */
   async getReviewsByRestaurant(
     restaurantId: string,
     page: number = 1,
     limit: number = 10,
+    rating?: number,
   ): Promise<PaginatedResponse<Review>> {
     const normalizedPage = Math.max(1, Number(page) || 1);
     const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || 10));
     const skip = (normalizedPage - 1) * normalizedLimit;
 
+    const where: any = { restaurantId };
+    if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+      where.rating = Number(rating);
+    }
+
     const [data, total] = await this.reviewRepository.findAndCount({
-      where: { restaurantId },
+      where,
       order: { createdAt: 'DESC' },
       skip,
       take: normalizedLimit,
@@ -178,19 +188,26 @@ export class ReviewService {
    * @param foodItemId ID of the food item
    * @param page Page number (1-based)
    * @param limit Number of items per page
+   * @param rating Optional rating filter (1-5)
    * @returns Paginated list of reviews
    */
   async getReviewsByFoodItem(
     foodItemId: string,
     page: number = 1,
     limit: number = 10,
+    rating?: number,
   ): Promise<PaginatedResponse<Review>> {
     const normalizedPage = Math.max(1, Number(page) || 1);
     const normalizedLimit = Math.max(1, Math.min(100, Number(limit) || 10));
     const skip = (normalizedPage - 1) * normalizedLimit;
 
+    const where: any = { foodItemId };
+    if (rating && Number(rating) >= 1 && Number(rating) <= 5) {
+      where.rating = Number(rating);
+    }
+
     const [data, total] = await this.reviewRepository.findAndCount({
-      where: { foodItemId },
+      where,
       order: { createdAt: 'DESC' },
       skip,
       take: normalizedLimit,

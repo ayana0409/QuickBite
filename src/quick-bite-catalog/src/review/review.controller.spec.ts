@@ -76,12 +76,13 @@ describe('ReviewController', () => {
 
       mockReviewService.getReviewsByRestaurant.mockResolvedValue(expectedResult);
 
-      const result = await controller.getReviewsByRestaurant('rest-1', 1, 10);
+      const result = await controller.getReviewsByRestaurant('rest-1', 1, 10, 5);
 
       expect(mockReviewService.getReviewsByRestaurant).toHaveBeenCalledWith(
         'rest-1',
         1,
         10,
+        5,
       );
       expect(result).toEqual(expectedResult);
     });
@@ -96,12 +97,13 @@ describe('ReviewController', () => {
 
       mockReviewService.getReviewsByFoodItem.mockResolvedValue(expectedResult);
 
-      const result = await controller.getReviewsByFoodItem('food-1', 1, 10);
+      const result = await controller.getReviewsByFoodItem('food-1', 1, 10, 5);
 
       expect(mockReviewService.getReviewsByFoodItem).toHaveBeenCalledWith(
         'food-1',
         1,
         10,
+        5,
       );
       expect(result).toEqual(expectedResult);
     });

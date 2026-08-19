@@ -71,13 +71,14 @@ export class ReviewController {
   }
 
   /**
-   * Get paginated reviews for a specific restaurant.
+   * Get paginated reviews for a specific restaurant with optional star rating filter.
    */
   @Get('restaurants/:restaurantId')
   @ApiOperation({ summary: 'Get paginated reviews for a restaurant' })
   @ApiParam({ name: 'restaurantId', description: 'Restaurant UUID / ID' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'rating', required: false, type: Number, example: 5, description: 'Filter by star rating (1-5)' })
   @ApiResponse({
     status: 200,
     description: 'Returns paginated list of reviews for the restaurant',
@@ -86,22 +87,25 @@ export class ReviewController {
     @Param('restaurantId') restaurantId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('rating') rating?: number,
   ) {
     return this.reviewService.getReviewsByRestaurant(
       restaurantId,
       page ? Number(page) : 1,
       limit ? Number(limit) : 10,
+      rating ? Number(rating) : undefined,
     );
   }
 
   /**
-   * Get paginated reviews for a specific food item.
+   * Get paginated reviews for a specific food item with optional star rating filter.
    */
   @Get('food-items/:foodItemId')
   @ApiOperation({ summary: 'Get paginated reviews for a food item' })
   @ApiParam({ name: 'foodItemId', description: 'Food item UUID / ID' })
   @ApiQuery({ name: 'page', required: false, type: Number, example: 1 })
   @ApiQuery({ name: 'limit', required: false, type: Number, example: 10 })
+  @ApiQuery({ name: 'rating', required: false, type: Number, example: 5, description: 'Filter by star rating (1-5)' })
   @ApiResponse({
     status: 200,
     description: 'Returns paginated list of reviews for the food item',
@@ -110,11 +114,13 @@ export class ReviewController {
     @Param('foodItemId') foodItemId: string,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
+    @Query('rating') rating?: number,
   ) {
     return this.reviewService.getReviewsByFoodItem(
       foodItemId,
       page ? Number(page) : 1,
       limit ? Number(limit) : 10,
+      rating ? Number(rating) : undefined,
     );
   }
 }
