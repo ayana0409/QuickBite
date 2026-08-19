@@ -70,6 +70,17 @@ export class FoodItem {
   totalSold!: number;
 
   @Column({
+    type: 'decimal',
+    precision: 3,
+    scale: 2,
+    default: 0,
+  })
+  rating!: number;
+
+  @Column({ default: 0 })
+  reviewCount!: number;
+
+  @Column({
     type: 'jsonb',
     default: () => "'[]'",
   })

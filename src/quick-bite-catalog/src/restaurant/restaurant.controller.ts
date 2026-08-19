@@ -15,6 +15,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
+import { ApiTags } from '@nestjs/swagger';
 import { RestaurantService } from './restaurant.service';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 import { CreateRestaurantDto } from './dto/create-restaurant.dto';
@@ -25,6 +26,7 @@ import { PermissionGuard } from '@/auth/guards/permission.guard';
 import { PermissionKeys } from '@/common/constants/permissions';
 import { JwtAuthGuard } from '@/auth/guards/jwt-auth.guard';
 
+@ApiTags('Restaurants')
 @Controller('restaurants')
 export class RestaurantController {
   constructor(

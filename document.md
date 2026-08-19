@@ -200,24 +200,32 @@ src/
 
 ### 5.3. Catalog Service (NestJS) 
 
-**Trách nhiệm:** CRUD nhà hàng, thực đơn, món ăn; cung cấp query cho Gateway. 
+**Trách nhiệm:** CRUD nhà hàng, danh mục, món ăn; quản lý đánh giá (reviews) món ăn & nhà hàng; cung cấp query cho Gateway. 
 
 **Kiến trúc nội bộ (NestJS module-based):** 
 ``` 
 src/ 
-├── restaurants/ 
-│   ├── restaurants.module.ts 
-│   ├── restaurants.controller.ts 
-│   ├── restaurants.service.ts 
-│   └── schemas/restaurant.schema.ts   # Mongoose 
-├── menus/ 
-├── categories/ 
-├── common/           # Guards, Interceptors, Filters 
-└── kafka/            # Consumer: đồng bộ availability 
+├── restaurant/ 
+│   ├── restaurant.module.ts 
+│   ├── restaurant.controller.ts 
+│   ├── restaurant.service.ts 
+│   └── entities/restaurant.entity.ts 
+├── category/ 
+├── food-item/ 
+├── review/
+│   ├── dto/
+│   │   ├── create-review.dto.ts
+│   │   └── update-review.dto.ts
+│   ├── entities/
+│   │   └── review.entity.ts
+│   ├── review.controller.ts
+│   ├── review.service.ts
+│   └── review.module.ts
+├── common/           # Guards, Interceptors, Filters, DTOs
+└── auth/             # JwtAuthGuard, PermissionGuard, CurrentUser decorator 
 ``` 
 
-
-**Vì sao MongoDB:** dữ liệu menu dạng document, schema linh hoạt (topping, biến thể món). 
+**Cơ sở dữ liệu & Entity:** PostgreSQL (TypeORM) / MongoDB document model linh hoạt (hỗ trợ JSONB toppings/variants, compound unique index chống spam đánh giá). 
 **Event phát ra:** `menu.updated`, `restaurant.status.changed`. 
 
 --- 

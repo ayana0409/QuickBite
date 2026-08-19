@@ -45,6 +45,11 @@ export class ProxyController {
     await this.forwardRequest('CATALOG_URL', req, res);
   }
 
+  @All('reviews{*path}')
+  async proxyReviews(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('CATALOG_URL', req, res);
+  }
+
   @All('inventory{*path}')
   async proxyInventory(@Req() req: Request, @Res() res: Response) {
     await this.forwardRequest('INVENTORY_URL', req, res);
@@ -112,6 +117,17 @@ export class ProxyController {
 
     if (pathname === '/restaurants' || pathname === '/restaurants/') {
       return { key: `catalog:restaurants:list:${cleanPath}`, ttl: 300 };
+    }
+
+    // 4. Reviews endpoints
+    const reviewsByRestaurantMatch = pathname.match(/^\/reviews\/restaurants\/([^\/]+)$/);
+    if (reviewsByRestaurantMatch) {
+      return { key: `catalog:reviews:restaurant:${cleanPath}`, ttl: 60 };
+    }
+
+    const reviewsByFoodItemMatch = pathname.match(/^\/reviews\/food-items\/([^\/]+)$/);
+    if (reviewsByFoodItemMatch) {
+      return { key: `catalog:reviews:food-item:${cleanPath}`, ttl: 60 };
     }
 
     return null;
@@ -188,6 +204,16 @@ export class ProxyController {
       this.logger.log(`⚡ [CACHE INVALIDATION] Restaurant created`);
       await this.redisCacheService.delByPattern('catalog:restaurant:owner:*');
       await this.redisCacheService.delByPattern('catalog:restaurants:list:*');
+      return;
+    }
+
+    // 8. Reviews: POST /reviews/batch (Invalidate reviews, food items and restaurants cache)
+    if ((pathname === '/reviews/batch' || pathname === '/reviews/batch/') && method === 'POST') {
+      this.logger.log(`⚡ [CACHE INVALIDATION] Reviews created in batch`);
+      await this.redisCacheService.delByPattern('catalog:reviews:*');
+      await this.redisCacheService.delByPattern('catalog:food-item:*');
+      await this.redisCacheService.delByPattern('catalog:food-items:*');
+      await this.redisCacheService.delByPattern('catalog:restaurant:*');
       return;
     }
   }

@@ -11,6 +11,7 @@ import { AuthModule } from './auth/auth.module';
 import { CategoryModule } from './category/category.module';
 import { FoodItemModule } from './food-item/food-item.module';
 import { HealthModule } from './health/health.module';
+import { ReviewModule } from './review/review.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { HealthModule } from './health/health.module';
     CategoryModule,
     FoodItemModule,
     HealthModule,
+    ReviewModule,
   ],
   controllers: [AppController],
   providers: [AppService],

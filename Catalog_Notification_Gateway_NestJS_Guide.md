@@ -30,10 +30,10 @@ Mỗi service được triển khai độc lập theo kiến trúc module-based 
 ## Trách nhiệm
 
 - Quản lý Restaurant.
-- Quản lý Menu.
 - Quản lý Category.
-- Quản lý Food Items.
-- Cung cấp API cho Gateway.
+- Quản lý Food Items (biến thể variants, toppings).
+- Quản lý Reviews & Đánh giá món ăn theo đơn hàng (chống spam trùng lặp).
+- Cung cấp API cho Gateway / Client.
 - Đồng bộ trạng thái từ Kafka events.
 
 ## Công nghệ sử dụng
@@ -41,21 +41,31 @@ Mỗi service được triển khai độc lập theo kiến trúc module-based 
 | Thành phần | Công nghệ |
 |-----------|-----------|
 | Framework | NestJS |
-| Database | MongoDB |
-| ODM | Mongoose |
+| Database | PostgreSQL (hỗ trợ JSONB/Array) / MongoDB |
+| ORM / ODM | TypeORM |
 | Cache | Redis |
-| Event Bus | Kafka |
+| Event Bus | Kafka (KafkaJS) |
+| Auth | JWT, Passport, Custom Decorators |
 
 ## Kiến trúc nội bộ
 
 ```
 src/
-├── restaurants/
-├── menus/
-├── categories/
-├── food-items/
-├── kafka/
-└── common/
+├── restaurant/
+├── category/
+├── food-item/
+├── review/
+│   ├── dto/
+│   ├── entities/
+│   ├── review.controller.ts
+│   ├── review.service.ts
+│   └── review.module.ts
+├── auth/
+│   ├── decorators/
+│   ├── guards/
+│   └── strategies/
+├── common/
+└── health/
 ```
 
 ## Domain Model đề xuất
@@ -63,35 +73,65 @@ src/
 Restaurant:
 
 ```
-Id
+Id (UUID)
+OwnerId
 Name
-Description
-Status
-Address
-Logo
+Slug
+Address (Line1, Ward, District, City, Geo)
+Status (open/closed)
+Rating (avg, count)
 CreatedAt
+UpdatedAt
 ```
 
-Menu:
+Category:
 
 ```
-Id
+Id (UUID)
 RestaurantId
 Name
-Description
-Status
+SortOrder
+CreatedAt
+UpdatedAt
 ```
 
 Food Item:
 
 ```
-Id
-MenuId
+Id (UUID)
+CategoryId
+RestaurantId
+Sku
 Name
 Description
 Price
-Image
-Available
+Currency
+Images
+IsAvailable
+PreparationTime
+Tags
+TotalSold
+Rating (Number: decimal, default 0)
+ReviewCount (Number: int, default 0)
+Variants (name, priceDelta)
+Toppings (name, price)
+```
+
+Review:
+
+```
+Id (UUID)
+OrderId (String)
+RestaurantId (String)
+FoodItemId (String)
+UserId (String)
+Rating (Number: 1 - 5)
+Comment (String, optional)
+CreatedAt
+UpdatedAt
+Index: (orderId, foodItemId) - UNIQUE
+Index: restaurantId
+Index: foodItemId
 ```
 
 ## Kafka Events
@@ -115,20 +155,38 @@ stock.released
 ```
 GET    /restaurants
 POST   /restaurants
-PUT    /restaurants/{id}
+GET    /restaurants/me
+PUT    /restaurants/me
+GET    /restaurants/:id
+PATCH  /restaurants/:id
+DELETE /restaurants/:id
 
-GET    /menus
-POST   /menus
+GET    /categories
+POST   /categories
+GET    /categories/:id
+PATCH  /categories/:id
+DELETE /categories/:id
 
-GET    /foods
-POST   /foods
+GET    /food-items
+POST   /food-items
+GET    /food-items/:id
+GET    /food-items/restaurant/:restaurantId
+GET    /food-items/category/:categoryId
+PATCH  /food-items/:id
+PATCH  /food-items/:id/images
+PATCH  /food-items/:id/variants
+PATCH  /food-items/:id/toppings
+DELETE /food-items/:id
+
+POST   /reviews/batch
+GET    /reviews/restaurants/:restaurantId
+GET    /reviews/food-items/:foodItemId
 ```
 
-## Vì sao MongoDB?
+## Lưu ý về Cơ sở dữ liệu
 
-- Schema linh hoạt cho menu và topping.
-- Dễ dàng mở rộng nhiều loại món ăn.
-- Phù hợp với document-based data.
+- Bảng `reviews` có Compound Unique Index trên `(orderId, foodItemId)` để chống spam đánh giá lặp lại trên cùng 1 món ăn trong đơn hàng.
+- Món ăn hỗ trợ lưu trữ mảng `images`, `tags` và cấu trúc `variants`, `toppings` linh hoạt.
 
 ---
 

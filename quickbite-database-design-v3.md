@@ -283,10 +283,26 @@ CREATE TABLE inbox_messages (
   preparationTime: Number,
   tags: [String],
   totalSold: Number,
+  rating: Number,               // Điểm đánh giá trung bình (default 0)
+  reviewCount: Number,          // Số lượng lượt đánh giá (default 0)
   variants: [ { name: String, priceDelta: Number } ],
   toppings: [ { name: String, price: Number } ]
 }
 // Index: { id: 1 } unique, { sku: 1 } unique, { categoryId: 1 }, { restaurantId: 1, isAvailable: 1 }
+
+// ===== reviews ===== (Đánh giá món ăn theo đơn hàng)
+{
+  id: UUID,
+  orderId: String,              // ref orders.id
+  restaurantId: String,         // ref restaurants.id
+  foodItemId: String,           // ref food_items.id
+  userId: String,               // ref users.id
+  rating: Number,               // 1 đến 5 sao
+  comment: String,              // Nhận xét (optional, max 500 ký tự)
+  createdAt: Date,
+  updatedAt: Date
+}
+// Index: { orderId: 1, foodItemId: 1 } unique (Compound unique chống spam đánh giá lặp lại trên cùng đơn hàng và món ăn), { restaurantId: 1 }, { foodItemId: 1 }
 ```
 
 > **Nếu sau này cần "Breakfast/Lunch/Weekend Menu":** thêm lại collection `menus { id UUID, restaurantId UUID, name, isActive, activeHours }` và cho `categories.menuId` optional (nullable = áp dụng mọi menu). Không cần thiết kế lại từ đầu, chỉ thêm 1 collection + 1 field optional.

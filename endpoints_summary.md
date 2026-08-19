@@ -292,7 +292,7 @@
 ```json
 {
   "data": [
-    { "id": "uuid", "name": "...", "price": 0, "currency": "VND", "images": [], "isAvailable": true, "totalSold": 0, "restaurantId": "uuid", "categoryId": "uuid" }
+    { "id": "uuid", "name": "...", "price": 0, "currency": "VND", "images": [], "isAvailable": true, "totalSold": 0, "rating": 0, "reviewCount": 0, "restaurantId": "uuid", "categoryId": "uuid" }
   ],
   "meta": { "page": 1, "limit": 10, "total": 0, "totalPages": 0 }
 }
@@ -304,7 +304,7 @@
 **Auth:** JWT + Permission `FOOD_ITEM_READ`
 **Params:** `id: string`
 
-**Response** `200`: Object FoodItem đầy đủ tất cả các field (bao gồm `variants`, `toppings`, `description`, `tags`, `sku`...).
+**Response** `200`: Object FoodItem đầy đủ tất cả các field (bao gồm `rating`, `reviewCount`, `variants`, `toppings`, `description`, `tags`, `sku`...).
 
 ---
 
@@ -313,7 +313,7 @@
 **Params:** `restaurantId: string`
 **Query Params:** `?page=1&limit=10&search=...&categoryId=uuid (hoặc 'ALL')`
 
-**Response** `200`: Phân trang với fields: `id, name, price, currency, images, isAvailable, totalSold, categoryId, restaurantId`.
+**Response** `200`: Phân trang với fields: `id, name, price, currency, images, isAvailable, totalSold, rating, reviewCount, categoryId, restaurantId`.
 
 ---
 
@@ -322,7 +322,7 @@
 **Params:** `categoryId: string`
 **Query Params:** `?page=1&limit=10&search=...`
 
-**Response** `200`: Phân trang với fields: `id, name, price, currency, images, isAvailable, totalSold`.
+**Response** `200`: Phân trang với fields: `id, name, price, currency, images, isAvailable, totalSold, rating, reviewCount`.
 
 ---
 
@@ -399,6 +399,133 @@
 **Params:** `id: string`
 
 **Response** `200`: `undefined` (void)
+
+---
+
+### 📁 Review API — `/reviews`
+
+#### `POST /reviews/batch`
+*Đánh giá món ăn theo danh sách (batch) cho một đơn hàng đã hoàn tất.*
+
+**Auth:** Bearer JWT (yêu cầu người dùng đăng nhập)
+
+**Request Body:**
+```json
+{
+  "orderId": "order-uuid-or-string",
+  "restaurantId": "restaurant-uuid-or-string",
+  "items": [
+    {
+      "foodItemId": "food-item-uuid-1",
+      "rating": 5,
+      "comment": "Món ăn rất ngon, giao nhanh và nóng hổi!"
+    },
+    {
+      "foodItemId": "food-item-uuid-2",
+      "rating": 4,
+      "comment": "Hương vị vừa miệng."
+    }
+  ]
+}
+```
+
+**Response** `201`:
+```json
+[
+  {
+    "id": "review-uuid-1",
+    "orderId": "order-uuid-or-string",
+    "restaurantId": "restaurant-uuid-or-string",
+    "foodItemId": "food-item-uuid-1",
+    "userId": "user-uuid",
+    "rating": 5,
+    "comment": "Món ăn rất ngon, giao nhanh và nóng hổi!",
+    "createdAt": "2026-08-19T07:04:00.000Z",
+    "updatedAt": "2026-08-19T07:04:00.000Z"
+  },
+  {
+    "id": "review-uuid-2",
+    "orderId": "order-uuid-or-string",
+    "restaurantId": "restaurant-uuid-or-string",
+    "foodItemId": "food-item-uuid-2",
+    "userId": "user-uuid",
+    "rating": 4,
+    "comment": "Hương vị vừa miệng.",
+    "createdAt": "2026-08-19T07:04:00.000Z",
+    "updatedAt": "2026-08-19T07:04:00.000Z"
+  }
+]
+```
+
+**Lỗi thường gặp:**
+- `401 Unauthorized`: Thiếu hoặc sai JWT token.
+- `409 Conflict`: `{"statusCode": 409, "message": "Món ăn trong đơn hàng này đã được đánh giá"}` (Chống spam/đánh giá trùng lặp cùng `orderId` và `foodItemId`).
+
+---
+
+#### `GET /reviews/restaurants/:restaurantId`
+*Lấy danh sách đánh giá của một nhà hàng có phân trang, sắp xếp theo thời gian tạo mới nhất.*
+
+**Params:** `restaurantId: string`
+**Query Params:** `?page=1&limit=10`
+
+**Response** `200`:
+```json
+{
+  "data": [
+    {
+      "id": "review-uuid",
+      "orderId": "order-uuid-1",
+      "restaurantId": "restaurant-uuid",
+      "foodItemId": "food-item-uuid-1",
+      "userId": "user-uuid",
+      "rating": 5,
+      "comment": "Món ăn tuyệt vời!",
+      "createdAt": "2026-08-19T07:04:00.000Z",
+      "updatedAt": "2026-08-19T07:04:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+#### `GET /reviews/food-items/:foodItemId`
+*Lấy danh sách đánh giá của một món ăn cụ thể có phân trang, sắp xếp theo thời gian tạo mới nhất.*
+
+**Params:** `foodItemId: string`
+**Query Params:** `?page=1&limit=10`
+
+**Response** `200`:
+```json
+{
+  "data": [
+    {
+      "id": "review-uuid",
+      "orderId": "order-uuid-1",
+      "restaurantId": "restaurant-uuid",
+      "foodItemId": "food-item-uuid-1",
+      "userId": "user-uuid",
+      "rating": 5,
+      "comment": "Món ăn rất ngon, giòn và vừa miệng!",
+      "createdAt": "2026-08-19T07:04:00.000Z",
+      "updatedAt": "2026-08-19T07:04:00.000Z"
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
 
 ---
 

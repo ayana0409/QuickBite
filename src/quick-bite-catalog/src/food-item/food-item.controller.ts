@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 
+import { ApiTags } from '@nestjs/swagger';
 import { FoodItemService } from './food-item.service';
 
 import { PaginationDto } from '@/common/dto/pagination.dto';
@@ -24,6 +25,7 @@ import { PermissionGuard } from '@/auth/guards/permission.guard';
 import { PermissionKeys } from '@/common/constants/permissions';
 import { Permissions } from '../auth/decorators/permissions.decorator';
 
+@ApiTags('Food Items')
 @Controller('food-items')
 export class FoodItemController {
   constructor(
