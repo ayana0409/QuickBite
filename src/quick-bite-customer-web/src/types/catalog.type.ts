@@ -80,6 +80,8 @@ export interface FoodItem {
   preparationTime?: number;
   tags?: string[];
   totalSold?: number;
+  rating?: number;
+  reviewCount?: number;
   variants?: FoodVariant[];
   toppings?: FoodTopping[];
   createdAt?: string;

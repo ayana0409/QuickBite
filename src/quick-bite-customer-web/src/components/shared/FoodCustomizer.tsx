@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { Minus, Plus, ShoppingCart, Check, Sparkles, AlertCircle, ShoppingBag } from 'lucide-react';
+import { Minus, Plus, ShoppingCart, Check, Sparkles, AlertCircle, ShoppingBag, Star } from 'lucide-react';
 import { FoodItem } from '@/src/types/catalog.type';
 import { useCartStore } from '@/src/store/cart.store';
 import { useToast } from './ToastProvider';
@@ -155,17 +155,27 @@ export default function FoodCustomizer({ food, restaurantName, onAdded }: FoodCu
           </div>
         </div>
 
-        {food.isAvailable ? (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Sẵn sàng phục vụ
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
-            <AlertCircle className="w-3.5 h-3.5" />
-            Tạm hết món
-          </span>
-        )}
+        <div className="flex flex-col items-end gap-1.5">
+          {food.isAvailable ? (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-600 border border-emerald-200">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Sẵn sàng phục vụ
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">
+              <AlertCircle className="w-3.5 h-3.5" />
+              Tạm hết món
+            </span>
+          )}
+
+          {food.reviewCount !== undefined && food.reviewCount > 0 && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80 hover:bg-amber-100 transition-colors">
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span>{Number(food.rating || 0).toFixed(1)}</span>
+              <span className="text-slate-500 font-normal text-[11px]">({food.reviewCount} đánh giá)</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* 2. Variants (Radio Group) */}

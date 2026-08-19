@@ -27,10 +27,12 @@ import {
   XCircle,
   RotateCcw,
   AlertTriangle,
+  Star,
 } from 'lucide-react';
 import { OrderDto, OrderStatus, PaymentDto, DeliveryAddress } from '@/src/types/order.type';
 import { getOrderById, cancelOrder } from '@/src/lib/api/order';
 import { getPaymentByOrderId } from '@/src/lib/api/payment';
+import { checkOrderReviewed } from '@/src/lib/api/review';
 import { useToast } from '@/src/components/shared/ToastProvider';
 import OrderStatusStepper from '@/src/components/shared/OrderStatusStepper';
 import UpdateAddressModal from '@/src/components/shared/UpdateAddressModal';
@@ -50,6 +52,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [payment, setPayment] = useState<PaymentDto | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [isReviewed, setIsReviewed] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Modals state
@@ -58,7 +61,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const [isCancelConfirmOpen, setIsCancelConfirmOpen] = useState(false);
   const [cancelling, setCancelling] = useState(false);
 
-  // Fetch Order Data & Payment Info
+  // Fetch Order Data & Payment Info & Review Status
   const loadOrder = async (isManualRefresh = false) => {
     if (authStatus === 'loading') return;
 
@@ -73,13 +76,20 @@ export default function OrderDetailPage({ params }: PageProps) {
       }
       setOrder(data);
 
-      // Check and fetch payment session if waiting for payment
       const orderStatusLower = data.status?.toLowerCase() || '';
+
+      // Check and fetch payment session if waiting for payment
       if (orderStatusLower === 'waitingpayment' || orderStatusLower === 'pending' || orderStatusLower === 'draft') {
         const paymentData = await getPaymentByOrderId(orderId);
         if (paymentData) {
           setPayment(paymentData);
         }
+      }
+
+      // Check if order has already been reviewed
+      if (orderStatusLower === 'delivered' || orderStatusLower === 'completed') {
+        const reviewed = await checkOrderReviewed(orderId);
+        setIsReviewed(reviewed);
       }
 
       if (isManualRefresh) {
@@ -276,6 +286,7 @@ export default function OrderDetailPage({ params }: PageProps) {
   const canUpdateAddress = ['draft', 'waitingpayment', 'pending', 'submitted', 'confirmed'].includes(statusLower);
   const canCancelOrder = ['draft', 'waitingpayment', 'pending', 'submitted', 'confirmed', 'preparing'].includes(statusLower);
   const canRefundOrder = ['delivered', 'completed'].includes(statusLower);
+  const canReviewOrder = ['delivered', 'completed'].includes(statusLower);
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] py-8 sm:py-12 text-slate-900">
@@ -300,6 +311,24 @@ export default function OrderDetailPage({ params }: PageProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Review Button / Badge (available when delivered/completed) */}
+            {canReviewOrder && (
+              !isReviewed ? (
+                <Link
+                  href={`/order/${order.id}/review`}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold shadow-md shadow-orange-500/20 active:scale-98 transition-all cursor-pointer"
+                >
+                  <Star className="w-3.5 h-3.5 fill-white text-white" />
+                  <span>Đánh giá món ăn</span>
+                </Link>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs font-bold text-emerald-700">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Đã đánh giá</span>
+                </span>
+              )
+            )}
+
             {/* Cancel Button (available before delivery) */}
             {canCancelOrder && (
               <button
@@ -368,6 +397,37 @@ export default function OrderDetailPage({ params }: PageProps) {
               Tiến trình xử lý đơn hàng
             </h3>
             <OrderStatusStepper currentStatus={order.status} />
+
+            {/* Delivered / Completed Review Call To Action Banner */}
+            {canReviewOrder && !isReviewed && (
+              <div className="mt-6 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/10 border border-amber-300/80 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-start gap-3.5">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-amber-400 to-orange-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25 mt-0.5">
+                    <Star className="w-6 h-6 fill-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+                      <span>Bạn thấy món ăn thế nào?</span>
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 font-extrabold">
+                        Đánh giá món
+                      </span>
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                      Hãy chia sẻ đánh giá về hương vị và trải nghiệm phục vụ để giúp nhà hàng hoàn thiện hơn và giúp các thực khách khác nhé!
+                    </p>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/order/${order.id}/review`}
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-black rounded-2xl shadow-lg shadow-orange-500/25 active:scale-98 transition-all shrink-0 cursor-pointer"
+                >
+                  <Star className="w-4 h-4 fill-white" />
+                  <span>Đánh giá ngay</span>
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+            )}
 
             {/* Waiting Payment Banner Alert & CTA */}
             {isWaitingPayment && (

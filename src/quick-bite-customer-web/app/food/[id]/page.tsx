@@ -13,6 +13,7 @@ import {
   Heart,
   ShieldCheck,
   Zap,
+  Star,
 } from 'lucide-react';
 import { getFoodById, getRestaurantById } from '@/src/lib/api/catalog';
 import FoodCustomizer from '@/src/components/shared/FoodCustomizer';
@@ -161,9 +162,20 @@ export default async function FoodDetailPage({ params }: PageProps) {
               )}
 
               <div>
-                <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
-                  {food.name}
-                </h1>
+                <div className="flex flex-wrap items-center gap-3">
+                  <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-snug">
+                    {food.name}
+                  </h1>
+
+                  {food.reviewCount !== undefined && food.reviewCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200/80">
+                      <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                      <span>{Number(food.rating || 0).toFixed(1)}</span>
+                      <span className="text-slate-500 font-normal text-[11px]">({food.reviewCount} đánh giá)</span>
+                    </span>
+                  )}
+                </div>
+
                 {restaurant && (
                   <Link
                     href={`/restaurant/${restaurant.id}`}

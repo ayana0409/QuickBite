@@ -137,11 +137,16 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
                   {isOpen ? 'Đang mở cửa' : 'Tạm nghỉ'}
                 </span>
 
-                {/* Rating */}
-                {ratingAvg > 0 && (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500 text-white">
-                    <Star className="w-3 h-3 fill-white text-white" />
-                    {ratingAvg.toFixed(1)} ({ratingCount}+ đánh giá)
+                {/* Rating Badge with hover transition */}
+                {ratingCount > 0 ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/95 hover:bg-amber-400 text-white backdrop-blur-md transition-all duration-200 cursor-pointer shadow-sm group">
+                    <Star className="w-3.5 h-3.5 fill-white text-white group-hover:scale-110 transition-transform" />
+                    <span>{ratingAvg.toFixed(1)}</span>
+                    <span className="text-amber-100 font-normal">({ratingCount} đánh giá)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-black/40 text-slate-200 backdrop-blur-md">
+                    Chưa có đánh giá
                   </span>
                 )}
               </div>

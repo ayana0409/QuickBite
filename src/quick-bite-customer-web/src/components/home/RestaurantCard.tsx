@@ -65,12 +65,20 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
         </div>
 
         {/* Rating Badge */}
-        <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-white/95 backdrop-blur-md shadow-xs text-xs font-black text-slate-800">
-          <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-          <span>{rating?.avg ? rating.avg.toFixed(1) : '5.0'}</span>
-          <span className="text-[10px] text-slate-600 font-normal">
-            ({rating?.count || 100}+)
-          </span>
+        <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md shadow-xs text-xs">
+          {rating?.count && rating.count > 0 ? (
+            <>
+              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+              <span className="font-black text-slate-900">{Number(rating.avg).toFixed(1)}</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                ({rating.count})
+              </span>
+            </>
+          ) : (
+            <span className="text-[11px] text-slate-500 font-medium">
+              Chưa có đánh giá
+            </span>
+          )}
         </div>
 
         {/* Quick Delivery Meta Overlay */}
