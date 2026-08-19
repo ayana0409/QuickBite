@@ -53,6 +53,24 @@ export class ReviewController {
   }
 
   /**
+   * Check if an order has already been reviewed.
+   * Requires JWT authentication.
+   */
+  @Get('orders/:orderId/check')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Check if an order has already been reviewed' })
+  @ApiParam({ name: 'orderId', description: 'Order UUID / ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Returns object indicating whether the order is already reviewed',
+  })
+  async checkOrderReviewed(@Param('orderId') orderId: string) {
+    const reviewed = await this.reviewService.checkOrderReviewed(orderId);
+    return { reviewed };
+  }
+
+  /**
    * Get paginated reviews for a specific restaurant.
    */
   @Get('restaurants/:restaurantId')

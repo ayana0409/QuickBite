@@ -34,6 +34,17 @@ describe('ReviewController', () => {
     expect(controller).toBeDefined();
   });
 
+  describe('checkOrderReviewed', () => {
+    it('should call service.checkOrderReviewed with orderId and return reviewed boolean', async () => {
+      mockReviewService.checkOrderReviewed.mockResolvedValue(true);
+
+      const result = await controller.checkOrderReviewed('order-123');
+
+      expect(mockReviewService.checkOrderReviewed).toHaveBeenCalledWith('order-123');
+      expect(result).toEqual({ reviewed: true });
+    });
+  });
+
   describe('createBatchReviews', () => {
     it('should call service.createBatchReviews with user id and dto', async () => {
       const dto: CreateBatchReviewDto = {
