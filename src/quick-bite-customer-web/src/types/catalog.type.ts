@@ -108,3 +108,15 @@ export interface ApiResponse<T> {
   timestamp?: string;
   path?: string;
 }
+
+export interface Review {
+  id: string;
+  orderId: string;
+  restaurantId: string;
+  foodItemId: string;
+  userId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  updatedAt?: string;
+}

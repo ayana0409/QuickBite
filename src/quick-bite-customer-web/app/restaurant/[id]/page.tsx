@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { getRestaurantById, getFoodsByRestaurant } from '@/src/lib/api/catalog';
 import FoodCard from '@/src/components/home/FoodCard';
+import ReviewListSection from '@/src/components/shared/ReviewListSection';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -70,8 +71,8 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
     .filter(Boolean)
     .join(', ');
 
-  const ratingAvg = restaurant.rating?.avg ?? 0;
-  const ratingCount = restaurant.rating?.count ?? 0;
+  const ratingAvg = Number(restaurant.rating?.avg ?? 0) || 0;
+  const ratingCount = Number(restaurant.rating?.count ?? 0) || 0;
 
   // Group foods by category
   const categories = restaurant.categories ?? [];
@@ -305,6 +306,18 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
             </div>
           )}
         </div>
+
+        {/* ─── Customer Reviews Section ─── */}
+        <ReviewListSection
+          targetType="restaurant"
+          targetId={restaurant.id}
+          targetName={restaurant.name}
+          ratingSummary={{
+            avg: restaurant.rating?.avg ?? 0,
+            count: restaurant.rating?.count ?? 0,
+          }}
+          className="mt-10"
+        />
       </div>
     </div>
   );

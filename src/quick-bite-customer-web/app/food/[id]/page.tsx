@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { getFoodById, getRestaurantById } from '@/src/lib/api/catalog';
 import FoodCustomizer from '@/src/components/shared/FoodCustomizer';
+import ReviewListSection from '@/src/components/shared/ReviewListSection';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -214,6 +215,18 @@ export default async function FoodDetailPage({ params }: PageProps) {
           </div>
 
         </div>
+
+        {/* ─── Customer Reviews for Food Item ─── */}
+        <ReviewListSection
+          targetType="foodItem"
+          targetId={food.id}
+          targetName={food.name}
+          ratingSummary={{
+            avg: Number(food.rating || 0),
+            count: Number(food.reviewCount || 0),
+          }}
+          className="mt-8"
+        />
 
       </div>
     </div>
