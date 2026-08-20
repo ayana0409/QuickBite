@@ -31,10 +31,10 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 export class FoodItemController {
   constructor(
     private readonly foodItemService: FoodItemService,
-  ) {}
+  ) { }
 
   @Post()
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.FOOD_ITEM_CREATE)
   create(
     @Body()
@@ -94,7 +94,7 @@ export class FoodItemController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.FOOD_ITEM_UPDATE)
   update(
     @Param('id')
@@ -110,7 +110,7 @@ export class FoodItemController {
   }
 
   @Patch(':id/images')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.FOOD_ITEM_UPDATE)
   updateImages(
     @Param('id')
@@ -126,7 +126,7 @@ export class FoodItemController {
   }
 
   @Patch(':id/variants')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.FOOD_ITEM_UPDATE)
   updateVariants(
     @Param('id')
@@ -142,7 +142,7 @@ export class FoodItemController {
   }
 
   @Patch(':id/toppings')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.FOOD_ITEM_UPDATE)
   updateToppings(
     @Param('id')
@@ -158,7 +158,7 @@ export class FoodItemController {
   }
 
   @Delete(':id')
-  @UseGuards(JwtAuthGuard,PermissionGuard)
+  @UseGuards(JwtAuthGuard, PermissionGuard)
   @Permissions(PermissionKeys.FOOD_ITEM_DELETE)
   remove(
     @Param('id')
@@ -174,40 +174,90 @@ export class FoodItemController {
     @Payload() data: any,
     @Ctx() context: KafkaContext,
   ) {
-    const rawMessage = context.getMessage();
+    const rawMessage = typeof context?.getMessage === 'function' ? context.getMessage() : null;
     const key = rawMessage?.key ? rawMessage.key.toString() : '';
 
     let payload = data;
-    if (typeof data === 'string') {
+    if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
+      payload = rawMessage?.value;
+    }
+
+    if (Buffer.isBuffer(payload)) {
+      payload = payload.toString('utf-8');
+    }
+
+    if (typeof payload === 'string') {
       try {
-        payload = JSON.parse(data);
+        payload = JSON.parse(payload);
       } catch {
-        payload = data;
+        // Keep as string if parsing fails
       }
     }
 
-    const eventName = payload?.eventName || payload?.eventType || key;
-    if (
+    if (payload && typeof payload === 'object' && 'value' in payload && payload.value) {
+      let nested = payload.value;
+      if (Buffer.isBuffer(nested)) nested = nested.toString('utf-8');
+      if (typeof nested === 'string') {
+        try {
+          nested = JSON.parse(nested);
+        } catch {}
+      }
+      if (typeof nested === 'object' && nested !== null) {
+        payload = nested;
+      }
+    }
+
+    const eventName =
+      payload?.eventName ||
+      payload?.eventType ||
+      payload?.EventName ||
+      payload?.EventType ||
+      payload?.pattern ||
+      key;
+
+    const isOrderCompleted =
       eventName === 'order.completed' ||
       key === 'order.completed' ||
-      (payload?.items && Array.isArray(payload.items))
-    ) {
-      await this.foodItemService.handleOrderCompleted(payload?.eto || payload);
+      String(eventName).toLowerCase().includes('order.completed') ||
+      String(key).toLowerCase().includes('order.completed') ||
+      (payload?.items && Array.isArray(payload.items)) ||
+      (payload?.Items && Array.isArray(payload.Items));
+
+    if (isOrderCompleted) {
+      await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
     }
   }
 
   @EventPattern('order.completed')
   async handleOrderCompletedPattern(
     @Payload() data: any,
+    @Ctx() context?: KafkaContext,
   ) {
+    const rawMessage = typeof context?.getMessage === 'function' ? context.getMessage() : null;
     let payload = data;
-    if (typeof data === 'string') {
+    if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
+      payload = rawMessage?.value;
+    }
+    if (Buffer.isBuffer(payload)) {
+      payload = payload.toString('utf-8');
+    }
+    if (typeof payload === 'string') {
       try {
-        payload = JSON.parse(data);
-      } catch {
-        payload = data;
+        payload = JSON.parse(payload);
+      } catch {}
+    }
+    if (payload && typeof payload === 'object' && 'value' in payload && payload.value) {
+      let nested = payload.value;
+      if (Buffer.isBuffer(nested)) nested = nested.toString('utf-8');
+      if (typeof nested === 'string') {
+        try {
+          nested = JSON.parse(nested);
+        } catch {}
+      }
+      if (typeof nested === 'object' && nested !== null) {
+        payload = nested;
       }
     }
-    await this.foodItemService.handleOrderCompleted(payload?.eto || payload);
+    await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
   }
 }

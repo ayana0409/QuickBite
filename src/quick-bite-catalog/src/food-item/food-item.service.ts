@@ -45,7 +45,7 @@ export class FoodItemService implements OnModuleInit {
 
     @Inject('KAFKA_CLIENT')
     private readonly kafkaClient: ClientKafka,
-  ) {}
+  ) { }
 
   async onModuleInit() {
     await this.connectKafkaWithRetry();
@@ -409,36 +409,40 @@ export class FoodItemService implements OnModuleInit {
    * Increments totalSold for each food item in the completed order
    * @param event OrderCompletedEvent payload
    */
-  async handleOrderCompleted(event: {
-    eventId?: string;
-    orderId?: string;
-    correlationId?: string;
-    occurredAt?: string;
-    items?: Array<{
-      foodItemId?: string;
-      id?: string;
-      productId?: string;
-      itemName?: string;
-      quantity?: number;
-      unitPrice?: number;
-      selectedVariantName?: string;
-      selectedToppings?: any[];
-    }>;
-  }): Promise<void> {
-    if (!event?.items || !Array.isArray(event.items) || event.items.length === 0) {
+  async handleOrderCompleted(event: any): Promise<void> {
+    const rawItems =
+      event?.items ||
+      event?.Items ||
+      event?.eto?.items ||
+      event?.eto?.Items ||
+      event?.data?.items ||
+      event?.data?.Items;
+
+    if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
       this.logger.warn(
-        `[handleOrderCompleted] No items found in order.completed event for orderId: ${event?.orderId}`,
+        `[handleOrderCompleted] No items found in order.completed event: ${JSON.stringify(event)}`,
       );
       return;
     }
 
+    const orderId = event?.orderId || event?.OrderId || event?.id || 'unknown';
     this.logger.log(
-      `[handleOrderCompleted] Processing order.completed for orderId: ${event.orderId}, items count: ${event.items.length}`,
+      `[handleOrderCompleted] Processing order.completed for orderId: '${orderId}', total items: ${rawItems.length}`,
     );
 
-    for (const item of event.items) {
-      const foodItemId = item.foodItemId || item.id || item.productId;
-      const quantity = Math.max(1, Number(item.quantity) || 1);
+    for (const item of rawItems) {
+      const foodItemId =
+        item.foodItemId ||
+        item.FoodItemId ||
+        item.id ||
+        item.Id ||
+        item.productId ||
+        item.ProductId;
+
+      const quantity = Math.max(
+        1,
+        Number(item.quantity ?? item.Quantity ?? item.qty ?? item.Qty ?? 1),
+      );
 
       if (!foodItemId) {
         this.logger.warn(`[handleOrderCompleted] Item missing foodItemId: ${JSON.stringify(item)}`);
@@ -446,7 +450,7 @@ export class FoodItemService implements OnModuleInit {
       }
 
       try {
-        await this.foodItemRepository
+        const updateResult = await this.foodItemRepository
           .createQueryBuilder()
           .update(FoodItem)
           .set({
@@ -456,7 +460,7 @@ export class FoodItemService implements OnModuleInit {
           .execute();
 
         this.logger.log(
-          `[handleOrderCompleted] Incremented totalSold by +${quantity} for foodItemId: ${foodItemId}`,
+          `[handleOrderCompleted] Incremented totalSold by +${quantity} for foodItemId: ${foodItemId} (Affected: ${updateResult.affected})`,
         );
       } catch (error: any) {
         this.logger.error(

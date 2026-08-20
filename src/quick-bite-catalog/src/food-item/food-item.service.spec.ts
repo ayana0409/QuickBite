@@ -180,7 +180,7 @@ describe('FoodItemService', () => {
       foodItemRepository.save.mockResolvedValue(mockFoodItem);
       kafkaClient.emit.mockReturnValue(throwError(() => new Error('Kafka error')));
 
-      const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => {});
+      const loggerErrorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => { });
 
       const result = await service.create(createDto);
 
@@ -232,7 +232,7 @@ describe('FoodItemService', () => {
       foodItemRepository.findOne
         .mockResolvedValueOnce({ ...mockFoodItem })
         .mockResolvedValueOnce(null);
-      
+
       foodItemRepository.save.mockImplementation(async (entity) => entity as FoodItem);
       kafkaClient.emit.mockReturnValue(of({}));
 
