@@ -60,6 +60,16 @@ export interface DeliveryAddressDetails {
   note?: string;
 }
 
+export interface OrderStatusHistory {
+  id: string;
+  orderId: string;
+  fromStatus?: string | null;
+  toStatus: string;
+  reason?: string | null;
+  changedBy: string;
+  changedAt: string;
+}
+
 export interface Order {
   id: string;
   orderCode: string;
@@ -71,6 +81,14 @@ export interface Order {
   createdAt?: string;
   items: OrderItem[];
   deliveryAddress?: DeliveryAddressDetails | string;
+  statusHistories?: OrderStatusHistory[];
+}
+
+export interface ExtendedOrder extends Order {
+  customerName?: string;
+  restaurantName?: string;
+  sagaState?: 'Initial' | 'StockReserved' | 'PaymentAuthorized' | 'AwaitingAcceptance' | 'Confirmed' | 'Preparing' | 'Delivering' | 'Completed' | 'Cancelled';
+  timeline?: { step: string; timestamp: string; status: 'done' | 'active' | 'pending' | 'failed' }[];
 }
 
 export interface OrderPaginatedData {
@@ -90,6 +108,15 @@ export interface MerchantOrdersParams {
   status?: string;
   page?: number;
   limit?: number;
+}
+
+export interface AdminOrdersParams {
+  search?: string;
+  status?: string;
+  startDate?: string;
+  endDate?: string;
+  skipCount?: number;
+  maxResultCount?: number;
 }
 
 // OpenIddict /connect/token Response

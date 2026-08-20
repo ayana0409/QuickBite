@@ -63,15 +63,22 @@ const axiosClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 10000,
+  timeout: 60000,
 });
 
 // Interceptor Request: Tự động đính kèm Access Token từ Zustand store & Log Payload
 axiosClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().accessToken;
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    if (token) {
+      if (config.headers && typeof config.headers.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        config.headers = config.headers || {};
+        config.headers['Authorization'] = `Bearer ${token}`;
+      }
+    } else {
+      console.warn(`⚠️ [HTTP REQUEST] Không tìm thấy Access Token cho request: ${config.url}`);
     }
 
     // Global Request Payload Logger
@@ -115,21 +122,11 @@ axiosClient.interceptors.response.use(
       }
     );
 
-    // Hiển thị Toast thông báo lỗi tự động cho người dùng
+    // Hiển thị thông báo Toast lỗi trực quan cho người dùng mà không hủy phiên đăng nhập
     toast.error(errorMsg, errorTitle);
 
     if (error.response?.status === 401) {
-      console.warn('Unauthorized! Logging out and redirecting to login...');
-      
-      const url = error.config?.url || '';
-      // Don't aggressive logout if the merchant orders API returns 401 due to misconfiguration 
-      if (!url.includes('/api/merchant/orders')) {
-        useAuthStore.getState().logout();
-        
-        if (window.location.pathname !== '/login') {
-          window.location.href = '/login';
-        }
-      }
+      console.warn('⚠️ [401 Unauthorized] Request bị từ chối quyền truy cập hoặc token không hợp lệ:', error.config?.url);
     }
     return Promise.reject(error);
   }

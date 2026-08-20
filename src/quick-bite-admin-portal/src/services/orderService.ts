@@ -102,15 +102,57 @@ export const orderService = {
   },
 
   /**
-   * Lấy danh sách toàn bộ đơn hàng cho Admin
+   * Lấy danh sách toàn bộ đơn hàng cho Admin với bộ lọc nâng cao
+   * Gọi API Gateway: GET /order/order/admin-list
    */
-  async getAdminOrders(): Promise<ExtendedOrder[]> {
+  async getAdminOrders(params?: {
+    search?: string;
+    status?: string;
+    startDate?: string;
+    endDate?: string;
+    skipCount?: number;
+    maxResultCount?: number;
+  }): Promise<{ items: ExtendedOrder[]; totalCount: number }> {
     try {
-      const res: any = await axiosClient.get('/order/order');
-      return unwrapArray<ExtendedOrder>(res);
+      const res: any = await axiosClient.get('/order/order/admin-list', {
+        params: {
+          search: params?.search || undefined,
+          status: params?.status || undefined,
+          startDate: params?.startDate || undefined,
+          endDate: params?.endDate || undefined,
+          skipCount: params?.skipCount ?? 0,
+          maxResultCount: params?.maxResultCount ?? 50,
+        },
+      });
+
+      const dataPayload = unwrapData<any>(res);
+      const items = Array.isArray(dataPayload?.items)
+        ? dataPayload.items
+        : unwrapArray<ExtendedOrder>(res);
+
+      const totalCount =
+        typeof dataPayload?.totalCount === 'number'
+          ? dataPayload.totalCount
+          : items.length;
+
+      return {
+        items,
+        totalCount,
+      };
     } catch (error) {
       console.warn('Could not fetch admin orders', error);
-      return [];
+      return { items: [], totalCount: 0 };
     }
+  },
+
+  /**
+   * Hủy đơn hàng khẩn cấp quyền Admin (Force Cancel)
+   * Gọi API Gateway: POST /order/order/{id}/force-cancel
+   */
+  async forceCancelOrder(orderId: string, reason: string): Promise<any> {
+    const res: any = await axiosClient.post(`/order/order/${orderId}/force-cancel`, {
+      reason,
+    });
+    return unwrapData<any>(res);
   },
 };
