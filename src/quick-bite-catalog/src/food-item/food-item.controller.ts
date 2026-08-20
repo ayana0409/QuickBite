@@ -249,38 +249,4 @@ export class FoodItemController {
       await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
     }
   }
-
-  @EventPattern('order.completed')
-  async handleOrderCompletedPattern(
-    @Payload() data: any,
-    @Ctx() context?: KafkaContext,
-  ) {
-    this.logger.log(`[Kafka Pattern 'order.completed'] Received payload: ${JSON.stringify(data)}`);
-    const rawMessage = typeof context?.getMessage === 'function' ? context.getMessage() : null;
-    let payload = data;
-    if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
-      payload = rawMessage?.value;
-    }
-    if (Buffer.isBuffer(payload)) {
-      payload = payload.toString('utf-8');
-    }
-    if (typeof payload === 'string') {
-      try {
-        payload = JSON.parse(payload);
-      } catch {}
-    }
-    if (payload && typeof payload === 'object' && 'value' in payload && payload.value) {
-      let nested = payload.value;
-      if (Buffer.isBuffer(nested)) nested = nested.toString('utf-8');
-      if (typeof nested === 'string') {
-        try {
-          nested = JSON.parse(nested);
-        } catch {}
-      }
-      if (typeof nested === 'object' && nested !== null) {
-        payload = nested;
-      }
-    }
-    await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
-  }
 }
