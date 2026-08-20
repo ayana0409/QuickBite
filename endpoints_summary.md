@@ -251,6 +251,68 @@
 
 ---
 
+### 📁 Admin Category Moderation API — `/admin/categories`
+
+#### `GET /admin/categories`
+*Lấy danh sách tất cả danh mục món ăn trong toàn hệ thống kèm thông tin nhà hàng phục vụ công tác kiểm duyệt của Admin.*
+**Auth:** JWT + Permission `CATEGORY_MODERATION` (`Catalog.Categories.Moderation`)
+**Query Params:** `?page=1&limit=10&search=...`
+
+**Response** `200`:
+```json
+{
+  "data": [
+    {
+      "id": "uuid",
+      "restaurantId": "uuid",
+      "name": "Pizza",
+      "sortOrder": 1,
+      "createdAt": "2026-08-12T...",
+      "updatedAt": "2026-08-12T...",
+      "restaurant": {
+        "id": "uuid",
+        "name": "Pizza Hut",
+        "slug": "pizza-hut"
+      }
+    }
+  ],
+  "meta": {
+    "page": 1,
+    "limit": 10,
+    "total": 1,
+    "totalPages": 1
+  }
+}
+```
+
+---
+
+#### `PUT /admin/categories/:id/rename`
+*Đổi tên danh mục món ăn khi vi phạm quy chuẩn từ ngữ.*
+**Auth:** JWT + Permission `CATEGORY_MODERATION` (`Catalog.Categories.Moderation`)
+**Params:** `id: UUID v4`
+
+**Request Body:**
+```json
+{
+  "newName": "Tên danh mục mới đã chuẩn hóa"
+}
+```
+
+**Response** `200`:
+```json
+{
+  "id": "uuid",
+  "restaurantId": "uuid",
+  "name": "Tên danh mục mới đã chuẩn hóa",
+  "sortOrder": 1,
+  "createdAt": "2026-08-12T...",
+  "updatedAt": "2026-08-12T..."
+}
+```
+
+---
+
 ### 📁 Food Item API — `/food-items`
 
 #### `POST /food-items`
