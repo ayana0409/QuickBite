@@ -227,26 +227,33 @@ export class FoodItemController {
       }
     }
 
-    const eventName =
+    const rawEventName =
+      (key && key.trim()) ||
       payload?.eventName ||
       payload?.eventType ||
       payload?.EventName ||
       payload?.EventType ||
       payload?.pattern ||
-      key;
+      '';
 
-    this.logger.log(`[Kafka Event Parsed] Extracted eventName: '${eventName}', Key: '${key}'`);
+    const normalizedKey = String(key || '').trim().toLowerCase();
+    const normalizedEventName = String(rawEventName || '').trim().toLowerCase();
 
+    this.logger.log(`[Kafka Event Parsed] Extracted eventName: '${rawEventName}', Key: '${key}'`);
+
+    // Strictly match order.completed only. Do NOT match if key/eventName is order.submitted, order.confirmed, order.preparing, etc.
     const isOrderCompleted =
-      eventName === 'order.completed' ||
-      key === 'order.completed' ||
-      String(eventName).toLowerCase().includes('order.completed') ||
-      String(key).toLowerCase().includes('order.completed') ||
-      (payload?.items && Array.isArray(payload.items)) ||
-      (payload?.Items && Array.isArray(payload.Items));
+      normalizedKey === 'order.completed' ||
+      normalizedKey === 'order_completed' ||
+      normalizedEventName === 'order.completed' ||
+      normalizedEventName === 'order_completed';
 
     if (isOrderCompleted) {
       await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
+    } else {
+      this.logger.debug(
+        `[Kafka Event Ignored] Event '${rawEventName || key}' is not 'order.completed'. Skipping totalSold update.`,
+      );
     }
   }
 }

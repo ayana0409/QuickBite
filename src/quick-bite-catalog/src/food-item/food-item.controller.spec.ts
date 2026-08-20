@@ -186,9 +186,15 @@ describe('FoodItemController', () => {
       expect(service.handleOrderCompleted).toHaveBeenCalledWith(mockOrderCompletedPayload);
     });
 
-    it('should handle order.completed direct pattern', async () => {
-      await controller.handleOrderCompletedPattern(mockOrderCompletedPayload);
-      expect(service.handleOrderCompleted).toHaveBeenCalledWith(mockOrderCompletedPayload);
+    it('should ignore other order lifecycle events (e.g. order.submitted)', async () => {
+      const mockContext = {
+        getMessage: jest.fn().mockReturnValue({
+          key: Buffer.from('order.submitted'),
+        }),
+      } as any;
+
+      await controller.handleOrderEventsTopic(mockOrderCompletedPayload, mockContext);
+      expect(service.handleOrderCompleted).not.toHaveBeenCalled();
     });
   });
 });
