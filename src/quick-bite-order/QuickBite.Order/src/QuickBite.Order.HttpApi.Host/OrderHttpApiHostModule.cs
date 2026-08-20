@@ -147,12 +147,13 @@ public class OrderHttpApiHostModule : AbpModule
             .AddAbpJwtBearer(options =>
             {
                 options.Authority = authority;
-                options.RequireHttpsMetadata = Convert.ToBoolean(configuration["AuthServer:RequireHttpsMetadata"] ?? "false");
+                options.RequireHttpsMetadata = false;
                 options.Audience = configuration["AuthServer:Audience"] ?? "Order";
                 options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
                 {
                     ValidateAudience = false,
                     ValidateIssuer = false,
+                    SignatureValidator = (token, _) => new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(token),
                 };
             });
 
