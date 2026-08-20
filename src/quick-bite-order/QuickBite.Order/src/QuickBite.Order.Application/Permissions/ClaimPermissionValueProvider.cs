@@ -28,9 +28,8 @@ public class ClaimPermissionValueProvider : PermissionValueProvider
 
         // 1. If user is in Admin role, automatically grant permission
         if (principal.IsInRole("Admin") || 
-            principal.HasClaim(ClaimTypes.Role, "Admin") || 
-            principal.HasClaim("role", "Admin") ||
-            principal.HasClaim(AbpClaimTypes.Role, "Admin"))
+            principal.IsInRole("admin") ||
+            principal.HasClaim(c => (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles" || c.Type == AbpClaimTypes.Role) && string.Equals(c.Value, "Admin", System.StringComparison.OrdinalIgnoreCase)))
         {
             return Task.FromResult(PermissionGrantResult.Granted);
         }
@@ -84,9 +83,8 @@ public class ClaimPermissionValueProvider : PermissionValueProvider
         }
 
         var isAdmin = principal.IsInRole("Admin") || 
-                      principal.HasClaim(ClaimTypes.Role, "Admin") || 
-                      principal.HasClaim("role", "Admin") ||
-                      principal.HasClaim(AbpClaimTypes.Role, "Admin");
+                      principal.IsInRole("admin") ||
+                      principal.HasClaim(c => (c.Type == ClaimTypes.Role || c.Type == "role" || c.Type == "roles" || c.Type == AbpClaimTypes.Role) && string.Equals(c.Value, "Admin", System.StringComparison.OrdinalIgnoreCase));
 
         var grantedList = new HashSet<string>();
         var permissionsClaim = principal.FindFirst("permissions")?.Value;

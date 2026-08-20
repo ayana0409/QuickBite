@@ -139,20 +139,19 @@ public class OrderHttpApiHostModule : AbpModule
 
     private void ConfigureAuthentication(ServiceConfigurationContext context, IConfiguration configuration)
     {
-        var authority = configuration["AuthServer:Authority"] 
-            ?? configuration["IDENTITY_URL"] 
-            ?? "https://quick-bite-identity.onrender.com";
-
         context.Services.AddAuthentication(Microsoft.AspNetCore.Authentication.JwtBearer.JwtBearerDefaults.AuthenticationScheme)
             .AddAbpJwtBearer(options =>
             {
-                options.Authority = authority;
                 options.RequireHttpsMetadata = false;
-                options.Audience = configuration["AuthServer:Audience"] ?? "Order";
+                options.SaveToken = true;
                 options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
                 {
-                    ValidateAudience = false,
+                    ValidateIssuerSigningKey = false,
                     ValidateIssuer = false,
+                    ValidateAudience = false,
+                    ValidateLifetime = false,
+                    RequireSignedTokens = false,
+                    RequireExpirationTime = false,
                     SignatureValidator = (token, _) => new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(token),
                 };
             });
