@@ -430,7 +430,7 @@ public class OrderAppService :
     /// </summary>
     public async Task<PagedResultDto<OrderDto>> GetListByRestaurantAsync(GetOrdersByRestaurantInput input)
     {
-        var query = await _orderRepository.GetQueryableAsync();
+        var query = await _orderRepository.WithDetailsAsync();
 
         // 1. Mandatory filter by RestaurantId at DB level
         query = query.Where(x => x.RestaurantId == input.RestaurantId);
@@ -472,7 +472,7 @@ public class OrderAppService :
     [Authorize(OrderPermissions.Orders.AdminView)]
     public async Task<PagedResultDto<OrderDto>> GetAdminListAsync(GetAdminOrdersInput input)
     {
-        var query = await _orderRepository.GetQueryableAsync();
+        var query = await _orderRepository.WithDetailsAsync();
 
         // 1. Filter by OrderStatus enum if provided
         if (!string.IsNullOrWhiteSpace(input.Status))
