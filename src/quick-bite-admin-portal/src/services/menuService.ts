@@ -37,6 +37,8 @@ export interface FoodItem {
   preparationTime?: number;
   tags?: string[];
   totalSold?: number;
+  rating?: number;
+  reviewCount?: number;
   variants?: FoodVariant[];
   toppings?: FoodTopping[];
 }
@@ -130,6 +132,8 @@ const normalizeFoodItem = (raw: any): FoodItem => {
     preparationTime: typeof raw.preparationTime === 'number' ? raw.preparationTime : 15,
     tags: Array.isArray(raw.tags) ? raw.tags : [],
     totalSold: typeof raw.totalSold === 'number' ? raw.totalSold : 0,
+    rating: typeof raw.rating === 'number' ? raw.rating : (Number(raw.rating) || 0),
+    reviewCount: typeof raw.reviewCount === 'number' ? raw.reviewCount : (Number(raw.reviewCount) || 0),
     variants: Array.isArray(raw.variants) ? raw.variants.map((v: any) => ({ name: v.name, priceDelta: parsePrice(v.priceDelta) })) : [],
     toppings: Array.isArray(raw.toppings) ? raw.toppings.map((t: any) => ({ name: t.name, price: parsePrice(t.price) })) : [],
   };

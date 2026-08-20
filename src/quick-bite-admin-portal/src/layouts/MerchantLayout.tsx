@@ -13,6 +13,7 @@ import {
   Store,
   UtensilsCrossed,
   Bell,
+  Star,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -32,6 +33,7 @@ export default function MerchantLayout() {
     { to: '/merchant/orders', label: 'Đơn hàng Chờ duyệt', icon: ClipboardList },
     { to: '/merchant/inventory', label: 'Quản lý Kho', icon: Boxes },
     { to: '/merchant/revenue', label: 'Doanh thu & Hóa đơn', icon: DollarSign },
+    { to: '/merchant/reviews', label: 'Đánh giá & Phản hồi', icon: Star },
     { to: '/merchant/profile', label: 'Hồ sơ Nhà hàng', icon: Building2 },
   ];
 
