@@ -152,7 +152,7 @@ public class OrderHttpApiHostModule : AbpModule
                     ValidateLifetime = false,
                     RequireSignedTokens = false,
                     RequireExpirationTime = false,
-                    SignatureValidator = (token, _) => new System.IdentityModel.Tokens.Jwt.JwtSecurityToken(token),
+                    SignatureValidator = (token, _) => new Microsoft.IdentityModel.JsonWebTokens.JsonWebToken(token),
                 };
             });
 
