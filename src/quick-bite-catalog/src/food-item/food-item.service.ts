@@ -410,39 +410,23 @@ export class FoodItemService implements OnModuleInit {
    * @param event OrderCompletedEvent payload
    */
   async handleOrderCompleted(event: any): Promise<void> {
-    const rawItems =
-      event?.items ||
-      event?.Items ||
-      event?.eto?.items ||
-      event?.eto?.Items ||
-      event?.data?.items ||
-      event?.data?.Items;
+    const items = event?.items;
 
-    if (!rawItems || !Array.isArray(rawItems) || rawItems.length === 0) {
+    if (!items || !Array.isArray(items) || items.length === 0) {
       this.logger.warn(
         `[handleOrderCompleted] No items found in order.completed event: ${JSON.stringify(event)}`,
       );
       return;
     }
 
-    const orderId = event?.orderId || event?.OrderId || event?.id || 'unknown';
+    const orderId = event?.orderId || 'unknown';
     this.logger.log(
-      `[handleOrderCompleted] Processing order.completed for orderId: '${orderId}', total items: ${rawItems.length}`,
+      `[handleOrderCompleted] Processing order.completed for orderId: '${orderId}', total items: ${items.length}`,
     );
 
-    for (const item of rawItems) {
-      const foodItemId =
-        item.foodItemId ||
-        item.FoodItemId ||
-        item.id ||
-        item.Id ||
-        item.productId ||
-        item.ProductId;
-
-      const quantity = Math.max(
-        1,
-        Number(item.quantity ?? item.Quantity ?? item.qty ?? item.Qty ?? 1),
-      );
+    for (const item of items) {
+      const foodItemId = item.foodItemId;
+      const quantity = item.quantity;
 
       if (!foodItemId) {
         this.logger.warn(`[handleOrderCompleted] Item missing foodItemId: ${JSON.stringify(item)}`);
