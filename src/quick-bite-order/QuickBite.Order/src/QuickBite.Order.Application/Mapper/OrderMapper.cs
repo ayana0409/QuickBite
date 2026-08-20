@@ -39,4 +39,18 @@ public partial class OrderMapper : MapperBase<Domain.Orders.AggregateRoots.Order
 
     [MapProperty(nameof(DeliveryAddress.FullName), nameof(DeliveryAddressDto.ReceiverName))]
     public partial DeliveryAddressDto MapDeliveryAddress(DeliveryAddress source);
+
+    public OrderStatusHistoryDto MapOrderStatusHistory(OrderStatusHistory source)
+    {
+        return new OrderStatusHistoryDto
+        {
+            Id = source.Id,
+            OrderId = source.OrderId,
+            FromStatus = source.FromStatus?.ToString(),
+            ToStatus = source.ToStatus.ToString(),
+            Reason = source.Reason,
+            ChangedBy = source.ChangedBy.ToString(),
+            ChangedAt = source.ChangedAt
+        };
+    }
 }

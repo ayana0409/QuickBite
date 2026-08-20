@@ -897,6 +897,78 @@ Base path: `/v1/payments`
 
 ---
 
+#### `GET /api/app/order/admin-list`
+*Lấy danh sách toàn bộ đơn hàng trong hệ thống cho Admin giám sát (hỗ trợ lọc theo mã đơn, khách hàng, trạng thái, và khoảng thời gian).*
+**Auth:** Bearer JWT + Permission `Order.Orders.AdminView`
+**Query Params:** `?search=...&status=...&startDate=2026-08-01&endDate=2026-08-20&skipCount=0&maxResultCount=50`
+
+**Response** `200`: `PagedResultDto<OrderDto>`
+```json
+{
+  "totalCount": 100,
+  "items": [
+    {
+      "id": "uuid",
+      "orderCode": "QB-20260820035730-8882",
+      "customerId": "uuid",
+      "restaurantId": "uuid",
+      "status": "Completed",
+      "totalAmount": 250000.00,
+      "deliveryAddress": {
+        "receiverName": "Nguyễn Văn A",
+        "phoneNumber": "0901234567",
+        "addressLine": "123 Đường ABC",
+        "ward": "Phường 1",
+        "district": "Quận 1",
+        "province": "TP. HCM",
+        "note": "Giao tận tay"
+      },
+      "items": [
+        {
+          "foodItemId": "uuid",
+          "foodName": "Pizza Hải Sản",
+          "quantity": 2,
+          "unitPrice": 125000,
+          "totalPrice": 250000,
+          "selectedVariantName": "Size L",
+          "selectedToppings": ["Extra Cheese"]
+        }
+      ],
+      "statusHistories": [
+        {
+          "id": "uuid",
+          "orderId": "uuid",
+          "fromStatus": "Preparing",
+          "toStatus": "Delivering",
+          "reason": "Tài xế đã nhận món",
+          "changedBy": "Merchant",
+          "changedAt": "2026-08-20T04:15:00Z"
+        }
+      ],
+      "creationTime": "2026-08-20T03:57:30Z"
+    }
+  ]
+}
+```
+
+---
+
+#### `POST /api/app/order/{id}/force-cancel`
+*Hủy đơn hàng khẩn cấp quyền Admin (bỏ qua các ràng buộc thông thường và trigger Saga hoàn tiền/hoàn kho).*
+**Auth:** Bearer JWT + Permission `Order.Orders.ForceCancel`
+**Params:** `id: UUID`
+
+**Request Body:**
+```json
+{
+  "reason": "Lý do can thiệp hủy khẩn cấp của Admin"
+}
+```
+
+**Response** `200`: `void`
+
+---
+
 #### `POST /api/app/order/{id}/cancel`
 *Hủy đơn hàng.*
 **Params:** `id: UUID`

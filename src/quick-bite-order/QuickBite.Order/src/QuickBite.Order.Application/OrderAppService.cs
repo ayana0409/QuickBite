@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
+using QuickBite.Order.Permissions;
 using OrderEntity = QuickBite.Order.Domain.Orders.AggregateRoots.Order;
 namespace QuickBite.Order.Orders;
 
@@ -466,6 +467,61 @@ public class OrderAppService :
     }
 
     /// <summary>
+    /// Gets all orders in the system for Admin supervision with search, status, and date range filters.
+    /// </summary>
+    [Authorize(OrderPermissions.Orders.AdminView)]
+    public async Task<PagedResultDto<OrderDto>> GetAdminListAsync(GetAdminOrdersInput input)
+    {
+        var query = await _orderRepository.GetQueryableAsync();
+
+        // 1. Filter by OrderStatus enum if provided
+        if (!string.IsNullOrWhiteSpace(input.Status))
+        {
+            if (Enum.TryParse<OrderStatus>(input.Status, ignoreCase: true, out var statusEnum))
+            {
+                query = query.Where(x => x.Status == statusEnum);
+            }
+        }
+
+        // 2. Filter by search term (OrderCode, ReceiverName, PhoneNumber)
+        if (!string.IsNullOrWhiteSpace(input.Search))
+        {
+            var search = input.Search.Trim();
+            query = query.Where(x => x.OrderCode.Contains(search) ||
+                                     x.DeliveryAddress.FullName.Contains(search) ||
+                                     x.DeliveryAddress.PhoneNumber.Contains(search));
+        }
+
+        // 3. Filter by date range
+        if (input.StartDate.HasValue)
+        {
+            var startUtc = input.StartDate.Value.Date;
+            query = query.Where(x => x.CreationTime >= startUtc);
+        }
+
+        if (input.EndDate.HasValue)
+        {
+            var endUtc = input.EndDate.Value.Date.AddDays(1);
+            query = query.Where(x => x.CreationTime < endUtc);
+        }
+
+        // 4. Count total matching items
+        var totalCount = await AsyncExecuter.CountAsync(query);
+
+        // 5. Apply sorting and pagination
+        query = query.OrderByDescending(x => x.CreationTime)
+                     .PageBy(input.SkipCount, input.MaxResultCount);
+
+        // 6. Fetch paged orders
+        var orders = await AsyncExecuter.ToListAsync(query);
+
+        // 7. Map to DTOs
+        var orderDtos = ObjectMapper.Map<List<OrderEntity>, List<OrderDto>>(orders);
+
+        return new PagedResultDto<OrderDto>(totalCount, orderDtos);
+    }
+
+    /// <summary>
     /// Cancels a specific order.
     /// </summary>
     public async Task CancelAsync(Guid id)
@@ -515,6 +571,60 @@ public class OrderAppService :
         }
 
         // 5. Persist changes.
+        await _orderRepository.UpdateAsync(order, autoSave: true);
+    }
+
+    /// <summary>
+    /// Admin emergency force cancellation.
+    /// </summary>
+    [Authorize(OrderPermissions.Orders.ForceCancel)]
+    public async Task ForceCancelAsync(Guid id, ForceCancelOrderDto input)
+    {
+        // 1. Fetch the order from the database.
+        var order = await _orderRepository.GetAsync(id, includeDetails: true);
+
+        // 2. Save status before cancel
+        var statusBeforeCancel = order.Status;
+
+        // 3. Delegate force cancel to entity
+        order.ForceCancel(input.Reason);
+
+        // 4. Publish cancellation event for saga rollback (release stock, refund payment)
+        var statusesWithReservedStock = new[]
+        {
+            OrderStatus.Pending,
+            OrderStatus.WaitingInventory,
+            OrderStatus.WaitingStock,
+            OrderStatus.WaitingPayment,
+            OrderStatus.Confirmed,
+            OrderStatus.Preparing,
+            OrderStatus.Delivering
+        };
+
+        if (Array.Exists(statusesWithReservedStock, s => s == statusBeforeCancel))
+        {
+            var orderCancelledEto = new OrderCancelledEto
+            {
+                EventId = GuidGenerator.Create(),
+                OrderId = order.Id,
+                Reason = $"Admin force cancelled: {input.Reason}",
+                CorrelationId = order.CorrelationId,
+                OccurredAt = DateTime.UtcNow,
+                Items = order.OrderItems.Select(x => new OrderItemEto
+                {
+                    FoodItemId = x.Sku,
+                    ItemName = x.ItemName,
+                    Quantity = x.Quantity,
+                    UnitPrice = x.UnitPrice,
+                    SelectedVariantName = x.SelectedVariantName ?? string.Empty,
+                    SelectedToppings = x.SelectedToppings
+                }).ToList()
+            };
+
+            await _distributedEventBus.PublishAsync(orderCancelledEto);
+        }
+
+        // 5. Persist changes
         await _orderRepository.UpdateAsync(order, autoSave: true);
     }
 

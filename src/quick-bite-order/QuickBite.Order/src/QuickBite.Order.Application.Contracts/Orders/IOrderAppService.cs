@@ -20,11 +20,15 @@ public interface IOrderAppService : IApplicationService
 
     Task<PagedResultDto<OrderDto>> GetListByRestaurantAsync(GetOrdersByRestaurantInput input);
 
+    Task<PagedResultDto<OrderDto>> GetAdminListAsync(GetAdminOrdersInput input);
+
     Task SubmitAsync(Guid id);
 
     Task<OrderDto> UpdateStatusAsync(Guid id, UpdateOrderStatusDto input);
 
     Task CancelAsync(Guid id);
+
+    Task ForceCancelAsync(Guid id, ForceCancelOrderDto input);
 
     Task RefundAsync(Guid id, RefundOrderDto input = null);
 

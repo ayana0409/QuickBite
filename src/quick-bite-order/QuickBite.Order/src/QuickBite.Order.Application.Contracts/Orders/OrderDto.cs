@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 
 namespace QuickBite.Order.Orders;
@@ -20,6 +20,8 @@ public class OrderDto
     public DeliveryAddressDto DeliveryAddress { get; set; } = default!;
 
     public List<OrderItemDto> Items { get; set; } = [];
+
+    public List<OrderStatusHistoryDto> StatusHistories { get; set; } = [];
 
     public DateTime CreationTime { get; set; }
 }

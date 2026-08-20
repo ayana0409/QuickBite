@@ -161,7 +161,20 @@ public class Order : FullAuditedAggregateRoot<Guid>
         ChangeStatus(OrderStatus.Cancelled, reason ?? "Order cancelled");
     }
 
-    public void Refund(string reason = null)
+    public void ForceCancel(string? reason = null)
+    {
+        if (Status == OrderStatus.Completed || Status == OrderStatus.Cancelled || Status == OrderStatus.Refunded)
+        {
+            throw new BusinessException(
+                code: OrderDomainErrorCodes.InvalidOrderStatus,
+                message: $"Không thể hủy đơn hàng ở trạng thái '{Status}'."
+            );
+        }
+
+        ChangeStatus(OrderStatus.Cancelled, string.IsNullOrWhiteSpace(reason) ? "Admin Force Cancelled" : $"[Admin Hủy] {reason}");
+    }
+
+    public void Refund(string? reason = null)
     {
         EnsureCanRefund();
 
