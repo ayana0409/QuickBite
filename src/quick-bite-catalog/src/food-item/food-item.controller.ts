@@ -190,12 +190,12 @@ export class FoodItemController {
     @Ctx() context: KafkaContext,
   ) {
     const rawMessage = typeof context?.getMessage === 'function' ? context.getMessage() : null;
-    const key = rawMessage?.key ? rawMessage.key.toString() : '';
-    const topic = typeof context?.getTopic === 'function' ? context.getTopic() : 'order-events';
+    const key = rawMessage?.key ? rawMessage.key.toString().trim() : '';
 
-    this.logger.log(
-      `[Kafka Event Received] Topic: '${topic}', Key: '${key}', RawData: ${JSON.stringify(data)}`,
-    );
+    // Filter strictly by key: only process order.completed event
+    if (key !== 'order.completed') {
+      return;
+    }
 
     let payload = data;
     if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
@@ -210,50 +210,11 @@ export class FoodItemController {
       try {
         payload = JSON.parse(payload);
       } catch {
-        // Keep as string if parsing fails
+        // Keep as string
       }
     }
 
-    if (payload && typeof payload === 'object' && 'value' in payload && payload.value) {
-      let nested = payload.value;
-      if (Buffer.isBuffer(nested)) nested = nested.toString('utf-8');
-      if (typeof nested === 'string') {
-        try {
-          nested = JSON.parse(nested);
-        } catch {}
-      }
-      if (typeof nested === 'object' && nested !== null) {
-        payload = nested;
-      }
-    }
-
-    const rawEventName =
-      (key && key.trim()) ||
-      payload?.eventName ||
-      payload?.eventType ||
-      payload?.EventName ||
-      payload?.EventType ||
-      payload?.pattern ||
-      '';
-
-    const normalizedKey = String(key || '').trim().toLowerCase();
-    const normalizedEventName = String(rawEventName || '').trim().toLowerCase();
-
-    this.logger.log(`[Kafka Event Parsed] Extracted eventName: '${rawEventName}', Key: '${key}'`);
-
-    // Strictly match order.completed only. Do NOT match if key/eventName is order.submitted, order.confirmed, order.preparing, etc.
-    const isOrderCompleted =
-      normalizedKey === 'order.completed' ||
-      normalizedKey === 'order_completed' ||
-      normalizedEventName === 'order.completed' ||
-      normalizedEventName === 'order_completed';
-
-    if (isOrderCompleted) {
-      await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
-    } else {
-      this.logger.debug(
-        `[Kafka Event Ignored] Event '${rawEventName || key}' is not 'order.completed'. Skipping totalSold update.`,
-      );
-    }
+    this.logger.log(`[Kafka] Processing order.completed: ${JSON.stringify(payload)}`);
+    await this.foodItemService.handleOrderCompleted(payload?.eto || payload?.data || payload);
   }
 }
