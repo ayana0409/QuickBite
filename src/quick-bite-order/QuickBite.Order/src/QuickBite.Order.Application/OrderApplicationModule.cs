@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using QuickBite.Order.Domain;
 using QuickBite.Order.Handlers;
+using Volo.Abp.Authorization.Permissions;
 using Volo.Abp.EventBus.Distributed;
 using Volo.Abp.FeatureManagement;
 using Volo.Abp.Mapperly;
@@ -26,6 +27,11 @@ public class OrderApplicationModule : AbpModule
         Configure<AbpDistributedEventBusOptions>(options =>
         {
             options.Handlers.Add<FoodItemUpdatedEventHandler>();
+        });
+
+        Configure<AbpPermissionOptions>(options =>
+        {
+            options.ValueProviders.Add<QuickBite.Order.Permissions.ClaimPermissionValueProvider>();
         });
     }
 }
