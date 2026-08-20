@@ -43,7 +43,7 @@ public class CatalogPermissionDefinitionProvider
         );
 
         #endregion
-       
+
         #region "Category"
 
         var categories = group.AddPermission(
@@ -69,6 +69,11 @@ public class CatalogPermissionDefinitionProvider
         categories.AddChild(
             CatalogPermissions.CategoriesDelete,
             L("Permission:Delete")
+        );
+
+        categories.AddChild(
+            CatalogPermissions.CategoriesModeration,
+            L("Permission:Moderation")
         );
 
         #endregion

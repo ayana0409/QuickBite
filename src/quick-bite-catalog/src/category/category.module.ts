@@ -6,6 +6,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
 import { Restaurant } from '@/restaurant/entities/restaurant.entity';
 
+import { AdminCategoryController } from './admin-category.controller';
+
 @Module({
   imports: [
     TypeOrmModule.forFeature([Category, Restaurant]),
@@ -13,7 +15,7 @@ import { Restaurant } from '@/restaurant/entities/restaurant.entity';
       defaultStrategy: 'jwt'
     })
   ],
-  controllers: [CategoryController],
+  controllers: [CategoryController, AdminCategoryController],
   providers: [CategoryService],
 })
 export class CategoryModule {}

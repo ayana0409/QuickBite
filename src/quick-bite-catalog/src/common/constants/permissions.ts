@@ -24,6 +24,9 @@ export const PermissionKeys = {
     CATEGORY_READ:
         'Catalog.Categories.View',
 
+    CATEGORY_MODERATION:
+        'Catalog.Categories.Moderation',
+
     FOOD_ITEM_CREATE:
         'Catalog.FoodItems.Create',
 

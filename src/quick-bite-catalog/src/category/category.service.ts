@@ -161,4 +161,53 @@ export class CategoryService {
       category,
     );
   }
+
+  async findAllForAdmin(
+    pagination: PaginationDto,
+  ) {
+    const whereCondition: any = {};
+
+    if (pagination.search && pagination.search.trim() !== '') {
+      whereCondition.name = ILike(`%${pagination.search.trim()}%`);
+    }
+
+    return PaginationHelper.paginate(
+      this.categoryRepository,
+      pagination,
+      {
+        where: Object.keys(whereCondition).length > 0 ? whereCondition : undefined,
+        relations: { restaurant: true },
+        order: {
+          createdAt: 'DESC',
+        },
+      },
+    );
+  }
+
+  async renameCategory(
+    id: string,
+    newName: string,
+  ): Promise<Category> {
+    const category = await this.findOne(id);
+
+    if (newName && newName !== category.name) {
+      const existedCategory = await this.categoryRepository.findOne({
+        where: {
+          restaurantId: category.restaurantId,
+          name: newName,
+        },
+      });
+
+      if (existedCategory) {
+        throw new ConflictException(
+          'Category name already exists in this restaurant.',
+        );
+      }
+      
+      category.name = newName;
+      return await this.categoryRepository.save(category);
+    }
+    
+    return category;
+  }
 }
