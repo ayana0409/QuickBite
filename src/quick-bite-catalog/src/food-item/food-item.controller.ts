@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Patch,
   Post,
@@ -29,6 +30,8 @@ import { Permissions } from '../auth/decorators/permissions.decorator';
 @ApiTags('Food Items')
 @Controller('food-items')
 export class FoodItemController {
+  private readonly logger = new Logger(FoodItemController.name);
+
   constructor(
     private readonly foodItemService: FoodItemService,
   ) { }
@@ -169,6 +172,18 @@ export class FoodItemController {
     );
   }
 
+  @Post('events/order-completed')
+  async simulateOrderCompleted(
+    @Body() body: any,
+  ) {
+    this.logger.log(`[HTTP POST /food-items/events/order-completed] Received body: ${JSON.stringify(body)}`);
+    await this.foodItemService.handleOrderCompleted(body?.eto || body?.data || body);
+    return {
+      success: true,
+      message: 'Processed order.completed event successfully',
+    };
+  }
+
   @EventPattern('order-events')
   async handleOrderEventsTopic(
     @Payload() data: any,
@@ -176,6 +191,11 @@ export class FoodItemController {
   ) {
     const rawMessage = typeof context?.getMessage === 'function' ? context.getMessage() : null;
     const key = rawMessage?.key ? rawMessage.key.toString() : '';
+    const topic = typeof context?.getTopic === 'function' ? context.getTopic() : 'order-events';
+
+    this.logger.log(
+      `[Kafka Event Received] Topic: '${topic}', Key: '${key}', RawData: ${JSON.stringify(data)}`,
+    );
 
     let payload = data;
     if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
@@ -215,6 +235,8 @@ export class FoodItemController {
       payload?.pattern ||
       key;
 
+    this.logger.log(`[Kafka Event Parsed] Extracted eventName: '${eventName}', Key: '${key}'`);
+
     const isOrderCompleted =
       eventName === 'order.completed' ||
       key === 'order.completed' ||
@@ -233,6 +255,7 @@ export class FoodItemController {
     @Payload() data: any,
     @Ctx() context?: KafkaContext,
   ) {
+    this.logger.log(`[Kafka Pattern 'order.completed'] Received payload: ${JSON.stringify(data)}`);
     const rawMessage = typeof context?.getMessage === 'function' ? context.getMessage() : null;
     let payload = data;
     if (!payload || (typeof payload === 'object' && Object.keys(payload).length === 0)) {
