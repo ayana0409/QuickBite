@@ -403,4 +403,67 @@ export class FoodItemService implements OnModuleInit {
       );
     }
   }
+
+  /**
+   * Handle order.completed event from topic 'order-events'
+   * Increments totalSold for each food item in the completed order
+   * @param event OrderCompletedEvent payload
+   */
+  async handleOrderCompleted(event: {
+    eventId?: string;
+    orderId?: string;
+    correlationId?: string;
+    occurredAt?: string;
+    items?: Array<{
+      foodItemId?: string;
+      id?: string;
+      productId?: string;
+      itemName?: string;
+      quantity?: number;
+      unitPrice?: number;
+      selectedVariantName?: string;
+      selectedToppings?: any[];
+    }>;
+  }): Promise<void> {
+    if (!event?.items || !Array.isArray(event.items) || event.items.length === 0) {
+      this.logger.warn(
+        `[handleOrderCompleted] No items found in order.completed event for orderId: ${event?.orderId}`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `[handleOrderCompleted] Processing order.completed for orderId: ${event.orderId}, items count: ${event.items.length}`,
+    );
+
+    for (const item of event.items) {
+      const foodItemId = item.foodItemId || item.id || item.productId;
+      const quantity = Math.max(1, Number(item.quantity) || 1);
+
+      if (!foodItemId) {
+        this.logger.warn(`[handleOrderCompleted] Item missing foodItemId: ${JSON.stringify(item)}`);
+        continue;
+      }
+
+      try {
+        await this.foodItemRepository
+          .createQueryBuilder()
+          .update(FoodItem)
+          .set({
+            totalSold: () => `COALESCE("totalSold", 0) + ${quantity}`,
+          })
+          .where('id = :id', { id: foodItemId })
+          .execute();
+
+        this.logger.log(
+          `[handleOrderCompleted] Incremented totalSold by +${quantity} for foodItemId: ${foodItemId}`,
+        );
+      } catch (error: any) {
+        this.logger.error(
+          `[handleOrderCompleted] Failed to update totalSold for foodItemId: ${foodItemId}: ${error?.message}`,
+          error?.stack,
+        );
+      }
+    }
+  }
 }

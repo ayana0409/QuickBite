@@ -33,6 +33,7 @@ describe('FoodItemController', () => {
     updateVariants: jest.fn(),
     updateToppings: jest.fn(),
     remove: jest.fn(),
+    handleOrderCompleted: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -159,6 +160,35 @@ describe('FoodItemController', () => {
       const result = await controller.remove(mockFoodItem.id);
       expect(service.remove).toHaveBeenCalledWith(mockFoodItem.id);
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('Kafka order events', () => {
+    const mockOrderCompletedPayload = {
+      eventId: '42d381b1-cc98-4797-85db-507120b9ea05',
+      orderId: '3a2325e2-f524-13d0-1b1e-d846bc8b3e95',
+      items: [
+        {
+          foodItemId: 'ebd19830-0416-461a-83ec-b4e05eae2f2b',
+          quantity: 2,
+        },
+      ],
+    };
+
+    it('should handle order.completed from order-events topic', async () => {
+      const mockContext = {
+        getMessage: jest.fn().mockReturnValue({
+          key: Buffer.from('order.completed'),
+        }),
+      } as any;
+
+      await controller.handleOrderEventsTopic(mockOrderCompletedPayload, mockContext);
+      expect(service.handleOrderCompleted).toHaveBeenCalledWith(mockOrderCompletedPayload);
+    });
+
+    it('should handle order.completed direct pattern', async () => {
+      await controller.handleOrderCompletedPattern(mockOrderCompletedPayload);
+      expect(service.handleOrderCompleted).toHaveBeenCalledWith(mockOrderCompletedPayload);
     });
   });
 });

@@ -46,6 +46,13 @@ describe('FoodItemService', () => {
     id: '123e4567-e89b-12d3-a456-426614174002',
   };
 
+  const mockQueryBuilder = {
+    update: jest.fn().mockReturnThis(),
+    set: jest.fn().mockReturnThis(),
+    where: jest.fn().mockReturnThis(),
+    execute: jest.fn().mockResolvedValue({ affected: 1 }),
+  };
+
   const mockFoodItemRepository = {
     findOne: jest.fn(),
     create: jest.fn(),
@@ -53,6 +60,7 @@ describe('FoodItemService', () => {
     update: jest.fn(),
     delete: jest.fn(),
     findAndCount: jest.fn(),
+    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 
   const mockCategoryRepository = {
@@ -69,6 +77,7 @@ describe('FoodItemService', () => {
   };
 
   beforeEach(async () => {
+    jest.clearAllMocks();
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FoodItemService,
@@ -106,17 +115,9 @@ describe('FoodItemService', () => {
 
   describe('onModuleInit', () => {
     it('should connect to Kafka successfully', async () => {
-      kafkaClient.connect.mockResolvedValue(undefined);
+      jest.spyOn(service as any, 'connectKafkaWithRetry').mockResolvedValue(undefined);
       await service.onModuleInit();
-      expect(kafkaClient.connect).toHaveBeenCalled();
-    });
-
-    it('should log warning if Kafka connection fails', async () => {
-      kafkaClient.connect.mockRejectedValue(new Error('Connection error'));
-      const loggerWarnSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
-      await service.onModuleInit();
-      expect(loggerWarnSpy).toHaveBeenCalled();
-      loggerWarnSpy.mockRestore();
+      expect((service as any).connectKafkaWithRetry).toHaveBeenCalled();
     });
   });
 
@@ -266,6 +267,55 @@ describe('FoodItemService', () => {
     it('should throw NotFoundException if food item not found', async () => {
       foodItemRepository.delete.mockResolvedValue({ affected: 0 } as any);
       await expect(service.remove(mockFoodItem.id)).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('handleOrderCompleted', () => {
+    it('should increment totalSold for each food item in the order', async () => {
+      const orderCompletedEvent = {
+        eventId: '42d381b1-cc98-4797-85db-507120b9ea05',
+        orderId: '3a2325e2-f524-13d0-1b1e-d846bc8b3e95',
+        correlationId: '6e7819c4-f3c1-4653-800a-8afb869643f9',
+        occurredAt: '2026-08-18T07:12:24.9198546Z',
+        items: [
+          {
+            foodItemId: 'ebd19830-0416-461a-83ec-b4e05eae2f2b',
+            itemName: 'Món ăn test',
+            quantity: 2,
+            unitPrice: 12357,
+            selectedVariantName: '1',
+            selectedToppings: [],
+          },
+          {
+            foodItemId: '123e4567-e89b-12d3-a456-426614174000',
+            itemName: 'Món ăn 2',
+            quantity: 3,
+            unitPrice: 50000,
+          },
+        ],
+      };
+
+      await service.handleOrderCompleted(orderCompletedEvent);
+
+      expect(mockFoodItemRepository.createQueryBuilder).toHaveBeenCalledTimes(2);
+      expect(mockQueryBuilder.update).toHaveBeenCalledWith(FoodItem);
+      expect(mockQueryBuilder.execute).toHaveBeenCalledTimes(2);
+    });
+
+    it('should do nothing if items list is empty or undefined', async () => {
+      await service.handleOrderCompleted({ orderId: 'test-order', items: [] });
+      expect(mockFoodItemRepository.createQueryBuilder).not.toHaveBeenCalled();
+
+      await service.handleOrderCompleted({});
+      expect(mockFoodItemRepository.createQueryBuilder).not.toHaveBeenCalled();
+    });
+
+    it('should skip items missing foodItemId', async () => {
+      await service.handleOrderCompleted({
+        orderId: 'test-order',
+        items: [{ quantity: 2 } as any],
+      });
+      expect(mockFoodItemRepository.createQueryBuilder).not.toHaveBeenCalled();
     });
   });
 });

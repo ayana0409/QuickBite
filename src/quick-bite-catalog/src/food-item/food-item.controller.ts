@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
+import { Ctx, EventPattern, KafkaContext, Payload } from '@nestjs/microservices';
 
 import { ApiTags } from '@nestjs/swagger';
 import { FoodItemService } from './food-item.service';
@@ -166,5 +167,47 @@ export class FoodItemController {
     return this.foodItemService.remove(
       id,
     );
+  }
+
+  @EventPattern('order-events')
+  async handleOrderEventsTopic(
+    @Payload() data: any,
+    @Ctx() context: KafkaContext,
+  ) {
+    const rawMessage = context.getMessage();
+    const key = rawMessage?.key ? rawMessage.key.toString() : '';
+
+    let payload = data;
+    if (typeof data === 'string') {
+      try {
+        payload = JSON.parse(data);
+      } catch {
+        payload = data;
+      }
+    }
+
+    const eventName = payload?.eventName || payload?.eventType || key;
+    if (
+      eventName === 'order.completed' ||
+      key === 'order.completed' ||
+      (payload?.items && Array.isArray(payload.items))
+    ) {
+      await this.foodItemService.handleOrderCompleted(payload?.eto || payload);
+    }
+  }
+
+  @EventPattern('order.completed')
+  async handleOrderCompletedPattern(
+    @Payload() data: any,
+  ) {
+    let payload = data;
+    if (typeof data === 'string') {
+      try {
+        payload = JSON.parse(data);
+      } catch {
+        payload = data;
+      }
+    }
+    await this.foodItemService.handleOrderCompleted(payload?.eto || payload);
   }
 }
