@@ -15,7 +15,7 @@ export const userService = {
   // Lấy danh sách người dùng hệ thống từ Identity Service
   async getUsers(): Promise<User[]> {
     try {
-      const res: any = await axiosClient.get('/identity/users');
+      const res: any = await axiosClient.get('/identity/api/identity/users');
       const list = unwrapArray(res);
       return list.map((u: any) => ({
         id: u.id,
@@ -33,7 +33,7 @@ export const userService = {
 
   // Tạo người dùng mới
   async createUser(dto: CreateUserDto): Promise<User> {
-    const res: any = await axiosClient.post('/identity/users', dto);
+    const res: any = await axiosClient.post('/identity/api/identity/users', dto);
     const created = res?.data || res;
     return {
       id: created.id || `usr-${Date.now()}`,
@@ -48,7 +48,7 @@ export const userService = {
 
   // Đổi Role người dùng
   async updateUserRole(id: string, newRole: Role): Promise<User> {
-    const res: any = await axiosClient.put(`/identity/users/${id}/roles`, { roles: [newRole] });
+    const res: any = await axiosClient.put(`/identity/api/identity/users/${id}/roles`, { roles: [newRole] });
     const updated = res?.data || res;
     return {
       id: updated.id || id,

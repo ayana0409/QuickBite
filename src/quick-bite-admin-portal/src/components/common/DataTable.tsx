@@ -27,6 +27,7 @@ export function DataTable<T extends { id?: string | number }>({
   data,
   columns,
   searchPlaceholder = 'Tìm kiếm...',
+  onSearchChange,
   filterOptions,
   onFilterChange,
   onAddNew,
@@ -42,17 +43,19 @@ export function DataTable<T extends { id?: string | number }>({
   // Client-side search & filter fallback if callbacks not provided
   const filteredData = data.filter((row) => {
     // Check filter
-    if (selectedFilter) {
+    if (selectedFilter && !onFilterChange) {
       const isFilterMatch = Object.values(row).some(
         (val) => String(val).toLowerCase() === selectedFilter.toLowerCase()
       );
       if (!isFilterMatch) return false;
     }
     // Check search term
-    if (!searchTerm.trim()) return true;
-    return Object.values(row).some((val) =>
-      String(val).toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    if (!onSearchChange && searchTerm.trim()) {
+      return Object.values(row).some((val) =>
+        String(val).toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    return true;
   });
 
   // Pagination
@@ -79,6 +82,7 @@ export function DataTable<T extends { id?: string | number }>({
               onChange={(e) => {
                 setSearchTerm(e.target.value);
                 setCurrentPage(1);
+                if (onSearchChange) onSearchChange(e.target.value);
               }}
               placeholder={searchPlaceholder}
               className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500/60 focus:ring-1 focus:ring-amber-500/30 transition-all"

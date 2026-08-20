@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   UtensilsCrossed,
   Bell,
+  Tag,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -31,6 +32,7 @@ export default function AdminLayout() {
     { to: '/admin/restaurants', label: 'Quản lý Nhà hàng', icon: Store },
     { to: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { to: '/admin/orders', label: 'Đơn hàng Hệ thống', icon: ShoppingBag },
+    { to: '/admin/categories', label: 'Kiểm duyệt Danh mục', icon: Tag },
     { to: '/admin/analytics', label: 'Thống kê & Báo cáo', icon: BarChart3 },
     { to: '/admin/settings', label: 'Cấu hình Hệ thống', icon: Settings },
   ];

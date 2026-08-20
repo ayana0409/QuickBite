@@ -19,6 +19,7 @@ import AdminDashboardPage from './pages/admin/DashboardPage';
 import { RestaurantsPage } from './pages/admin/RestaurantsPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { OrdersPage } from './pages/admin/OrdersPage';
+import { CategoryModerationPage } from './pages/admin/CategoryModerationPage';
 import MerchantDashboardPage from './pages/merchant/DashboardPage';
 import CreateRestaurantPage from './pages/merchant/CreateRestaurantPage';
 import MerchantMenuPage from './pages/merchant/MerchantMenuPage';
@@ -78,6 +79,7 @@ export default function App() {
             <Route path="restaurants" element={<RestaurantsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="orders" element={<OrdersPage />} />
+            <Route path="categories" element={<CategoryModerationPage />} />
             <Route path="analytics" element={<AdminDashboardPage />} />
             <Route path="settings" element={<AdminDashboardPage />} />
           </Route>

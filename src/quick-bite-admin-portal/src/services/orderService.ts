@@ -105,7 +105,12 @@ export const orderService = {
    * Lấy danh sách toàn bộ đơn hàng cho Admin
    */
   async getAdminOrders(): Promise<ExtendedOrder[]> {
-    const res: any = await axiosClient.get('/orders');
-    return unwrapArray<ExtendedOrder>(res);
+    try {
+      const res: any = await axiosClient.get('/order/order');
+      return unwrapArray<ExtendedOrder>(res);
+    } catch (error) {
+      console.warn('Could not fetch admin orders', error);
+      return [];
+    }
   },
 };
