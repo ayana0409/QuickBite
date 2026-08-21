@@ -41,6 +41,8 @@ export default function UpdateAddressModal({
     district: '',
     province: '',
     note: '',
+    latitude: null,
+    longitude: null,
   });
 
   const [submitting, setSubmitting] = useState(false);
@@ -55,6 +57,8 @@ export default function UpdateAddressModal({
         district: currentAddress.district || '',
         province: currentAddress.province || '',
         note: currentAddress.note || '',
+        latitude: currentAddress.latitude ?? null,
+        longitude: currentAddress.longitude ?? null,
       });
     }
   }, [currentAddress, isOpen]);

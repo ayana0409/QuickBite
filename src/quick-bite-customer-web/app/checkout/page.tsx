@@ -52,11 +52,23 @@ export default function CheckoutPage() {
   const restaurantId = useCartStore((state) => state.restaurantId);
   const restaurantName = useCartStore((state) => state.restaurantName);
   const deliveryAddress = useCartStore((state) => state.deliveryAddress);
+  const setDeliveryAddress = useCartStore((state) => state.setDeliveryAddress);
   const clearCart = useCartStore((state) => state.clearCart);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (!deliveryAddress && typeof window !== 'undefined') {
+      try {
+        const raw = localStorage.getItem('qb-delivery-address');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.receiverName) {
+            setDeliveryAddress(parsed);
+          }
+        }
+      } catch {}
+    }
+  }, [deliveryAddress, setDeliveryAddress]);
 
   // Redirect if cart is empty after hydration
   useEffect(() => {

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import dynamic from "next/dynamic";
 import {
   MapPin,
@@ -52,6 +52,22 @@ export default function CheckoutMapPicker({
   const [notice, setNotice] = useState<{ type: "success" | "warn"; text: string } | null>(null);
 
   const reqIdRef = useRef<number>(0);
+
+  // Sync position whenever initialPosition prop changes (e.g. from loaded saved address)
+  useEffect(() => {
+    if (
+      initialPosition &&
+      Array.isArray(initialPosition) &&
+      typeof initialPosition[0] === "number" &&
+      typeof initialPosition[1] === "number" &&
+      !isNaN(initialPosition[0]) &&
+      !isNaN(initialPosition[1]) &&
+      (Math.abs(initialPosition[0] - position[0]) > 0.00001 ||
+        Math.abs(initialPosition[1] - position[1]) > 0.00001)
+    ) {
+      setPosition(initialPosition);
+    }
+  }, [initialPosition[0], initialPosition[1]]);
 
   const handlePositionSelect = async (pos: [number, number]) => {
     const lat = parseFloat(pos[0].toFixed(6));

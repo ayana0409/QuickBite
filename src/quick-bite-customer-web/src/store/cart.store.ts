@@ -148,6 +148,11 @@ export const useCartStore = create<CartState>()(
       },
 
       setDeliveryAddress: (address: DeliveryAddress) => {
+        if (typeof window !== 'undefined') {
+          try {
+            localStorage.setItem('qb-delivery-address', JSON.stringify(address));
+          } catch {}
+        }
         set({ deliveryAddress: address });
       },
 
@@ -162,6 +167,19 @@ export const useCartStore = create<CartState>()(
     {
       name: 'qb-cart-storage',
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        if (state && !state.deliveryAddress && typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem('qb-delivery-address');
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed && parsed.receiverName) {
+                state.deliveryAddress = parsed;
+              }
+            }
+          } catch {}
+        }
+      },
       // Only persist cart content and saved delivery address, avoid persisting drawer open state
       partialize: (state) => ({
         restaurantId: state.restaurantId,

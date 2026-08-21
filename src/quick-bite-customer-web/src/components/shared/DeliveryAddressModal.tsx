@@ -48,11 +48,29 @@ export default function DeliveryAddressModal({
 
   const [errors, setErrors] = useState<Partial<Record<keyof DeliveryAddress, string>>>({});
 
-  // Sync saved address or pre-populate from session
+  // Sync saved address or pre-populate from session/localStorage
   useEffect(() => {
     if (isOpen) {
-      if (deliveryAddress) {
-        setFormData(deliveryAddress);
+      let currentAddr = deliveryAddress;
+      if (!currentAddr && typeof window !== 'undefined') {
+        try {
+          const raw = localStorage.getItem('qb-delivery-address');
+          if (raw) currentAddr = JSON.parse(raw);
+        } catch {}
+      }
+
+      if (currentAddr && currentAddr.receiverName) {
+        setFormData({
+          receiverName: currentAddr.receiverName || '',
+          phoneNumber: currentAddr.phoneNumber || '',
+          addressLine: currentAddr.addressLine || '',
+          ward: currentAddr.ward || '',
+          district: currentAddr.district || '',
+          province: currentAddr.province || 'Hồ Chí Minh',
+          note: currentAddr.note || '',
+          latitude: typeof currentAddr.latitude === 'number' ? currentAddr.latitude : 10.776192,
+          longitude: typeof currentAddr.longitude === 'number' ? currentAddr.longitude : 106.702444,
+        });
       } else {
         setFormData({
           receiverName: session?.user?.name || '',
@@ -114,7 +132,12 @@ export default function DeliveryAddressModal({
       newErrors.phoneNumber = 'Số điện thoại không hợp lệ';
     }
 
-    if (!formData.latitude || !formData.longitude) {
+    if (
+      formData.latitude === null ||
+      formData.latitude === undefined ||
+      formData.longitude === null ||
+      formData.longitude === undefined
+    ) {
       newErrors.latitude = 'Vui lòng chọn vị trí trên bản đồ để xác định tọa độ giao hàng';
       warning('Vui lòng chọn vị trí trên bản đồ để xác định tọa độ giao hàng');
       setErrors(newErrors);
@@ -140,18 +163,23 @@ export default function DeliveryAddressModal({
       district: formData.district.trim(),
       province: formData.province.trim(),
       note: formData.note?.trim() || '',
-      latitude: formData.latitude,
-      longitude: formData.longitude,
+      latitude: typeof formData.latitude === 'number' ? formData.latitude : null,
+      longitude: typeof formData.longitude === 'number' ? formData.longitude : null,
     };
 
     setDeliveryAddress(cleanedAddress);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('qb-delivery-address', JSON.stringify(cleanedAddress));
+      } catch {}
+    }
     success('Đã lưu địa chỉ và tọa độ giao hàng thành công!');
     if (onSaved) onSaved(cleanedAddress);
     onClose();
   };
 
   const mapInitialPos: [number, number] =
-    formData.latitude && formData.longitude
+    typeof formData.latitude === 'number' && typeof formData.longitude === 'number'
       ? [formData.latitude, formData.longitude]
       : [10.776192, 106.702444];
 
