@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { CheckCircle2, AlertCircle, Info, X, AlertTriangle } from 'lucide-react';
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';
@@ -35,10 +35,11 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
       setToasts((prev) => [...prev, newToast]);
 
-      // Auto dismiss after 3.5s
+      // Auto dismiss after 4s (longer for warnings/errors)
+      const duration = type === 'warning' || type === 'error' ? 4500 : 3500;
       setTimeout(() => {
         removeToast(id);
-      }, 3500);
+      }, duration);
     },
     [removeToast]
   );
@@ -47,6 +48,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   const error = useCallback((message: string) => showToast(message, 'error'), [showToast]);
   const info = useCallback((message: string) => showToast(message, 'info'), [showToast]);
   const warning = useCallback((message: string) => showToast(message, 'warning'), [showToast]);
+
+  // Global listener for HTTP 429 Too Many Requests with Cooldown Guard
+  useEffect(() => {
+    let lastThrottledTime = 0;
+
+    const handleRateLimitEvent = (event: Event) => {
+      const customEvent = event as CustomEvent<{ message?: string; retryAfter?: number | null }>;
+      const now = Date.now();
+      if (now - lastThrottledTime > 3500) {
+        lastThrottledTime = now;
+        const msg =
+          customEvent.detail?.message ||
+          'Hệ thống đang quá tải do nhận nhiều yêu cầu. Vui lòng thử lại sau giây lát.';
+        warning(msg);
+      }
+    };
+
+    window.addEventListener('quickbite:rate-limited', handleRateLimitEvent);
+    return () => {
+      window.removeEventListener('quickbite:rate-limited', handleRateLimitEvent);
+    };
+  }, [warning]);
 
   return (
     <ToastContext.Provider value={{ showToast, success, error, info, warning }}>
@@ -62,14 +85,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 : toast.type === 'error'
                 ? 'bg-red-950/90 border-red-500/40 text-red-100 shadow-red-950/30'
                 : toast.type === 'warning'
-                ? 'bg-amber-950/90 border-amber-500/40 text-amber-100 shadow-amber-950/30'
+                ? 'bg-amber-950/95 border-amber-500/50 text-amber-100 shadow-amber-950/40 ring-1 ring-amber-500/20'
                 : 'bg-slate-900/90 border-slate-700 text-slate-100 shadow-slate-950/30'
             }`}
           >
             <div className="shrink-0 mt-0.5">
               {toast.type === 'success' && <CheckCircle2 className="w-5 h-5 text-emerald-400" />}
               {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-red-400" />}
-              {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400" />}
+              {toast.type === 'warning' && <AlertTriangle className="w-5 h-5 text-amber-400 animate-pulse" />}
               {toast.type === 'info' && <Info className="w-5 h-5 text-sky-400" />}
             </div>
 

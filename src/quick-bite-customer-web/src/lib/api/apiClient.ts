@@ -49,17 +49,36 @@ export async function apiClient<T = any>(
 
   if (!response.ok) {
     let errorMessage = `Yêu cầu thất bại với mã lỗi HTTP ${response.status}`;
-    try {
-      const errorJson = await response.json();
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('retry-after') || response.headers.get('Retry-After');
       errorMessage =
-        errorJson?.message ||
-        errorJson?.error?.message ||
-        errorJson?.details ||
-        errorMessage;
-    } catch {
-      const text = await response.text().catch(() => '');
-      if (text) errorMessage = text;
+        retryAfter && !isNaN(Number(retryAfter))
+          ? `Hệ thống đang quá tải do nhận nhiều yêu cầu. Vui lòng thử lại sau ${retryAfter} giây.`
+          : 'Hệ thống đang quá tải do nhận lượng lớn yêu cầu cùng lúc. Vui lòng thử lại sau giây lát.';
+
+      // Dispatch global rate limit event to notify UI ToastProvider
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('quickbite:rate-limited', {
+            detail: { message: errorMessage, retryAfter: retryAfter ? Number(retryAfter) : null },
+          })
+        );
+      }
+    } else {
+      try {
+        const errorJson = await response.json();
+        errorMessage =
+          errorJson?.message ||
+          errorJson?.error?.message ||
+          errorJson?.details ||
+          errorMessage;
+      } catch {
+        const text = await response.text().catch(() => '');
+        if (text) errorMessage = text;
+      }
     }
+
     throw new Error(errorMessage);
   }
 

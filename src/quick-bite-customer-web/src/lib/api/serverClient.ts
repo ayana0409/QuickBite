@@ -89,6 +89,23 @@ export async function proxyResponse(backendResponse: Response): Promise<NextResp
   if (!backendResponse.ok) {
     const errorText = await backendResponse.text().catch(() => '');
     let errorMessage = 'Lỗi máy chủ khi xử lý yêu cầu';
+
+    if (backendResponse.status === 429) {
+      const retryAfter = backendResponse.headers.get('retry-after') || backendResponse.headers.get('Retry-After');
+      errorMessage =
+        retryAfter && !isNaN(Number(retryAfter))
+          ? `Hệ thống đang quá tải do nhận nhiều yêu cầu. Vui lòng thử lại sau ${retryAfter} giây.`
+          : 'Hệ thống đang quá tải do nhận lượng lớn yêu cầu cùng lúc. Vui lòng thử lại sau giây lát.';
+
+      const responseHeaders: Record<string, string> = {};
+      if (retryAfter) responseHeaders['Retry-After'] = retryAfter;
+
+      return NextResponse.json(
+        { message: errorMessage, details: errorText },
+        { status: 429, headers: responseHeaders }
+      );
+    }
+
     try {
       const parsed = JSON.parse(errorText);
       errorMessage = parsed?.error?.message || parsed?.message || errorMessage;

@@ -2,6 +2,9 @@ import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
 
+// Cooldown guard to avoid spamming 429 toasts when multiple parallel requests are throttled
+let last429ToastTime = 0;
+
 // Helper trích xuất tiêu đề lỗi thân thiện dựa trên HTTP Status
 const getErrorTitle = (status?: number): string => {
   if (!status) return 'Lỗi Kết Nối';
@@ -12,6 +15,7 @@ const getErrorTitle = (status?: number): string => {
     case 404: return 'Không Tìm Thấy Dữ Liệu';
     case 409: return 'Dữ Liệu Xung Đột';
     case 422: return 'Dữ Liệu Không Hợp Lệ';
+    case 429: return 'Hệ Thống Đang Quá Tải';
     case 500: return 'Lỗi Hệ Thống';
     default: return `Thông Báo Lỗi (${status})`;
   }
@@ -22,6 +26,20 @@ const extractErrorMessage = (error: any): string => {
   if (!error.response) {
     return 'Không thể kết nối đến máy chủ! Vui lòng kiểm tra lại kết nối mạng hoặc API Gateway.';
   }
+
+  // 1. Handle HTTP 429 Too Many Requests (Rate Limiting)
+  if (error.response.status === 429) {
+    const retryAfter =
+      error.response.headers?.['retry-after'] ||
+      error.response.headers?.['Retry-After'] ||
+      error.response.data?.retryAfter;
+
+    if (retryAfter && !isNaN(Number(retryAfter))) {
+      return `Máy chủ đang nhận quá nhiều yêu cầu cùng lúc. Vui lòng thử lại sau ${retryAfter} giây.`;
+    }
+    return 'Hệ thống đang quá tải do nhận lượng lớn yêu cầu cùng lúc. Vui lòng thử lại sau giây lát.';
+  }
+
   const data = error.response.data;
   let rawMsg = '';
 
@@ -47,6 +65,9 @@ const extractErrorMessage = (error: any): string => {
     }
     if (rawMsg.includes('Food item not found with ID')) {
       return 'Sản phẩm không tồn tại hoặc đã bị xóa khỏi hệ thống.';
+    }
+    if (rawMsg.toLowerCase().includes('too many requests') || rawMsg.toLowerCase().includes('throttler')) {
+      return 'Hệ thống đang quá tải do nhận lượng lớn yêu cầu cùng lúc. Vui lòng thử lại sau giây lát.';
     }
     return rawMsg;
   }
@@ -99,7 +120,7 @@ axiosClient.interceptors.request.use(
   }
 );
 
-// Interceptor Response: Log Response / Error & Xử lý 401 Unauthorized
+// Interceptor Response: Log Response / Error & Xử lý 401 Unauthorized và 429 Too Many Requests
 axiosClient.interceptors.response.use(
   (response) => {
     console.log(
@@ -122,8 +143,16 @@ axiosClient.interceptors.response.use(
       }
     );
 
-    // Hiển thị thông báo Toast lỗi trực quan cho người dùng mà không hủy phiên đăng nhập
-    toast.error(errorMsg, errorTitle);
+    // Xử lý thông báo Toast với Cooldown Guard cho lỗi 429
+    if (error.response?.status === 429) {
+      const now = Date.now();
+      if (now - last429ToastTime > 3500) {
+        last429ToastTime = now;
+        toast.warning(errorMsg, errorTitle);
+      }
+    } else {
+      toast.error(errorMsg, errorTitle);
+    }
 
     if (error.response?.status === 401) {
       console.warn('⚠️ [401 Unauthorized] Request bị từ chối quyền truy cập hoặc token không hợp lệ:', error.config?.url);
