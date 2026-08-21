@@ -29,4 +29,9 @@ public static class CatalogPermissions
     public const string FoodItemsDelete = FoodItems + ".Delete";
     #endregion
 
+    #region "Requests"
+    public const string Requests = GroupName + ".Requests";
+    public const string RequestsView = Requests + ".View";
+    public const string RequestsProcess = Requests + ".Process";
+    #endregion
 }

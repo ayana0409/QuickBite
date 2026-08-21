@@ -107,6 +107,24 @@ public class CatalogPermissionDefinitionProvider
 
         #endregion
 
+        #region "Request"
+
+        var requests = group.AddPermission(
+            CatalogPermissions.Requests,
+            L("Permission:Requests")
+        );
+
+        requests.AddChild(
+            CatalogPermissions.RequestsView,
+            L("Permission:View")
+        );
+
+        requests.AddChild(
+            CatalogPermissions.RequestsProcess,
+            L("Permission:Process")
+        );
+
+        #endregion
     }
 
 
