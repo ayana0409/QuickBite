@@ -196,11 +196,13 @@ export class RequestService {
     const [items, total] = await queryBuilder.getManyAndCount();
 
     return {
-      items,
-      total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      data: items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -237,6 +239,16 @@ export class RequestService {
       );
     }
 
+    // Require adminNote when rejecting request
+    if (
+      processDto.action === RequestAction.REJECT &&
+      (!processDto.adminNote || !processDto.adminNote.trim())
+    ) {
+      throw new BadRequestException(
+        'Lý do từ chối (adminNote) là bắt buộc khi từ chối yêu cầu.',
+      );
+    }
+
     return await this.dataSource.transaction(async (manager) => {
       if (processDto.action === RequestAction.APPROVE) {
         if (request.type === RequestType.RESTAURANT_REGISTRATION) {
@@ -265,7 +277,7 @@ export class RequestService {
               city: payload.address.city,
               geo: {
                 type: 'Point',
-                coordinates: payload.address.geo.coordinates,
+                coordinates: payload.address.geo?.coordinates || [106.702444, 10.776192],
               },
             },
             status: 'ACTIVE',
@@ -285,7 +297,7 @@ export class RequestService {
         request.status = RequestStatus.RESOLVED;
       }
 
-      request.adminNote = processDto.adminNote ?? null;
+      request.adminNote = processDto.adminNote ? processDto.adminNote.trim() : null;
       request.processedBy = adminId;
 
       return await manager.save(CatalogRequest, request);

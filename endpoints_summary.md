@@ -721,7 +721,7 @@ null
 **Response** `200`:
 ```json
 {
-  "items": [
+  "data": [
     {
       "id": "e3067db8-b570-4f5f-9f17-5735165b4c10",
       "userId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
@@ -748,10 +748,12 @@ null
       "updatedAt": "2026-08-21T10:30:00.000Z"
     }
   ],
-  "total": 1,
-  "page": 1,
-  "limit": 10,
-  "totalPages": 1
+  "meta": {
+    "total": 1,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 1
+  }
 }
 ```
 
