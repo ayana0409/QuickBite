@@ -34,6 +34,7 @@ import {
   calculateDistanceKm,
   estimateDeliveryMinutes,
   formatDistance,
+  calculateDeliveryFee,
 } from '@/src/lib/utils/distance';
 
 export default function CheckoutPage() {
@@ -107,19 +108,34 @@ export default function CheckoutPage() {
     );
   }
 
-  // Price calculations
-  const subtotal = items.reduce((sum, item) => sum + item.totalItemPrice, 0);
-  const deliveryFee = 15000;
-  const totalAmount = subtotal + deliveryFee;
-
   // Restaurant Coordinates: GeoJSON [longitude, latitude]
-  const restaurantCoords = restaurantDetail?.address?.geo?.coordinates;
-  const restaurantLng = restaurantCoords ? restaurantCoords[0] : null;
-  const restaurantLat = restaurantCoords ? restaurantCoords[1] : null;
+  const restaurantCoords =
+    restaurantDetail?.address?.geo?.coordinates ||
+    (restaurantDetail?.address as any)?.coordinates;
+
+  const restaurantLng =
+    Array.isArray(restaurantCoords) &&
+    typeof Number(restaurantCoords[0]) === 'number' &&
+    !isNaN(Number(restaurantCoords[0]))
+      ? Number(restaurantCoords[0])
+      : 106.702444; // Default Saigon Center Longitude
+
+  const restaurantLat =
+    Array.isArray(restaurantCoords) &&
+    typeof Number(restaurantCoords[1]) === 'number' &&
+    !isNaN(Number(restaurantCoords[1]))
+      ? Number(restaurantCoords[1])
+      : 10.776192; // Default Saigon Center Latitude
 
   // Delivery Coordinates: [latitude, longitude]
-  const deliveryLat = deliveryAddress?.latitude ?? null;
-  const deliveryLng = deliveryAddress?.longitude ?? null;
+  const deliveryLat =
+    deliveryAddress?.latitude !== null && deliveryAddress?.latitude !== undefined
+      ? Number(deliveryAddress.latitude)
+      : null;
+  const deliveryLng =
+    deliveryAddress?.longitude !== null && deliveryAddress?.longitude !== undefined
+      ? Number(deliveryAddress.longitude)
+      : null;
 
   // Calculate distance between restaurant and customer
   const distanceKm =
@@ -131,6 +147,11 @@ export default function CheckoutPage() {
       : null;
 
   const estimatedMinutes = estimateDeliveryMinutes(distanceKm);
+  const deliveryFee = calculateDeliveryFee(distanceKm);
+
+  // Price calculations
+  const subtotal = items.reduce((sum, item) => sum + item.totalItemPrice, 0);
+  const totalAmount = subtotal + deliveryFee;
 
   const handlePlaceOrder = async () => {
     // 1. Check Authentication
@@ -378,7 +399,9 @@ export default function CheckoutPage() {
                   </span>
                 </div>
                 <div className="flex justify-between text-slate-600 font-medium">
-                  <span>Phí giao hàng tiêu chuẩn:</span>
+                  <span>
+                    Phí giao hàng {distanceKm !== null ? `(${formatDistance(distanceKm)})` : '(tiêu chuẩn)'}:
+                  </span>
                   <span className="font-bold text-slate-900">
                     {deliveryFee.toLocaleString('vi-VN')}đ
                   </span>
@@ -474,7 +497,7 @@ export default function CheckoutPage() {
                   <div className="flex items-center gap-2">
                     <Route className="w-4 h-4 text-orange-200" />
                     <span className="text-xs font-black uppercase tracking-wider">
-                      Ước Tính Giao Hàng
+                      Ước Tính Giao Hàng & Phí Ship
                     </span>
                   </div>
                   <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-xs">
@@ -482,22 +505,26 @@ export default function CheckoutPage() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 mt-3.5">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 mt-3.5">
                   <div>
-                    <span className="text-[11px] text-orange-100 block mb-0.5">Khoảng cách:</span>
-                    <span className="text-xl font-black">{formatDistance(distanceKm)}</span>
+                    <span className="text-[10px] sm:text-[11px] text-orange-100 block mb-0.5">Khoảng cách:</span>
+                    <span className="text-base sm:text-lg font-black">{formatDistance(distanceKm)}</span>
                   </div>
                   <div>
-                    <span className="text-[11px] text-orange-100 block mb-0.5 flex items-center gap-1">
+                    <span className="text-[10px] sm:text-[11px] text-orange-100 block mb-0.5">Phí ship:</span>
+                    <span className="text-base sm:text-lg font-black">{deliveryFee.toLocaleString('vi-VN')}đ</span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] sm:text-[11px] text-orange-100 block mb-0.5 flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" />
-                      Thời gian dự kiến:
+                      Dự kiến:
                     </span>
-                    <span className="text-xl font-black">~{estimatedMinutes} phút</span>
+                    <span className="text-base sm:text-lg font-black">~{estimatedMinutes} phút</span>
                   </div>
                 </div>
 
                 <p className="text-[10px] text-orange-100/90 mt-3 pt-2.5 border-t border-white/10">
-                  * Khoảng cách được tính toán chính xác dựa trên tọa độ GPS giữa nhà hàng và vị trí nhận hàng.
+                  * Cước phí: 15.000đ cho 5km đầu tiên, mỗi km tiếp theo +3.000đ (dựa trên tọa độ GPS giữa quán và điểm nhận).
                 </p>
               </div>
             )}
@@ -565,6 +592,9 @@ export default function CheckoutPage() {
       <DeliveryAddressModal
         isOpen={addressModalOpen}
         onClose={() => setAddressModalOpen(false)}
+        onSaved={(newAddress) => {
+          setDeliveryAddress(newAddress);
+        }}
       />
 
       {/* Auth Modal */}
