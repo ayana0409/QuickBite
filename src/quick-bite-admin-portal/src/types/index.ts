@@ -6,6 +6,7 @@ export interface User {
   fullName: string;
   username: string;
   role: Role;
+  roles: Role[];
   isActive: boolean;
   permissions: string[];
 }

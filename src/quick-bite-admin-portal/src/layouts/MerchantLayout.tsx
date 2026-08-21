@@ -14,6 +14,7 @@ import {
   UtensilsCrossed,
   Bell,
   Star,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -105,6 +106,20 @@ export default function MerchantLayout() {
 
         {/* Sidebar Footer User Info */}
         <div className="p-4 border-t border-slate-800 space-y-3">
+          {/* Switch to Admin Portal if user has Admin role */}
+          {(user?.roles?.includes('Admin') || user?.role === 'Admin') && (
+            <NavLink
+              to="/admin/dashboard"
+              className="flex items-center justify-between p-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl text-xs font-bold transition-all group"
+            >
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Cổng Admin Portal</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Chuyển ➔</span>
+            </NavLink>
+          )}
+
           <div className="flex items-center gap-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-emerald-400 to-teal-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0 shadow">
               {user?.fullName?.charAt(0).toUpperCase() || 'M'}

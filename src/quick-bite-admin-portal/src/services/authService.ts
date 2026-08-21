@@ -40,8 +40,8 @@ export function parseJwt<T = DecodedJwtClaims>(token: string): T | null {
  * Extract User domain model from decoded JWT Claims
  */
 export function extractUserFromClaims(claims: DecodedJwtClaims): User {
-  // Normalize Role from claims (handle array or string, case insensitive)
-  let userRole: Role = 'Customer';
+  // Normalize Roles from claims (handle array or string, case insensitive)
+  const rolesList: Role[] = [];
   
   const rawRole = claims.role;
   if (rawRole) {
@@ -49,11 +49,21 @@ export function extractUserFromClaims(claims: DecodedJwtClaims): User {
     const rolesLower = rolesArray.map((r) => r.toLowerCase());
 
     if (rolesLower.includes('admin') || rolesLower.includes('administrator')) {
-      userRole = 'Admin';
-    } else if (rolesLower.includes('merchant') || rolesLower.includes('seller') || rolesLower.includes('restaurant')) {
-      userRole = 'Merchant';
+      rolesList.push('Admin');
+    }
+    if (rolesLower.includes('merchant') || rolesLower.includes('seller') || rolesLower.includes('restaurant')) {
+      rolesList.push('Merchant');
+    }
+    if (rolesLower.includes('customer') || rolesLower.includes('user')) {
+      rolesList.push('Customer');
     }
   }
+
+  if (rolesList.length === 0) {
+    rolesList.push('Customer');
+  }
+
+  const primaryRole: Role = rolesList.includes('Admin') ? 'Admin' : rolesList.includes('Merchant') ? 'Merchant' : 'Customer';
 
   // Parse permissions claim (could be JSON string or Array)
   let permissions: string[] = [];
@@ -78,7 +88,8 @@ export function extractUserFromClaims(claims: DecodedJwtClaims): User {
     email,
     username,
     fullName,
-    role: userRole,
+    role: primaryRole,
+    roles: rolesList,
     isActive: true,
     permissions,
   };

@@ -5,6 +5,7 @@ import type { Column } from '../../components/common/DataTable';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { UserModal } from '../../components/admin/UserModal';
 import { userService } from '../../services/userService';
+import { toast } from '../../stores/toastStore';
 import type { User } from '../../types';
 
 export const UsersPage = () => {
@@ -29,9 +30,11 @@ export const UsersPage = () => {
 
   const handleCreateOrUpdate = async (values: any) => {
     if (editingUser) {
-      await userService.updateUserRole(editingUser.id, values.role);
+      await userService.updateUser(editingUser.id, values);
+      toast.success('Cập nhật tài khoản thành công!', 'Thành công');
     } else {
       await userService.createUser(values);
+      toast.success('Tạo tài khoản mới thành công!', 'Thành công');
     }
     await fetchUsers();
   };
@@ -41,8 +44,24 @@ export const UsersPage = () => {
     await fetchUsers();
   };
 
-  const adminCount = users.filter((u) => u.role === 'Admin').length;
-  const merchantCount = users.filter((u) => u.role === 'Merchant').length;
+  const handleToggleMerchant = async (user: User) => {
+    const isCurrentlyMerchant = user.roles ? user.roles.includes('Merchant') : user.role === 'Merchant';
+    try {
+      await userService.toggleMerchantRole(user.id, user.roles || [user.role], !isCurrentlyMerchant);
+      toast.success(
+        !isCurrentlyMerchant
+          ? `Đã cấp quyền Merchant cho ${user.fullName}!`
+          : `Đã thu hồi quyền Merchant của ${user.fullName}!`,
+        'Phân quyền thành công'
+      );
+      await fetchUsers();
+    } catch {
+      toast.error('Không thể cập nhật quyền Merchant', 'Lỗi phân quyền');
+    }
+  };
+
+  const adminCount = users.filter((u) => (u.roles && u.roles.length > 0 ? u.roles.includes('Admin') : u.role === 'Admin')).length;
+  const merchantCount = users.filter((u) => (u.roles && u.roles.length > 0 ? u.roles.includes('Merchant') : u.role === 'Merchant')).length;
 
   const columns: Column<User>[] = [
     {
@@ -66,7 +85,35 @@ export const UsersPage = () => {
     },
     {
       header: 'Vai Trò (Role)',
-      cell: (row) => <StatusBadge status={row.role} type="role" />,
+      cell: (row) => (
+        <div className="flex flex-wrap gap-1.5 items-center">
+          {row.roles && row.roles.length > 0 ? (
+            row.roles.map((r) => <StatusBadge key={r} status={r} type="role" />)
+          ) : (
+            <StatusBadge status={row.role} type="role" />
+          )}
+        </div>
+      ),
+    },
+    {
+      header: 'Quyền Merchant',
+      cell: (row) => {
+        const isMerchant = row.roles ? row.roles.includes('Merchant') : row.role === 'Merchant';
+        return (
+          <button
+            onClick={() => handleToggleMerchant(row)}
+            title={isMerchant ? 'Nhấn để thu hồi quyền Merchant' : 'Nhấn để cấp quyền Merchant'}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer flex items-center gap-1.5 ${
+              isMerchant
+                ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25 shadow-sm'
+                : 'bg-slate-900 text-slate-400 border-slate-800 hover:border-slate-700 hover:text-slate-200'
+            }`}
+          >
+            <span className={`w-2 h-2 rounded-full ${isMerchant ? 'bg-emerald-400 animate-pulse' : 'bg-slate-600'}`} />
+            <span>{isMerchant ? 'Merchant: BẬT' : 'Merchant: TẮT'}</span>
+          </button>
+        );
+      },
     },
     {
       header: 'Trạng Thái',
@@ -81,7 +128,7 @@ export const UsersPage = () => {
               setEditingUser(row);
               setIsModalOpen(true);
             }}
-            title="Đổi vai trò Role"
+            title="Chỉnh sửa tài khoản"
             className="p-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 rounded-lg border border-slate-700 transition-all cursor-pointer"
           >
             <Edit3 className="w-3.5 h-3.5" />

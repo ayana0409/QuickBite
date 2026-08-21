@@ -201,6 +201,24 @@ const parseHealthPayload = (raw: any): HealthCheckResponse | null => {
   return null;
 };
 
+// Helper an toàn tương thích cả animejs v3 và v4
+function safeAnimate(animeModule: any, params: any) {
+  try {
+    if (!animeModule) return null;
+    if (typeof animeModule.animate === 'function') {
+      const { targets, ...options } = params;
+      return animeModule.animate(targets, options);
+    }
+    const fn = typeof animeModule === 'function' ? animeModule : (animeModule.default || animeModule.anime);
+    if (typeof fn === 'function') {
+      return fn(params);
+    }
+  } catch {
+    // Silent fail if animation target is missing or unsupported
+  }
+  return null;
+}
+
 export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   const [attempts, setAttempts] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string>('');
@@ -266,10 +284,9 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     import('animejs')
       .then((animeModule: any) => {
         if (!isSubscribed) return;
-        const anime = animeModule.default || animeModule;
 
         // Animation 1: Center Gateway Node neon pulse & float
-        animationRef.current = anime({
+        animationRef.current = safeAnimate(animeModule, {
           targets: '#gateway-node',
           scale: [0.95, 1.08],
           rotate: [-1, 1],
@@ -284,58 +301,48 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
         });
 
         // Animation 2: Cyber Floating Orbs lơ lửng nhiều màu sắc
-        anime({
+        safeAnimate(animeModule, {
           targets: '.cyber-orb',
-          translateY: () => anime.random(-25, 25),
-          translateX: () => anime.random(-25, 25),
+          translateY: 20,
+          translateX: 15,
           scale: [0.8, 1.3],
           opacity: [0.3, 0.8],
           direction: 'alternate',
           loop: true,
           easing: 'easeInOutQuad',
-          duration: () => anime.random(2500, 4500),
-          delay: anime.stagger(200),
+          duration: 3000,
         });
 
         // Animation 3: SVG Lines Laser Flow
-        anime({
+        safeAnimate(animeModule, {
           targets: '.topology-line',
-          strokeDashoffset: [anime.setDashoffset, 0],
           easing: 'linear',
           duration: 1800,
-          delay: anime.stagger(150),
           loop: true,
           direction: 'alternate',
         });
 
         // Animation 4: Stagger Ripple Wave cho các Card
-        anime({
+        safeAnimate(animeModule, {
           targets: '.panel-card',
           translateY: [40, 0],
-          rotateX: [15, 0],
           opacity: [0, 1],
-          delay: anime.stagger(180, { start: 100 }),
           easing: 'easeOutExpo',
           duration: 1000,
         });
 
         // Animation 5: Glowing Neon Badges Pulse
-        anime({
+        safeAnimate(animeModule, {
           targets: '.tech-badge-glow',
           scale: [0.95, 1.05],
-          filter: [
-            'drop-shadow(0 0 4px rgba(6,182,212,0.4))',
-            'drop-shadow(0 0 12px rgba(236,72,153,0.8))'
-          ],
           direction: 'alternate',
           loop: true,
           easing: 'easeInOutQuad',
           duration: 1600,
-          delay: anime.stagger(120),
         });
 
         // Animation 6: Rainbow Shimmer Logo
-        anime({
+        safeAnimate(animeModule, {
           targets: '.logo-glow',
           rotate: '1turn',
           easing: 'linear',
@@ -343,8 +350,8 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           loop: true,
         });
       })
-      .catch((err) => {
-        console.error('Failed to lazy load animejs:', err);
+      .catch(() => {
+        // Fallback silently if animejs is unavailable
       });
 
     return () => {
@@ -357,17 +364,17 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
 
   // Trigger Anime.js hiệu ứng nổ nhẹ khi chọn Service Node
   useEffect(() => {
-    import('animejs').then((animeModule: any) => {
-      const anime = animeModule.default || animeModule;
-      anime({
-        targets: '#service-detail-card',
-        scale: [0.95, 1],
-        rotateY: [10, 0],
-        opacity: [0.2, 1],
-        easing: 'easeOutElastic(1, .8)',
-        duration: 700,
-      });
-    });
+    import('animejs')
+      .then((animeModule: any) => {
+        safeAnimate(animeModule, {
+          targets: '#service-detail-card',
+          scale: [0.95, 1],
+          opacity: [0.2, 1],
+          easing: 'easeOutQuad',
+          duration: 500,
+        });
+      })
+      .catch(() => {});
   }, [selectedServiceId]);
 
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
@@ -379,17 +386,18 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     let isCancelled = false;
 
     // 0s: Kích nổ Gateway ở giữa
-    import('animejs').then((animeModule: any) => {
-      if (isCancelled) return;
-      const anime = animeModule.default || animeModule;
-      anime({
-        targets: '#gateway-node',
-        scale: [0.1, 1.25, 1],
-        opacity: [0, 1],
-        easing: 'easeOutElastic(1, .6)',
-        duration: 800,
-      });
-    });
+    import('animejs')
+      .then((animeModule: any) => {
+        if (isCancelled) return;
+        safeAnimate(animeModule, {
+          targets: '#gateway-node',
+          scale: [0.1, 1.25, 1],
+          opacity: [0, 1],
+          easing: 'easeOutQuad',
+          duration: 800,
+        });
+      })
+      .catch(() => {});
 
     // 1s: Cặp Redis & Payment bừng sáng
     const t1 = setTimeout(() => {
@@ -428,22 +436,23 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     };
   }, []);
 
-  // Kích nổ elastic animation mỗi khi cặp node mới gia nhập litNodes
+  // Kích nổ animation mỗi khi cặp node mới gia nhập litNodes
   useEffect(() => {
     if (litNodes.length <= 1) return;
     const last1 = litNodes[litNodes.length - 1];
     const last2 = litNodes[litNodes.length - 2];
 
-    import('animejs').then((animeModule: any) => {
-      const anime = animeModule.default || animeModule;
-      anime({
-        targets: `#node-${last1}, #node-${last2}, .line-${last1}, .line-${last2}`,
-        scale: [0.5, 1.25, 1],
-        opacity: [0.1, 1],
-        easing: 'easeOutElastic(1, .6)',
-        duration: 800,
-      });
-    });
+    import('animejs')
+      .then((animeModule: any) => {
+        safeAnimate(animeModule, {
+          targets: `#node-${last1}, #node-${last2}, .line-${last1}, .line-${last2}`,
+          scale: [0.5, 1.25, 1],
+          opacity: [0.1, 1],
+          easing: 'easeOutQuad',
+          duration: 800,
+        });
+      })
+      .catch(() => {});
   }, [litNodes]);
 
   // 1.5. Countdown timer khi tất cả service đều Healthy

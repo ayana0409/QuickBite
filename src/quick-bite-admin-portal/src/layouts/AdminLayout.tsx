@@ -14,6 +14,7 @@ import {
   UtensilsCrossed,
   Bell,
   Tag,
+  Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -33,6 +34,7 @@ export default function AdminLayout() {
     { to: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
     { to: '/admin/orders', label: 'Đơn hàng Hệ thống', icon: ShoppingBag },
     { to: '/admin/categories', label: 'Kiểm duyệt Danh mục', icon: Tag },
+    { to: '/admin/requests', label: 'Xử lý Yêu cầu', icon: Inbox },
     { to: '/admin/analytics', label: 'Thống kê & Báo cáo', icon: BarChart3 },
     { to: '/admin/settings', label: 'Cấu hình Hệ thống', icon: Settings },
   ];
@@ -105,6 +107,20 @@ export default function AdminLayout() {
 
         {/* Sidebar Footer User Info */}
         <div className="p-4 border-t border-slate-800 space-y-3">
+          {/* Switch to Merchant Portal if user has Merchant role */}
+          {(user?.roles?.includes('Merchant') || user?.role === 'Merchant') && (
+            <NavLink
+              to="/merchant/dashboard"
+              className="flex items-center justify-between p-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all group"
+            >
+              <div className="flex items-center gap-2">
+                <Store className="w-4 h-4 text-emerald-400" />
+                <span>Cổng Merchant Portal</span>
+              </div>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono">Chuyển ➔</span>
+            </NavLink>
+          )}
+
           <div className="flex items-center gap-3 bg-slate-950/60 p-2.5 rounded-xl border border-slate-800">
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center font-black text-sm shrink-0 shadow">
               {user?.fullName?.charAt(0).toUpperCase() || 'A'}

@@ -20,6 +20,7 @@ import { RestaurantsPage } from './pages/admin/RestaurantsPage';
 import { UsersPage } from './pages/admin/UsersPage';
 import { OrdersPage } from './pages/admin/OrdersPage';
 import { CategoryModerationPage } from './pages/admin/CategoryModerationPage';
+import { RequestsPage } from './pages/admin/RequestsPage';
 import MerchantDashboardPage from './pages/merchant/DashboardPage';
 import CreateRestaurantPage from './pages/merchant/CreateRestaurantPage';
 import MerchantMenuPage from './pages/merchant/MerchantMenuPage';
@@ -40,11 +41,13 @@ function SmartRootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role === 'Admin') {
+  const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
+
+  if (userRoles.includes('Admin')) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  if (user.role === 'Merchant') {
+  if (userRoles.includes('Merchant')) {
     return <Navigate to="/merchant/dashboard" replace />;
   }
 
@@ -80,6 +83,7 @@ export default function App() {
             <Route path="users" element={<UsersPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="categories" element={<CategoryModerationPage />} />
+            <Route path="requests" element={<RequestsPage />} />
             <Route path="analytics" element={<AdminDashboardPage />} />
             <Route path="settings" element={<AdminDashboardPage />} />
           </Route>

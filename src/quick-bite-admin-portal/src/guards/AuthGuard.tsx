@@ -15,9 +15,13 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // 2. Nếu đã đăng nhập nhưng không có Role hợp lệ -> Redirect tới trang /unauthorized
-  if (allowedRoles && allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/unauthorized" replace />;
+  // 2. Nếu đã đăng nhập nhưng không có Role hợp lệ trong danh sách phân quyền -> Redirect tới /unauthorized
+  if (allowedRoles && allowedRoles.length > 0) {
+    const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
+    const hasPermission = allowedRoles.some((allowedRole) => userRoles.includes(allowedRole));
+    if (!hasPermission) {
+      return <Navigate to="/unauthorized" replace />;
+    }
   }
 
   // 3. Đúng phân quyền -> Render các Route con bên trong
