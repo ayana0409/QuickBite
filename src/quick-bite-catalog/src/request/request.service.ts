@@ -96,8 +96,32 @@ export class RequestService {
     // Strictly validate dynamic payload according to request type
     await this.validatePayload(createRequestDto.type, createRequestDto.payload);
 
-    // If request is restaurant registration, verify slug uniqueness upfront
+    // If request is restaurant registration, verify single restaurant constraint, pending request constraint, and slug uniqueness
     if (createRequestDto.type === RequestType.RESTAURANT_REGISTRATION) {
+      // 1. Check if user already owns a restaurant
+      const existingOwnerRestaurant = await this.restaurantRepository.findOne({
+        where: { ownerId: userId },
+      });
+      if (existingOwnerRestaurant) {
+        throw new ConflictException(
+          'Tài khoản của bạn đã sở hữu một nhà hàng trên hệ thống QuickBite.',
+        );
+      }
+
+      // 2. Check if user already has a pending registration request
+      const existingPendingRequest = await this.requestRepository.findOne({
+        where: {
+          userId,
+          type: RequestType.RESTAURANT_REGISTRATION,
+          status: RequestStatus.PENDING,
+        },
+      });
+      if (existingPendingRequest) {
+        throw new ConflictException(
+          'Bạn đã có một hồ sơ đăng ký nhà hàng đang chờ xét duyệt.',
+        );
+      }
+
       const payload = createRequestDto.payload as RestaurantRegistrationPayload;
       const existingRestaurant = await this.restaurantRepository.findOne({
         where: { slug: payload.slug },
@@ -123,6 +147,19 @@ export class RequestService {
     });
 
     return await this.requestRepository.save(catalogRequest);
+  }
+
+  /**
+   * Get current user's latest restaurant registration request.
+   */
+  async getMyLatestRegistration(userId: string): Promise<CatalogRequest | null> {
+    return await this.requestRepository.findOne({
+      where: {
+        userId,
+        type: RequestType.RESTAURANT_REGISTRATION,
+      },
+      order: { createdAt: 'DESC' },
+    });
   }
 
   /**

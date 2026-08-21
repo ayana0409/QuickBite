@@ -109,7 +109,7 @@ describe('RestaurantController', () => {
 
       mockRestaurantService.findAll.mockResolvedValue(paginatedResult);
 
-      const result = await controller.findAll(paginationDto);
+      const result = await controller.findAll(undefined, paginationDto);
 
       expect(service.findAll).toHaveBeenCalledWith(paginationDto);
       expect(result).toEqual(paginatedResult);

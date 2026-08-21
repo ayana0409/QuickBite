@@ -672,6 +672,46 @@
 
 ---
 
+#### `GET /requests/my-registration`
+*Lấy thông tin hồ sơ đăng ký mở nhà hàng (`RESTAURANT_REGISTRATION`) mới nhất của người dùng đang đăng nhập (Trích xuất `userId` từ JWT token). Sử dụng để kiểm tra trạng thái phê duyệt (PENDING, APPROVED, REJECTED) hoặc chặn người dùng nộp yêu cầu trùng lặp.*
+**Auth:** Bearer JWT (Không yêu cầu quyền Admin)
+
+**Response** `200` *(Khi đã có hồ sơ)*:
+```json
+{
+  "id": "e3067db8-b570-4f5f-9f17-5735165b4c10",
+  "userId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+  "type": "RESTAURANT_REGISTRATION",
+  "status": "PENDING",
+  "payload": {
+    "name": "Pho Ha Noi - Chi Nhanh Quan 1",
+    "slug": "pho-ha-noi-quan-1",
+    "ownerId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+    "address": {
+      "line1": "123 Nguyen Hue Street",
+      "ward": "Ben Nghe Ward",
+      "district": "District 1",
+      "city": "Ho Chi Minh City",
+      "geo": {
+        "type": "Point",
+        "coordinates": [106.702444, 10.776192]
+      }
+    }
+  },
+  "adminNote": null,
+  "processedBy": null,
+  "createdAt": "2026-08-21T10:30:00.000Z",
+  "updatedAt": "2026-08-21T10:30:00.000Z"
+}
+```
+
+**Response** `200` *(Khi chưa từng gửi hồ sơ)*:
+```json
+null
+```
+
+---
+
 #### `GET /requests`
 *Admin xem danh sách các yêu cầu có hỗ trợ phân trang, lọc theo trạng thái, loại yêu cầu, hoặc người gửi.*
 **Auth:** Bearer JWT + Permission `REQUEST_VIEW` (`Catalog.Requests.View`)

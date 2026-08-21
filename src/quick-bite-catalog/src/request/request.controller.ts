@@ -81,6 +81,20 @@ export class RequestController {
   }
 
   /**
+   * Current user retrieves their latest restaurant registration request.
+   */
+  @Get('my-registration')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user latest restaurant registration request' })
+  @ApiResponse({ status: 200, description: 'Latest restaurant registration request or null' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  async getMyRegistration(@CurrentUser() user: JwtUserPayload | string) {
+    const userId = this.extractUserId(user);
+    return await this.requestService.getMyLatestRegistration(userId);
+  }
+
+  /**
    * Admin lists all requests with optional filters and pagination.
    */
   @Get()
