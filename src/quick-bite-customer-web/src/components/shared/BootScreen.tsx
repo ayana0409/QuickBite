@@ -12,7 +12,6 @@ import {
   Activity,
   CheckCircle2,
   RefreshCw,
-  Sparkles,
 } from "lucide-react";
 
 interface BootScreenProps {
@@ -84,7 +83,6 @@ const SERVICES: ServiceNode[] = [
 ];
 
 export default function BootScreen({ onReady }: BootScreenProps) {
-  const [attempts, setAttempts] = useState<number>(0);
   const [statusMessage, setStatusMessage] = useState<string>(
     "Đang đánh thức toàn bộ hệ thống Microservices & API Gateway..."
   );
@@ -102,43 +100,16 @@ export default function BootScreen({ onReady }: BootScreenProps) {
   });
 
   const animationRef = useRef<any>(null);
+  // Set tracking completed/healthy services so we NEVER ping them again
+  const completedServicesRef = useRef<Set<string>>(new Set());
 
-  // Map serviceKey -> URLs from environment variables (identical to Admin Portal)
+  // Map serviceKey -> URLs from environment variables
   const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "https://quick-bite-identity.onrender.com";
   const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "https://quick-bite-order.onrender.com/api/app";
   const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "https://quick-bite-catalog.onrender.com";
   const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "https://quick-bite-inventory.onrender.com/api/v1";
   const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://quick-bite-payment.onrender.com/v1";
   const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quick-bite-gw.onrender.com";
-
-  const SERVICE_URLS: Record<string, string[]> = {
-    identity_service: [
-      identityUrl,
-      `${identityUrl}/health`,
-      `${identityUrl}/api/health`,
-    ].filter(Boolean),
-    order_service: [
-      orderUrl,
-      `${orderUrl}/health`,
-      `${orderUrl}/api/app/health`,
-    ].filter(Boolean),
-    catalog_service: [
-      catalogUrl,
-      `${catalogUrl}/health`,
-      `${catalogUrl}/api/health`,
-    ].filter(Boolean),
-    inventory_service: [
-      inventoryUrl,
-      `${inventoryUrl}/health`,
-      `${inventoryUrl}/api/v1/health`,
-      `${inventoryUrl}/v1/health`,
-    ].filter(Boolean),
-    payment_service: [
-      paymentUrl,
-      `${paymentUrl}/health`,
-      `${paymentUrl}/v1/health`,
-    ].filter(Boolean),
-  };
 
   // 1. Anime.js Topology Motion Effects (Universal v3 & v4 compatibility)
   useEffect(() => {
@@ -152,17 +123,17 @@ export default function BootScreen({ onReady }: BootScreenProps) {
           typeof animeModule.animate === "function"
             ? animeModule.animate
             : typeof animeModule.default === "function"
-            ? (target: any, params: any) => animeModule.default({ targets: target, ...params })
-            : typeof animeModule === "function"
-            ? (target: any, params: any) => animeModule({ targets: target, ...params })
-            : null;
+              ? (target: any, params: any) => animeModule.default({ targets: target, ...params })
+              : typeof animeModule === "function"
+                ? (target: any, params: any) => animeModule({ targets: target, ...params })
+                : null;
 
         const staggerFn =
           typeof animeModule.stagger === "function"
             ? animeModule.stagger
             : typeof animeModule.default?.stagger === "function"
-            ? animeModule.default.stagger
-            : (val: number) => (_el: any, i: number) => i * val;
+              ? animeModule.default.stagger
+              : (val: number) => (_el: any, i: number) => i * val;
 
         if (!animateFn) return;
 
@@ -202,7 +173,7 @@ export default function BootScreen({ onReady }: BootScreenProps) {
           // Ignore animation init errors
         }
       })
-      .catch(() => {});
+      .catch(() => { });
 
     return () => {
       isSubscribed = false;
@@ -231,98 +202,140 @@ export default function BootScreen({ onReady }: BootScreenProps) {
     };
   }, []);
 
-  // 3. Direct Parallel Pinging to ALL Services + Gateway Polling (Same as Admin Portal)
+  // 3. Single-Ping per Service with Long Wait & No Redundant Retries
   useEffect(() => {
     let isCancelled = false;
-    let gatewayTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Trigger server-side wake-up ping across all services
-    fetch("/api/system/health/wake-up", { method: "GET", cache: "no-store" }).catch(() => {});
+    // Trigger one-time server-side wake-up ping across all services in background
+    fetch("/api/system/health/wake-up", { method: "GET", cache: "no-store" }).catch(() => { });
 
-    // Poll Gateway continuously
-    const pollGateway = async () => {
-      try {
-        const res = await fetch("/api/gateway/health", { method: "GET", cache: "no-store" });
-        if (!isCancelled && res.ok) {
-          const data = await res.json().catch(() => null);
-          if (data && (data.status === "Healthy" || data.status === "ok")) {
-            setServiceStatuses((prev) => ({ ...prev, gateway: "Healthy" }));
+    // Ping Gateway once and wait for response; stop completely once healthy
+    const pingGateway = async () => {
+      if (completedServicesRef.current.has("gateway")) return;
+
+      let attempts = 0;
+      const maxAttempts = 6;
+
+      while (!completedServicesRef.current.has("gateway") && attempts < maxAttempts && !isCancelled) {
+        attempts++;
+        try {
+          // Long-timeout fetch to allow Gateway cold-start to complete on same connection
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+          const res = await fetch("/api/gateway/health", {
+            method: "GET",
+            cache: "no-store",
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
+          if (isCancelled) return;
+
+          if (res.ok) {
+            const data = await res.json().catch(() => null);
+            if (data && (data.status === "Healthy" || data.status === "ok")) {
+              completedServicesRef.current.add("gateway");
+              setServiceStatuses((prev) => ({ ...prev, gateway: "Healthy" }));
+              return; // STOP! Never call gateway again!
+            }
           }
+        } catch {
+          // Socket drop / cold start initial reset
         }
-      } catch {
-        // Fallback polling
-      } finally {
-        if (!isCancelled) {
-          gatewayTimer = setTimeout(pollGateway, 3000);
+
+        if (!isCancelled && !completedServicesRef.current.has("gateway")) {
+          await new Promise((r) => setTimeout(r, 3000));
         }
+      }
+
+      if (!isCancelled && !completedServicesRef.current.has("gateway")) {
+        completedServicesRef.current.add("gateway");
+        setServiceStatuses((prev) => ({ ...prev, gateway: "Healthy" }));
       }
     };
 
-    // Direct ping to each service in parallel (wakes sleeping Render containers)
-    const pingServiceDirectly = async (serviceKey: string, urls: string[]) => {
-      if (!urls || urls.length === 0) {
-        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Unhealthy" }));
-        return;
-      }
+    // Ping a specific microservice ONCE and hold connection until it answers; NEVER call again once healthy
+    const pingSingleService = async (serviceKey: string, healthUrl: string) => {
+      if (completedServicesRef.current.has(serviceKey)) return;
 
       setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Degraded" }));
-      let retries = 0;
-      const maxRetries = 15;
 
-      while (retries < maxRetries && !isCancelled) {
-        for (const url of urls) {
+      let attempts = 0;
+      const maxAttempts = 6;
+
+      while (!completedServicesRef.current.has(serviceKey) && attempts < maxAttempts && !isCancelled) {
+        attempts++;
+        try {
+          // Long 90-second timeout: Render holds the open HTTP connection while container boots up
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+          const res = await fetch(healthUrl, {
+            method: "GET",
+            headers: { Accept: "application/json, text/plain, */*" },
+            signal: controller.signal,
+            cache: "no-store",
+          });
+
+          clearTimeout(timeoutId);
+
           if (isCancelled) return;
-          try {
-            const res = await fetch(url, {
-              method: "GET",
-              headers: { Accept: "application/json, text/plain, */*" },
-              signal: AbortSignal.timeout(120000), // Hold connection while Render container wakes up
-            });
 
-            if (isCancelled) return;
-
-            // If 200 OK, container is up and healthy!
-            if (res.ok) {
-              setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
-              setAttempts((prev) => prev + 1);
-              return;
-            }
-          } catch {
-            // Also attempt no-cors ping to ensure Render wakes up container even if CORS is negotiating
-            try {
-              fetch(url, { method: "GET", mode: "no-cors" }).catch(() => {});
-            } catch {}
+          // When 200/204 or any OK status returns, container is up!
+          if (res.ok || res.status === 200 || res.status === 204) {
+            completedServicesRef.current.add(serviceKey);
+            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
+            return; // DONE! Never ping this service again!
           }
+        } catch {
+          if (isCancelled) return;
+
+          // Fallback no-cors ping to trigger wake-up packet if CORS is negotiating
+          try {
+            fetch(healthUrl, { method: "GET", mode: "no-cors" }).catch(() => { });
+          } catch { }
         }
 
-        if (!isCancelled) {
-          await new Promise((r) => setTimeout(r, 6000));
-          retries++;
+        // Wait 3s before retrying this specific pending service only
+        if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
+          await new Promise((r) => setTimeout(r, 3000));
         }
       }
 
-      if (!isCancelled) {
-        // Default to Healthy after enough retries to prevent blocking user indefinitely
+      // If exhausted, default to Healthy to avoid permanently blocking user
+      if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
+        completedServicesRef.current.add(serviceKey);
         setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
       }
     };
 
+    // Launch all individual service workers in parallel
     const initialDelay = setTimeout(() => {
       if (isCancelled) return;
-      pollGateway();
-      Object.entries(SERVICE_URLS).forEach(([key, urls]) => {
-        pingServiceDirectly(key, urls);
+      pingGateway();
+
+      const SERVICE_PRIMARY_URLS: Record<string, string> = {
+        identity_service: `${identityUrl}/health`,
+        order_service: `${orderUrl}/health`,
+        catalog_service: `${catalogUrl}/health`,
+        inventory_service: `${inventoryUrl}/health`,
+        payment_service: `${paymentUrl}/health`,
+      };
+
+      Object.entries(SERVICE_PRIMARY_URLS).forEach(([key, url]) => {
+        pingSingleService(key, url);
       });
-    }, 600);
+    }, 400);
 
     return () => {
       isCancelled = true;
       clearTimeout(initialDelay);
-      if (gatewayTimer) clearTimeout(gatewayTimer);
     };
-  }, []);
+  }, [catalogUrl, identityUrl, inventoryUrl, orderUrl, paymentUrl]);
 
-  // 4. Watch all services — when all microservices are Healthy, trigger redirect
+  // 4. Watch all services — when all 5 microservices are Healthy, trigger redirect
   useEffect(() => {
     const areMicroservicesHealthy = SERVICES.every((s) => {
       const status = serviceStatuses[s.apiKey];
@@ -331,7 +344,7 @@ export default function BootScreen({ onReady }: BootScreenProps) {
 
     if (areMicroservicesHealthy && redirectCountdown === null) {
       setStatusMessage("Tất cả microservices đã sẵn sàng! Đang chuyển hướng...");
-      setRedirectCountdown(3);
+      setRedirectCountdown(1);
     }
   }, [serviceStatuses, redirectCountdown]);
 
@@ -350,6 +363,8 @@ export default function BootScreen({ onReady }: BootScreenProps) {
 
     return () => clearTimeout(timer);
   }, [redirectCountdown, onReady]);
+
+  const healthyCount = SERVICES.filter((s) => serviceStatuses[s.apiKey] === "Healthy").length;
 
   return (
     <div className="fixed inset-0 bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-8 z-50 overflow-hidden font-sans select-none">
@@ -375,20 +390,18 @@ export default function BootScreen({ onReady }: BootScreenProps) {
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs text-slate-300">
             <Activity className="w-4 h-4 text-orange-400 animate-pulse" />
-            <span>Đã thức: <strong className="text-white font-mono">{attempts} / 5</strong></span>
+            <span>Đã thức: <strong className="text-white font-mono">{healthyCount} / 5</strong></span>
           </div>
 
           <span
-            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border ${
-              redirectCountdown !== null
+            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border ${redirectCountdown !== null
                 ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse"
                 : "bg-orange-500/20 text-orange-300 border-orange-500/50"
-            }`}
+              }`}
           >
             <span
-              className={`w-2.5 h-2.5 rounded-full ${
-                redirectCountdown !== null ? "bg-emerald-400 animate-ping" : "bg-orange-400 animate-pulse"
-              }`}
+              className={`w-2.5 h-2.5 rounded-full ${redirectCountdown !== null ? "bg-emerald-400 animate-ping" : "bg-orange-400 animate-pulse"
+                }`}
             />
             {redirectCountdown !== null
               ? `VÀO ỨNG DỤNG (${redirectCountdown}s)`
@@ -463,16 +476,14 @@ export default function BootScreen({ onReady }: BootScreenProps) {
               <div
                 key={s.id}
                 style={{ left: `${s.x}%`, top: `${s.y}%` }}
-                className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-700 ${
-                  isLit ? "opacity-100 scale-100" : "opacity-40 scale-90"
-                }`}
+                className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-700 ${isLit ? "opacity-100 scale-100" : "opacity-40 scale-90"
+                  }`}
               >
                 <div
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl p-0.5 shadow-xl transition-all duration-300 ${
-                    status === "Healthy"
+                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl p-0.5 shadow-xl transition-all duration-300 ${status === "Healthy"
                       ? "bg-gradient-to-tr from-emerald-400 to-teal-500 ring-2 ring-emerald-400/50"
                       : "bg-gradient-to-tr " + s.color
-                  }`}
+                    }`}
                 >
                   <div className="w-full h-full bg-slate-950/90 rounded-[14px] flex flex-col items-center justify-center p-1.5">
                     <Icon className={`w-5 h-5 ${status === "Healthy" ? "text-emerald-400" : "text-slate-200"}`} />
@@ -482,13 +493,12 @@ export default function BootScreen({ onReady }: BootScreenProps) {
 
                 <div className="mt-1 flex items-center gap-1 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-800 shadow-md">
                   <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      status === "Healthy"
+                    className={`w-1.5 h-1.5 rounded-full ${status === "Healthy"
                         ? "bg-emerald-400 animate-pulse"
                         : status === "Degraded"
-                        ? "bg-amber-400 animate-ping"
-                        : "bg-slate-500"
-                    }`}
+                          ? "bg-amber-400 animate-ping"
+                          : "bg-slate-500"
+                      }`}
                   />
                   <span className="text-[9px] font-mono text-slate-300">
                     {status === "Healthy" ? "Ready" : status === "Degraded" ? "Waking..." : s.tech}

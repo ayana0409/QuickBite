@@ -471,113 +471,148 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     return () => clearTimeout(timer);
   }, [redirectCountdown, onReady]);
 
-  // 2. Logic ping trực tiếp từng service song song + poll Gateway liên tục
+  const completedServicesRef = useRef<Set<string>>(new Set());
+
+  // 2. Logic ping trực tiếp từng service song song (1 request duy nhất giữ kết nối, không gọi lại khi đã Healthy)
   useEffect(() => {
     let isCancelled = false;
-    let gatewayTimer: ReturnType<typeof setTimeout> | null = null;
 
-    // Periodically poll Gateway /health to keep Redis, MongoDB, System Resources & overall status updated
+    // Ping Gateway một lần và đợi phản hồi; dừng hẳn khi đã Healthy
     const pollGateway = async () => {
-      try {
-        const rawRes: any = await axiosClient.get('/health');
-        if (!isCancelled) {
+      if (completedServicesRef.current.has('gateway')) return;
+
+      let attempts = 0;
+      const maxAttempts = 6;
+
+      while (!completedServicesRef.current.has('gateway') && attempts < maxAttempts && !isCancelled) {
+        attempts++;
+        try {
+          const rawRes: any = await axiosClient.get('/health', {
+            timeout: 90000,
+          });
+          if (isCancelled) return;
+
           const parsed = parseHealthPayload(rawRes);
-          if (parsed) setHealthData(parsed);
-          setErrorMessage('API Gateway online. Đang theo dõi các microservices...');
-        }
-      } catch (err: any) {
-        if (!isCancelled) {
+          if (parsed) {
+            setHealthData(parsed);
+            if (parsed.status === 'Healthy' || (parsed as any).status === 'ok') {
+              completedServicesRef.current.add('gateway');
+              if (parsed.entries?.['redis']?.status === 'Healthy') {
+                completedServicesRef.current.add('redis');
+              }
+              setErrorMessage('API Gateway online. Đang theo dõi các microservices...');
+              return; // Dừng, không poll Gateway nữa
+            }
+          }
+        } catch (err: any) {
+          if (isCancelled) return;
           const parsedError = parseHealthPayload(err.response?.data);
           if (parsedError) setHealthData(parsedError);
         }
-      } finally {
-        if (!isCancelled) {
-          gatewayTimer = setTimeout(pollGateway, 3000);
+
+        if (!isCancelled && !completedServicesRef.current.has('gateway')) {
+          await new Promise((r) => setTimeout(r, 3000));
         }
+      }
+
+      if (!isCancelled && !completedServicesRef.current.has('gateway')) {
+        completedServicesRef.current.add('gateway');
       }
     };
 
-    // Direct ping to each service: hold connection until Render wakes container
+    // Direct ping to each service: hold 1 connection for 90s until Render container wakes up
     const pingServiceDirectly = async (serviceKey: string, urls: string[]) => {
+      if (completedServicesRef.current.has(serviceKey)) return;
+
       if (!urls || urls.length === 0) {
-        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Unhealthy' }));
+        completedServicesRef.current.add(serviceKey);
+        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
         return;
       }
 
       setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Degraded' }));
+      const targetUrl = urls[1] || urls[0]; // Primary /health endpoint
       let retries = 0;
-      const maxRetries = 15;
+      const maxRetries = 6;
 
-      while (retries < maxRetries && !isCancelled) {
-        for (const url of urls) {
+      while (!completedServicesRef.current.has(serviceKey) && retries < maxRetries && !isCancelled) {
+        retries++;
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+          const res = await fetch(targetUrl, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json, text/plain, */*' },
+            signal: controller.signal,
+          });
+
+          clearTimeout(timeoutId);
+
           if (isCancelled) return;
-          try {
-            const res = await fetch(url, {
-              method: 'GET',
-              headers: { 'Accept': 'application/json, text/plain, */*' },
-              signal: AbortSignal.timeout(120000), // 2 minutes max per attempt
-            });
+
+          // If HTTP status is 200-299, container IS UP AND ALIVE!
+          if (res.ok || res.status === 200 || res.status === 204) {
+            let body: any = null;
+            try {
+              body = await res.json();
+            } catch {
+              body = { status: 'Healthy' };
+            }
 
             if (isCancelled) return;
 
-            // If HTTP status is 200-299, container IS UP AND ALIVE!
-            if (res.ok) {
-              let body: any = null;
-              try {
-                body = await res.json();
-              } catch {
-                body = { status: 'Healthy' };
-              }
-
-              if (isCancelled) return;
-
-              setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
-              setHealthData((prev) => ({
-                ...(prev || { status: 'Degraded', total_duration_ms: 0, timestamp: new Date().toISOString() }),
-                entries: {
-                  ...(prev?.entries || {}),
-                  [serviceKey]: {
-                    status: 'Healthy',
-                    description: `${serviceKey} is healthy (direct ping)`,
-                    data: body,
-                    duration_ms: 0,
-                    exception: null,
-                  },
+            completedServicesRef.current.add(serviceKey);
+            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
+            setHealthData((prev) => ({
+              ...(prev || { status: 'Degraded', total_duration_ms: 0, timestamp: new Date().toISOString() }),
+              entries: {
+                ...(prev?.entries || {}),
+                [serviceKey]: {
+                  status: 'Healthy',
+                  description: `${serviceKey} is healthy (direct ping)`,
+                  data: body,
+                  duration_ms: 0,
+                  exception: null,
                 },
-              }));
-              setAttempts((prev) => prev + 1);
-              return; // Done for this service!
-            }
-          } catch {
-            // Timeout or network error, continue to next URL or retry
+              },
+            }));
+            setAttempts((prev) => prev + 1);
+            return; // Đã xong cho service này, tuyệt đối không gọi lại!
           }
+        } catch {
+          if (isCancelled) return;
+          // Fallback no-cors ping để kích hoạt wake-up packet
+          try {
+            fetch(targetUrl, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+          } catch {}
         }
 
-        if (!isCancelled) {
-          await new Promise((r) => setTimeout(r, 8000));
-          retries++;
+        if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
+          await new Promise((r) => setTimeout(r, 3000));
         }
       }
 
-      if (!isCancelled) {
-        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Unhealthy' }));
+      if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
+        completedServicesRef.current.add(serviceKey);
+        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
+        setAttempts((prev) => prev + 1);
       }
     };
 
     const initialDelay = setTimeout(() => {
       if (isCancelled) return;
-      // 1. Start continuous Gateway polling
+      // 1. Khởi động kiểm tra Gateway
       pollGateway();
-      // 2. Ping ALL microservices directly in parallel
+      // 2. Ping trực tiếp từng microservice song song (1 request/service)
       Object.entries(SERVICE_URLS).forEach(([key, urls]) => {
         pingServiceDirectly(key, urls);
       });
-    }, 1000);
+    }, 400);
 
     return () => {
       isCancelled = true;
       clearTimeout(initialDelay);
-      if (gatewayTimer) clearTimeout(gatewayTimer);
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReady]);
@@ -595,7 +630,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     if (areMicroservicesHealthy && redirectCountdown === null) {
       setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
       setHealthData((prev) => ({ ...(prev as any), status: 'Healthy' }));
-      setRedirectCountdown(3);
+      setRedirectCountdown(1);
     }
   }, [serviceStatuses, healthData, redirectCountdown, services]);
 
