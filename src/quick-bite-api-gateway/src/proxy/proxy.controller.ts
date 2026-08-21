@@ -50,6 +50,11 @@ export class ProxyController {
     await this.forwardRequest('CATALOG_URL', req, res);
   }
 
+  @All('requests{*path}')
+  async proxyRequests(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('CATALOG_URL', req, res);
+  }
+
   @All('inventory{*path}')
   async proxyInventory(@Req() req: Request, @Res() res: Response) {
     await this.forwardRequest('INVENTORY_URL', req, res);
@@ -128,6 +133,11 @@ export class ProxyController {
     const reviewsByFoodItemMatch = pathname.match(/^\/reviews\/food-items\/([^\/]+)$/);
     if (reviewsByFoodItemMatch) {
       return { key: `catalog:reviews:food-item:${cleanPath}`, ttl: 60 };
+    }
+
+    // 5. Requests endpoints (Cache requests list query)
+    if (pathname === '/requests' || pathname === '/requests/') {
+      return { key: `catalog:requests:list:${cleanPath}`, ttl: 60 };
     }
 
     return null;
@@ -216,6 +226,18 @@ export class ProxyController {
       await this.redisCacheService.delByPattern('catalog:restaurant:*');
       return;
     }
+
+    // 9. Requests: POST /requests or PATCH /requests/:id/process (Invalidate requests & restaurants cache)
+    if (pathname.startsWith('/requests') && (method === 'POST' || method === 'PATCH' || method === 'PUT' || method === 'DELETE')) {
+      this.logger.log(`⚡ [CACHE INVALIDATION] Requests modified (${method} ${pathname}) -> Invalidating catalog:requests:*`);
+      await this.redisCacheService.delByPattern('catalog:requests:*');
+      if (method === 'PATCH') {
+        this.logger.log(`⚡ [CACHE INVALIDATION] Request processed -> Invalidating catalog:restaurant:*`);
+        await this.redisCacheService.delByPattern('catalog:restaurants:list:*');
+        await this.redisCacheService.delByPattern('catalog:restaurant:*');
+      }
+      return;
+    }
   }
 
   private async forwardRequest(targetConfigKey: string, req: Request, res: Response) {
@@ -251,11 +273,11 @@ export class ProxyController {
       if (cacheConfig) {
         const cached = await this.redisCacheService.get<CachedResponse>(cacheConfig.key);
         if (cached) {
-          this.logger.log(`⚡ [CACHE HIT] ${req.method} ${req.originalUrl} (Key: ${cacheConfig.key})`);
+          this.logger.log(`⚡ [CACHE HIT] ${req.method} ${req.originalUrl} (Key: ${cacheConfig.key}) -> Serving directly from Redis cache`);
           res.status(cached.statusCode).send(cached.data);
           return;
         }
-        this.logger.log(`🔍 [CACHE MISS] ${req.method} ${req.originalUrl} (Key: ${cacheConfig.key})`);
+        this.logger.log(`🔍 [CACHE MISS] ${req.method} ${req.originalUrl} (Key: ${cacheConfig.key}) -> Fetching from upstream Catalog Service`);
       }
     }
 
@@ -315,7 +337,7 @@ export class ProxyController {
             { statusCode: response.status, data: response.data },
             cacheConfig.ttl,
           );
-          this.logger.log(`💾 [CACHE STORED] Key: ${cacheConfig.key} (TTL: ${cacheConfig.ttl}s)`);
+          this.logger.log(`💾 [CACHE STORED] Saved response for ${req.method} ${req.originalUrl} to Redis (Key: ${cacheConfig.key}, TTL: ${cacheConfig.ttl}s)`);
         }
 
         // Cache invalidation for catalog mutations on success (HTTP 2xx)

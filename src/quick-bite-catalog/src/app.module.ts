@@ -12,6 +12,7 @@ import { CategoryModule } from './category/category.module';
 import { FoodItemModule } from './food-item/food-item.module';
 import { HealthModule } from './health/health.module';
 import { ReviewModule } from './review/review.module';
+import { RequestModule } from './request/request.module';
 
 @Module({
   imports: [
@@ -72,6 +73,7 @@ import { ReviewModule } from './review/review.module';
     FoodItemModule,
     HealthModule,
     ReviewModule,
+    RequestModule,
   ],
   controllers: [AppController],
   providers: [AppService],

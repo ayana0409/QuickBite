@@ -39,4 +39,9 @@ export const PermissionKeys = {
     FOOD_ITEM_READ:
         'Catalog.FoodItems.View',
 
+    REQUEST_VIEW:
+        'Catalog.Requests.View',
+
+    REQUEST_PROCESS:
+        'Catalog.Requests.Process',
 };

@@ -221,11 +221,26 @@ src/
 │   ├── review.controller.ts
 │   ├── review.service.ts
 │   └── review.module.ts
+├── request/               # Trung tâm xử lý yêu cầu (Generic Request Center)
+│   ├── dto/
+│   │   ├── create-request.dto.ts
+│   │   ├── process-request.dto.ts
+│   │   └── query-request.dto.ts
+│   ├── entities/
+│   │   └── catalog-request.entity.ts
+│   ├── enums/
+│   │   └── request.enum.ts
+│   ├── request.controller.ts
+│   ├── request.service.ts
+│   └── request.module.ts
 ├── common/           # Guards, Interceptors, Filters, DTOs
 └── auth/             # JwtAuthGuard, PermissionGuard, CurrentUser decorator 
 ``` 
 
-**Cơ sở dữ liệu & Entity:** PostgreSQL (TypeORM) / MongoDB document model linh hoạt (hỗ trợ JSONB toppings/variants, compound unique index chống spam đánh giá). 
+**Cơ sở dữ liệu & Entity:** PostgreSQL (TypeORM) / MongoDB document model linh hoạt:
+- Hỗ trợ JSONB toppings/variants trong Food Items.
+- Compound unique index chống spam đánh giá trong Reviews.
+- **Generic Request System (JSONB):** Quản lý tập trung các loại yêu cầu của người dùng (`RESTAURANT_REGISTRATION`, `FOOD_REPORT`, `SYSTEM_FEEDBACK`) trong bảng `catalog_requests` với payload động dạng `jsonb`. Khi Admin phê duyệt yêu cầu đăng ký nhà hàng (`APPROVE`), hệ thống thực thi ACID Transaction để tự động khởi tạo bản ghi `Restaurant` (trạng thái `ACTIVE`) và cập nhật trạng thái yêu cầu (`APPROVED`). Nếu có lỗi xảy ra (ví dụ: trùng lặp slug nhà hàng), toàn bộ Transaction sẽ rollback để giữ nguyên trạng thái yêu cầu.
 **Event phát ra:** `menu.updated`, `restaurant.status.changed`. 
 
 --- 

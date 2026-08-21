@@ -591,6 +591,184 @@
 
 ---
 
+### 📁 Request Center API — `/requests`
+
+#### `POST /requests`
+*Người dùng đã đăng nhập gửi yêu cầu lên hệ thống (Đăng ký nhà hàng, Báo cáo món ăn, Góp ý hệ thống).*
+**Auth:** Bearer JWT
+
+**Request Body (Đăng ký Nhà Hàng - `RESTAURANT_REGISTRATION`):**
+```json
+{
+  "type": "RESTAURANT_REGISTRATION",
+  "payload": {
+    "name": "Pho Ha Noi - Chi Nhanh Quan 1",
+    "slug": "pho-ha-noi-quan-1",
+    "address": {
+      "line1": "123 Nguyen Hue Street",
+      "ward": "Ben Nghe Ward",
+      "district": "District 1",
+      "city": "Ho Chi Minh City",
+      "geo": {
+        "type": "Point",
+        "coordinates": [106.702444, 10.776192]
+      }
+    }
+  }
+}
+```
+
+**Request Body (Báo Cáo Món Ăn - `FOOD_REPORT`):**
+```json
+{
+  "type": "FOOD_REPORT",
+  "payload": {
+    "foodItemId": "7c9e6679-7425-40de-944b-e07fc1f90ae7",
+    "reason": "MISLEADING_IMAGE_OR_DESCRIPTION",
+    "description": "The portion size and toppings differ significantly from the menu image."
+  }
+}
+```
+
+**Request Body (Góp Ý Hệ Thống - `SYSTEM_FEEDBACK`):**
+```json
+{
+  "type": "SYSTEM_FEEDBACK",
+  "payload": {
+    "subject": "App Performance on Order History",
+    "content": "The order history list takes several seconds to display on mobile network."
+  }
+}
+```
+
+**Response** `201`:
+```json
+{
+  "id": "e3067db8-b570-4f5f-9f17-5735165b4c10",
+  "userId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+  "type": "RESTAURANT_REGISTRATION",
+  "status": "PENDING",
+  "payload": {
+    "name": "Pho Ha Noi - Chi Nhanh Quan 1",
+    "slug": "pho-ha-noi-quan-1",
+    "ownerId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+    "address": {
+      "line1": "123 Nguyen Hue Street",
+      "ward": "Ben Nghe Ward",
+      "district": "District 1",
+      "city": "Ho Chi Minh City",
+      "geo": {
+        "type": "Point",
+        "coordinates": [106.702444, 10.776192]
+      }
+    }
+  },
+  "adminNote": null,
+  "processedBy": null,
+  "createdAt": "2026-08-21T10:30:00.000Z",
+  "updatedAt": "2026-08-21T10:30:00.000Z"
+}
+```
+
+---
+
+#### `GET /requests`
+*Admin xem danh sách các yêu cầu có hỗ trợ phân trang, lọc theo trạng thái, loại yêu cầu, hoặc người gửi.*
+**Auth:** Bearer JWT + Permission `REQUEST_VIEW` (`Catalog.Requests.View`)
+**Query Params:** `?page=1&limit=10&status=PENDING&type=RESTAURANT_REGISTRATION&userId=uuid&search=...`
+**Caching:** Redis TTL 60s trên API Gateway.
+
+**Response** `200`:
+```json
+{
+  "items": [
+    {
+      "id": "e3067db8-b570-4f5f-9f17-5735165b4c10",
+      "userId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+      "type": "RESTAURANT_REGISTRATION",
+      "status": "PENDING",
+      "payload": {
+        "name": "Pho Ha Noi - Chi Nhanh Quan 1",
+        "slug": "pho-ha-noi-quan-1",
+        "ownerId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+        "address": {
+          "line1": "123 Nguyen Hue Street",
+          "ward": "Ben Nghe Ward",
+          "district": "District 1",
+          "city": "Ho Chi Minh City",
+          "geo": {
+            "type": "Point",
+            "coordinates": [106.702444, 10.776192]
+          }
+        }
+      },
+      "adminNote": null,
+      "processedBy": null,
+      "createdAt": "2026-08-21T10:30:00.000Z",
+      "updatedAt": "2026-08-21T10:30:00.000Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1
+}
+```
+
+---
+
+#### `PATCH /requests/:id/process`
+*Admin xử lý (duyệt/từ chối/giải quyết) một yêu cầu. Khi `action: "APPROVE"` và `type: "RESTAURANT_REGISTRATION"`, hệ thống tự động chạy ACID Transaction tạo bản ghi `Restaurant` (status: `ACTIVE`) và cập nhật request thành `APPROVED`.*
+**Auth:** Bearer JWT + Permission `REQUEST_PROCESS` (`Catalog.Requests.Process`)
+**Params:** `id: UUID v4`
+
+**Request Body (Phê duyệt):**
+```json
+{
+  "action": "APPROVE",
+  "adminNote": "Merchant business license and food safety certificate verified successfully."
+}
+```
+
+**Request Body (Từ chối):**
+```json
+{
+  "action": "REJECT",
+  "adminNote": "Missing required business license document."
+}
+```
+
+**Response** `200`:
+```json
+{
+  "id": "e3067db8-b570-4f5f-9f17-5735165b4c10",
+  "userId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+  "type": "RESTAURANT_REGISTRATION",
+  "status": "APPROVED",
+  "payload": {
+    "name": "Pho Ha Noi - Chi Nhanh Quan 1",
+    "slug": "pho-ha-noi-quan-1",
+    "ownerId": "a823f990-2e4a-4a6c-94c6-e97bb1f0923e",
+    "address": {
+      "line1": "123 Nguyen Hue Street",
+      "ward": "Ben Nghe Ward",
+      "district": "District 1",
+      "city": "Ho Chi Minh City",
+      "geo": {
+        "type": "Point",
+        "coordinates": [106.702444, 10.776192]
+      }
+    }
+  },
+  "adminNote": "Merchant business license and food safety certificate verified successfully.",
+  "processedBy": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "createdAt": "2026-08-21T10:30:00.000Z",
+  "updatedAt": "2026-08-21T10:35:00.000Z"
+}
+```
+
+---
+
 ## 2. Inventory Service (`quick-bite-inventory` — Spring Boot)
 
 Base path: `/api/v1/inventory`
