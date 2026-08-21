@@ -124,3 +124,24 @@ export async function getFoodById(id: string): Promise<FoodItem | null> {
     return null;
   }
 }
+
+/**
+ * Fetch the restaurant owned by the current authenticated user via GET /restaurants/me
+ */
+export async function getMyRestaurant(accessToken?: string): Promise<Restaurant | null> {
+  if (!accessToken) return null;
+
+  try {
+    const url = `${GATEWAY_URL}/restaurants/me`;
+    const json = await apiClient<ApiResponse<Restaurant> | Restaurant>(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+    return ((json as any)?.data ?? json) || null;
+  } catch (error) {
+    // 404 or other error means user does not have a restaurant yet
+    return null;
+  }
+}
+

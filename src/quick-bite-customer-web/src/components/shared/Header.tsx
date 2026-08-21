@@ -12,17 +12,23 @@ import {
   ShoppingBag,
   ChevronDown,
   Sparkles,
+  Store,
 } from "lucide-react";
 import { useCartStore } from "@/src/store/cart.store";
+import { useUiStore } from "@/src/store/ui.store";
+import { useBecomePartner } from "@/src/hooks/useBecomePartner";
 import AuthModal from "./AuthModal";
 
 export default function Header() {
   const { data: session, status } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
-  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [mounted, setMounted] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const isAuthModalOpen = useUiStore((state) => state.isAuthModalOpen);
+  const setAuthModalOpen = useUiStore((state) => state.setAuthModalOpen);
+  const { handleBecomePartnerClick } = useBecomePartner();
 
   const items = useCartStore((state) => state.items);
   const setCartOpen = useCartStore((state) => state.setCartOpen);
@@ -88,7 +94,7 @@ export default function Header() {
           </div>
 
           {/* Right: Actions & User Navigation */}
-          <div className="flex items-center gap-3 shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             
             {/* Cart Button */}
             <button
@@ -161,6 +167,18 @@ export default function Header() {
                         <User className="w-4 h-4 text-slate-400" />
                         <span>Thông tin tài khoản</span>
                       </Link>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDropdownOpen(false);
+                          handleBecomePartnerClick();
+                        }}
+                        className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-slate-700 hover:text-orange-600 hover:bg-orange-50 transition-colors cursor-pointer text-left"
+                      >
+                        <Store className="w-4 h-4 text-orange-500" />
+                        <span>Trở thành Đối tác</span>
+                      </button>
                     </div>
 
                     <div className="border-t border-slate-100 pt-1">
@@ -193,7 +211,7 @@ export default function Header() {
 
       {/* Login / Auth Modal */}
       <AuthModal
-        isOpen={authModalOpen}
+        isOpen={isAuthModalOpen}
         onClose={() => setAuthModalOpen(false)}
       />
     </>

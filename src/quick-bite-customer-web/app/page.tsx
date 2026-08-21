@@ -6,6 +6,7 @@ import { getRestaurants, getFeaturedFoods } from '@/src/lib/api/catalog';
 import HeroBanner from '@/src/components/home/HeroBanner';
 import RestaurantCard from '@/src/components/home/RestaurantCard';
 import FoodCard from '@/src/components/home/FoodCard';
+import BecomePartnerBanner from '@/src/components/home/BecomePartnerBanner';
 
 export const metadata: Metadata = {
   title: 'QuickBite - Đặt Món Ăn Nhanh & Giao Tận Nơi 20-30 Phút',
@@ -127,39 +128,7 @@ export default async function HomePage() {
         </section>
 
         {/* 4. Bottom Promotional Banner */}
-        <section className="mt-16 sm:mt-24 rounded-3xl bg-gradient-to-r from-slate-900 via-orange-950 to-slate-900 p-8 sm:p-12 text-white relative overflow-hidden shadow-xl">
-          <div className="relative z-10 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-orange-300 text-xs font-bold mb-4">
-              <Award className="w-3.5 h-3.5" />
-              <span>Dành cho Đối tác & Khách hàng</span>
-            </div>
-            <h3 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
-              Bạn là chủ nhà hàng? <br className="hidden sm:inline" />
-              Gia nhập QuickBite để tăng trưởng doanh số!
-            </h3>
-            <p className="mt-3 text-sm text-slate-300 leading-relaxed">
-              Tiếp cận hàng triệu thực khách tiềm năng và quản lý đơn hàng chuyên nghiệp với nền tảng QuickBite Merchant.
-            </p>
-            <div className="mt-6 flex flex-wrap items-center gap-3">
-              <Link
-                href="https://quick-bite-merchant.onrender.com"
-                className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-sm font-bold rounded-xl shadow-lg shadow-orange-500/25 transition-all hover:scale-105 active:scale-95"
-              >
-                Đăng ký mở quán ngay
-              </Link>
-              <Link
-                href="/about"
-                className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl transition-all"
-              >
-                Tìm hiểu thêm
-              </Link>
-            </div>
-          </div>
-
-          <div className="absolute right-0 bottom-0 w-80 h-80 opacity-10 pointer-events-none flex items-center justify-center">
-            <UtensilsCrossed className="w-72 h-72 text-white" />
-          </div>
-        </section>
+        <BecomePartnerBanner />
 
       </div>
     </div>
