@@ -19,23 +19,34 @@ import {
   CheckCircle2,
   Sparkles,
   Store,
-  FileText,
-  BadgeCheck,
+  Compass,
+  Clock,
+  Route,
+  Navigation,
 } from 'lucide-react';
 import { useCartStore } from '@/src/store/cart.store';
 import { useToast } from '@/src/components/shared/ToastProvider';
 import DeliveryAddressModal from '@/src/components/shared/DeliveryAddressModal';
 import AuthModal from '@/src/components/shared/AuthModal';
+import { getRestaurantById } from '@/src/lib/api/catalog';
+import { RestaurantDetail } from '@/src/types/catalog.type';
+import {
+  calculateDistanceKm,
+  estimateDeliveryMinutes,
+  formatDistance,
+} from '@/src/lib/utils/distance';
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { data: session, status: authStatus } = useSession();
-  const { error: toastError, success: toastSuccess } = useToast();
+  const { error: toastError, success: toastSuccess, warning: toastWarning } = useToast();
 
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [restaurantDetail, setRestaurantDetail] = useState<RestaurantDetail | null>(null);
+  const [isLoadingRestaurant, setIsLoadingRestaurant] = useState(false);
 
   const items = useCartStore((state) => state.items);
   const restaurantId = useCartStore((state) => state.restaurantId);
@@ -55,6 +66,26 @@ export default function CheckoutPage() {
     }
   }, [mounted, items.length, router, toastError]);
 
+  // Fetch restaurant details to get restaurant GPS coordinates
+  useEffect(() => {
+    async function fetchRestaurant() {
+      if (!restaurantId) return;
+      setIsLoadingRestaurant(true);
+      try {
+        const detail = await getRestaurantById(restaurantId);
+        setRestaurantDetail(detail);
+      } catch (err) {
+        console.warn('[Checkout] Failed to fetch restaurant details:', err);
+      } finally {
+        setIsLoadingRestaurant(false);
+      }
+    }
+
+    if (mounted && restaurantId) {
+      fetchRestaurant();
+    }
+  }, [mounted, restaurantId]);
+
   if (!mounted || items.length === 0) {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3 bg-[#fdfbf7]">
@@ -68,6 +99,26 @@ export default function CheckoutPage() {
   const subtotal = items.reduce((sum, item) => sum + item.totalItemPrice, 0);
   const deliveryFee = 15000;
   const totalAmount = subtotal + deliveryFee;
+
+  // Restaurant Coordinates: GeoJSON [longitude, latitude]
+  const restaurantCoords = restaurantDetail?.address?.geo?.coordinates;
+  const restaurantLng = restaurantCoords ? restaurantCoords[0] : null;
+  const restaurantLat = restaurantCoords ? restaurantCoords[1] : null;
+
+  // Delivery Coordinates: [latitude, longitude]
+  const deliveryLat = deliveryAddress?.latitude ?? null;
+  const deliveryLng = deliveryAddress?.longitude ?? null;
+
+  // Calculate distance between restaurant and customer
+  const distanceKm =
+    restaurantLat !== null &&
+    restaurantLng !== null &&
+    deliveryLat !== null &&
+    deliveryLng !== null
+      ? calculateDistanceKm(restaurantLat, restaurantLng, deliveryLat, deliveryLng)
+      : null;
+
+  const estimatedMinutes = estimateDeliveryMinutes(distanceKm);
 
   const handlePlaceOrder = async () => {
     // 1. Check Authentication
@@ -83,13 +134,25 @@ export default function CheckoutPage() {
       return;
     }
 
-    // 3. Check Delivery Address
+    // 3. Check Delivery Address & Coordinates
     if (
       !deliveryAddress ||
       !deliveryAddress.receiverName ||
       !deliveryAddress.phoneNumber ||
       !deliveryAddress.addressLine
     ) {
+      toastWarning('Vui lòng hoàn tất thông tin địa chỉ nhận hàng');
+      setAddressModalOpen(true);
+      return;
+    }
+
+    if (
+      deliveryAddress.latitude === null ||
+      deliveryAddress.latitude === undefined ||
+      deliveryAddress.longitude === null ||
+      deliveryAddress.longitude === undefined
+    ) {
+      toastWarning('Vui lòng chọn vị trí trên bản đồ để xác định tọa độ giao hàng!');
       setAddressModalOpen(true);
       return;
     }
@@ -99,7 +162,19 @@ export default function CheckoutPage() {
     try {
       const payload = {
         restaurantId,
-        deliveryAddress,
+        deliveryAddress: {
+          receiverName: deliveryAddress.receiverName,
+          phoneNumber: deliveryAddress.phoneNumber,
+          addressLine: deliveryAddress.addressLine,
+          ward: deliveryAddress.ward,
+          district: deliveryAddress.district,
+          province: deliveryAddress.province,
+          note: deliveryAddress.note || '',
+          latitude: deliveryAddress.latitude,
+          longitude: deliveryAddress.longitude,
+        },
+        deliveryLatitude: deliveryAddress.latitude,
+        deliveryLongitude: deliveryAddress.longitude,
         items: items.map((item) => ({
           foodItemId: item.foodItemId,
           quantity: item.quantity,
@@ -177,7 +252,7 @@ export default function CheckoutPage() {
             Xác nhận thông tin đặt hàng
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 mt-1 font-medium">
-            Vui lòng kiểm tra lại món ăn, địa chỉ nhận hàng và phương thức thanh toán trước khi đặt đơn.
+            Vui lòng kiểm tra lại món ăn, địa chỉ nhận hàng và tọa độ giao hàng trước khi đặt đơn.
           </p>
         </div>
 
@@ -196,8 +271,19 @@ export default function CheckoutPage() {
                     Nhà hàng phục vụ
                   </span>
                   <span className="text-base font-black text-slate-900">
-                    {restaurantName || 'Nhà hàng QuickBite'}
+                    {restaurantName || restaurantDetail?.name || 'Nhà hàng QuickBite'}
                   </span>
+                  {restaurantDetail?.address && (
+                    <span className="text-[11px] text-slate-500 block truncate max-w-sm">
+                      {[
+                        restaurantDetail.address.line1,
+                        restaurantDetail.address.district,
+                        restaurantDetail.address.city,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -300,9 +386,9 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Right Column: Address, Payment & Submit Button (5 Cols) */}
+          {/* Right Column: Address, Distance, Payment & Submit Button (5 Cols) */}
           <div className="lg:col-span-5 space-y-6">
-            {/* Delivery Address Card */}
+            {/* Delivery Address & GPS Coordinates Card */}
             <div className="bg-white rounded-3xl p-6 border border-slate-200/70 shadow-xs">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -316,12 +402,12 @@ export default function CheckoutPage() {
                   className="inline-flex items-center gap-1 text-xs font-bold text-orange-600 hover:text-orange-700 cursor-pointer hover:underline"
                 >
                   <Edit2 className="w-3.5 h-3.5" />
-                  <span>Thay đổi</span>
+                  <span>{deliveryAddress?.receiverName ? 'Thay đổi' : 'Nhập địa chỉ'}</span>
                 </button>
               </div>
 
               {deliveryAddress && deliveryAddress.receiverName ? (
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2 text-xs">
+                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 space-y-2.5 text-xs">
                   <div className="flex items-center gap-2 font-bold text-slate-900 text-sm">
                     <User className="w-4 h-4 text-slate-400" />
                     <span>{deliveryAddress.receiverName}</span>
@@ -334,8 +420,25 @@ export default function CheckoutPage() {
                     {deliveryAddress.addressLine}, {deliveryAddress.ward}, {deliveryAddress.district},{' '}
                     {deliveryAddress.province}
                   </p>
+
+                  {/* GPS Coordinates Badge */}
+                  {deliveryAddress.latitude && deliveryAddress.longitude ? (
+                    <div className="flex items-center gap-1.5 text-[11px] font-mono text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-xl border border-emerald-200/60 font-semibold">
+                      <Compass className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>
+                        Tọa độ: [{deliveryAddress.latitude.toFixed(6)},{' '}
+                        {deliveryAddress.longitude.toFixed(6)}]
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5 text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/60 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 text-amber-600" />
+                      <span>Chưa chọn tọa độ trên bản đồ. Nhấp "Thay đổi" để chọn vị trí.</span>
+                    </div>
+                  )}
+
                   {deliveryAddress.note && (
-                    <p className="text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg mt-1.5 font-medium border border-amber-200/50">
+                    <p className="text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg mt-1 font-medium border border-amber-200/50">
                       Ghi chú: {deliveryAddress.note}
                     </p>
                   )}
@@ -344,13 +447,48 @@ export default function CheckoutPage() {
                 <button
                   type="button"
                   onClick={() => setAddressModalOpen(true)}
-                  className="w-full py-4 px-4 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 text-orange-700 text-xs font-bold flex items-center justify-center gap-2 hover:bg-orange-50 transition-colors cursor-pointer"
+                  className="w-full py-5 px-4 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 text-orange-700 text-xs font-bold flex flex-col items-center justify-center gap-2 hover:bg-orange-50 transition-colors cursor-pointer"
                 >
-                  <MapPin className="w-4 h-4" />
-                  <span>+ Nhập địa chỉ nhận hàng của bạn</span>
+                  <MapPin className="w-6 h-6 text-orange-500" />
+                  <span>+ Chọn vị trí & nhập địa chỉ giao hàng</span>
                 </button>
               )}
             </div>
+
+            {/* Distance & Delivery Estimate Card (Based on Coordinates) */}
+            {distanceKm !== null && (
+              <div className="bg-gradient-to-br from-orange-500 via-orange-600 to-amber-600 text-white rounded-3xl p-5 shadow-lg shadow-orange-500/20 relative overflow-hidden animate-in fade-in duration-200">
+                <div className="flex items-center justify-between pb-3 border-b border-white/20">
+                  <div className="flex items-center gap-2">
+                    <Route className="w-4 h-4 text-orange-200" />
+                    <span className="text-xs font-black uppercase tracking-wider">
+                      Ước Tính Giao Hàng
+                    </span>
+                  </div>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-xs">
+                    GPS Định vị
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 mt-3.5">
+                  <div>
+                    <span className="text-[11px] text-orange-100 block mb-0.5">Khoảng cách:</span>
+                    <span className="text-xl font-black">{formatDistance(distanceKm)}</span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-orange-100 block mb-0.5 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" />
+                      Thời gian dự kiến:
+                    </span>
+                    <span className="text-xl font-black">~{estimatedMinutes} phút</span>
+                  </div>
+                </div>
+
+                <p className="text-[10px] text-orange-100/90 mt-3 pt-2.5 border-t border-white/10">
+                  * Khoảng cách được tính toán chính xác dựa trên tọa độ GPS giữa nhà hàng và vị trí nhận hàng.
+                </p>
+              </div>
+            )}
 
             {/* Payment Method Card */}
             <div className="bg-white rounded-3xl p-6 border border-slate-200/70 shadow-xs">

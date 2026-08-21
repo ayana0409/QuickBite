@@ -24,6 +24,8 @@ export interface DeliveryAddress {
   district: string;
   province: string;
   note?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface CreateOrderItemPayload {
@@ -37,6 +39,8 @@ export interface CreateOrderPayload {
   restaurantId: string;
   customerId: string;
   deliveryAddress: DeliveryAddress;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
   items: CreateOrderItemPayload[];
 }
 

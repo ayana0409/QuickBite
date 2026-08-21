@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   KeyRound,
+  Compass,
 } from 'lucide-react';
 import { restaurantService } from '../../services/restaurantService';
 import type { Restaurant } from '../../services/restaurantService';
@@ -27,6 +28,7 @@ import { profileService, type MyProfileDto } from '../../services/profileService
 import { useAuthStore } from '../../stores/authStore';
 import { toast } from '../../stores/toastStore';
 import Input from '../../components/common/Form/Input';
+import MerchantMapPicker, { type AddressInfo } from '../../components/merchant/MerchantMapPicker';
 
 // ─── Zod Schemas ──────────────────────────────────────────────────────────────
 
@@ -44,6 +46,8 @@ const restaurantProfileSchema = z.object({
     ward: z.string().trim().min(1, 'Phường / Xã không được để trống'),
     district: z.string().trim().min(1, 'Quận / Huyện không được để trống'),
     city: z.string().trim().min(1, 'Tỉnh / Thành phố không được để trống'),
+    longitude: z.number().optional(),
+    latitude: z.number().optional(),
   }),
 });
 type RestaurantProfileFormData = z.infer<typeof restaurantProfileSchema>;
@@ -104,6 +108,7 @@ export default function MerchantProfilePage() {
     handleSubmit: handleRestaurantSubmit,
     control: controlRestaurant,
     reset: resetRestaurant,
+    setValue: setValueRestaurant,
     watch: watchRestaurant,
     formState: { errors: restaurantErrors, isSubmitting: isSubmittingRestaurant, isDirty: isDirtyRestaurant },
   } = useForm<RestaurantProfileFormData>({
@@ -111,7 +116,14 @@ export default function MerchantProfilePage() {
     defaultValues: {
       name: '',
       status: 'open',
-      address: { line1: '', ward: '', district: '', city: 'Hồ Chí Minh' },
+      address: {
+        line1: '',
+        ward: '',
+        district: '',
+        city: 'Hồ Chí Minh',
+        longitude: 106.702444,
+        latitude: 10.776192,
+      },
     },
   });
 
@@ -188,6 +200,10 @@ export default function MerchantProfilePage() {
         const data = await restaurantService.getMerchantProfile();
         if (data && isMounted) {
           setRestaurant(data);
+          const rawCoords = data.address?.geo?.coordinates;
+          const lng = rawCoords && typeof rawCoords[0] === 'number' ? rawCoords[0] : 106.702444;
+          const lat = rawCoords && typeof rawCoords[1] === 'number' ? rawCoords[1] : 10.776192;
+
           resetRestaurant({
             name: data.name || '',
             status: data.status === 'open' ? 'open' : 'closed',
@@ -196,6 +212,8 @@ export default function MerchantProfilePage() {
               ward: data.address?.ward || '',
               district: data.address?.district || '',
               city: data.address?.city || 'Hồ Chí Minh',
+              longitude: lng,
+              latitude: lat,
             },
           });
         }
@@ -259,9 +277,41 @@ export default function MerchantProfilePage() {
     }
   };
 
+  // Handle Map Location Selection & Auto-fill
+  const handleMapLocationSelect = (
+    lat: number,
+    lng: number,
+    addressInfo: AddressInfo
+  ) => {
+    setValueRestaurant('address.latitude', lat, { shouldDirty: true, shouldValidate: true });
+    setValueRestaurant('address.longitude', lng, { shouldDirty: true, shouldValidate: true });
+
+    if (addressInfo.line1) {
+      setValueRestaurant('address.line1', addressInfo.line1, { shouldDirty: true, shouldValidate: true });
+    }
+    if (addressInfo.ward) {
+      setValueRestaurant('address.ward', addressInfo.ward, { shouldDirty: true, shouldValidate: true });
+    }
+    if (addressInfo.district) {
+      setValueRestaurant('address.district', addressInfo.district, { shouldDirty: true, shouldValidate: true });
+    }
+    if (addressInfo.city) {
+      setValueRestaurant('address.city', addressInfo.city, { shouldDirty: true, shouldValidate: true });
+    }
+  };
+
   // Handle Update Restaurant Profile
   const onRestaurantSubmit = async (formData: RestaurantProfileFormData) => {
     try {
+      const lng =
+        formData.address.longitude !== undefined
+          ? formData.address.longitude
+          : restaurant?.address?.geo?.coordinates?.[0] ?? 106.702444;
+      const lat =
+        formData.address.latitude !== undefined
+          ? formData.address.latitude
+          : restaurant?.address?.geo?.coordinates?.[1] ?? 10.776192;
+
       const updated = await restaurantService.updateMerchantProfile({
         name: formData.name,
         status: formData.status,
@@ -270,15 +320,18 @@ export default function MerchantProfilePage() {
           ward: formData.address.ward,
           district: formData.address.district,
           city: formData.address.city,
-          geo: restaurant?.address?.geo ?? {
+          geo: {
             type: 'Point',
-            coordinates: [106.660172, 10.762622],
+            coordinates: [lng, lat],
           },
         },
       });
 
       if (updated) {
         setRestaurant(updated);
+        const updatedLng = updated.address?.geo?.coordinates?.[0] ?? lng;
+        const updatedLat = updated.address?.geo?.coordinates?.[1] ?? lat;
+
         resetRestaurant({
           name: updated.name || formData.name,
           status: updated.status === 'open' ? 'open' : 'closed',
@@ -287,17 +340,24 @@ export default function MerchantProfilePage() {
             ward: updated.address?.ward || formData.address.ward,
             district: updated.address?.district || formData.address.district,
             city: updated.address?.city || formData.address.city,
+            longitude: updatedLng,
+            latitude: updatedLat,
           },
         });
-        toast.success('Hồ sơ nhà hàng đã được cập nhật thành công!', 'Thành công');
+        toast.success('Hồ sơ nhà hàng và tọa độ bản đồ đã được cập nhật thành công!', 'Thành công');
       }
     } catch (err: any) {
       console.error('Failed to update restaurant profile:', err);
+      toast.error(err?.message || 'Không thể cập nhật hồ sơ nhà hàng.', 'Lỗi cập nhật');
     }
   };
 
   const handleResetRestaurantForm = () => {
     if (restaurant) {
+      const rawCoords = restaurant.address?.geo?.coordinates;
+      const lng = rawCoords && typeof rawCoords[0] === 'number' ? rawCoords[0] : 106.702444;
+      const lat = rawCoords && typeof rawCoords[1] === 'number' ? rawCoords[1] : 10.776192;
+
       resetRestaurant({
         name: restaurant.name || '',
         status: restaurant.status === 'open' ? 'open' : 'closed',
@@ -306,6 +366,8 @@ export default function MerchantProfilePage() {
           ward: restaurant.address?.ward || '',
           district: restaurant.address?.district || '',
           city: restaurant.address?.city || 'Hồ Chí Minh',
+          longitude: lng,
+          latitude: lat,
         },
       });
       toast.info('Đã hoàn tác các thay đổi chưa lưu.', 'Khôi phục dữ liệu');
@@ -774,6 +836,31 @@ export default function MerchantProfilePage() {
                       {...registerRestaurant('address.city')}
                     />
                   </div>
+                </div>
+
+                {/* Interactive Map Coordinates Picker */}
+                <div className="space-y-2 pt-4 border-t border-slate-800">
+                  <label className="font-bold text-xs text-slate-300 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Compass className="w-4 h-4 text-emerald-400" />
+                      Vị Trí & Tọa Độ Bản Đồ (GPS)
+                    </span>
+                    <span className="text-[11px] text-slate-400 font-normal">
+                      Nhấp chọn trên bản đồ để tự động điền địa chỉ
+                    </span>
+                  </label>
+
+                  <MerchantMapPicker
+                    position={[
+                      watchedRestaurantValues.address?.latitude ??
+                        restaurant?.address?.geo?.coordinates?.[1] ??
+                        10.776192,
+                      watchedRestaurantValues.address?.longitude ??
+                        restaurant?.address?.geo?.coordinates?.[0] ??
+                        106.702444,
+                    ]}
+                    onLocationSelect={handleMapLocationSelect}
+                  />
                 </div>
 
                 {/* Full Address Preview Box */}

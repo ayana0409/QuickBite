@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { restaurantId, deliveryAddress, items } = body;
+    const { restaurantId, deliveryAddress, deliveryLatitude, deliveryLongitude, items } = body;
 
     if (!restaurantId || !items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -34,10 +34,25 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const resolvedLatitude =
+      deliveryLatitude !== undefined
+        ? deliveryLatitude
+        : deliveryAddress.latitude;
+    const resolvedLongitude =
+      deliveryLongitude !== undefined
+        ? deliveryLongitude
+        : deliveryAddress.longitude;
+
     const payload = {
       restaurantId,
       customerId: session.user.id,
-      deliveryAddress,
+      deliveryAddress: {
+        ...deliveryAddress,
+        latitude: resolvedLatitude ?? null,
+        longitude: resolvedLongitude ?? null,
+      },
+      deliveryLatitude: resolvedLatitude ?? null,
+      deliveryLongitude: resolvedLongitude ?? null,
       items: items.map((item: any) => ({
         foodItemId: item.foodItemId,
         quantity: Number(item.quantity) || 1,
