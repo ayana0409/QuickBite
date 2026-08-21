@@ -47,6 +47,10 @@ public class OrderConfiguration :
                 address.Property(x => x.Province);
 
                 address.Property(x => x.Note);
+
+                address.Property(x => x.Latitude);
+
+                address.Property(x => x.Longitude);
             });
     }
 }

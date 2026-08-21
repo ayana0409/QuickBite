@@ -1,4 +1,4 @@
-﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations;
 
 namespace QuickBite.Order.Orders;
 
@@ -23,4 +23,8 @@ public class DeliveryAddressDto
     public string Province { get; set; } = string.Empty;
 
     public string? Note { get; set; }
+
+    public double? Latitude { get; set; }
+
+    public double? Longitude { get; set; }
 }

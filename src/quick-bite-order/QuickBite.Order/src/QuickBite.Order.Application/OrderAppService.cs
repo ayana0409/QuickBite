@@ -52,7 +52,10 @@ public class OrderAppService :
     /// </summary>
     public async Task<OrderDto> CreateAsync(CreateOrderDto input)
     {
-        // 1. Initialize the delivery address value object.
+        // 1. Initialize the delivery address value object with GPS coordinates.
+        var latitude = input.DeliveryLatitude ?? input.DeliveryAddress?.Latitude;
+        var longitude = input.DeliveryLongitude ?? input.DeliveryAddress?.Longitude;
+
         var deliveryAddress = new DeliveryAddress(
             input.DeliveryAddress.ReceiverName,
             input.DeliveryAddress.PhoneNumber,
@@ -60,7 +63,9 @@ public class OrderAppService :
             input.DeliveryAddress.Ward,
             input.DeliveryAddress.District,
             input.DeliveryAddress.Province,
-            input.DeliveryAddress.Note ?? string.Empty
+            input.DeliveryAddress.Note ?? string.Empty,
+            latitude,
+            longitude
         );
 
         // 2. Fetch food item details from the replica repository.

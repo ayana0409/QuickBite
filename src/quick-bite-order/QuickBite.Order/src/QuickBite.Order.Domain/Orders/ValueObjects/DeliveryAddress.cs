@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using Volo.Abp.Domain.Values;
 
 namespace QuickBite.Order.Domain.Orders.ValueObjects;
@@ -19,6 +19,10 @@ public class DeliveryAddress : ValueObject
 
     public string Note { get; private set; }
 
+    public double? Latitude { get; private set; }
+
+    public double? Longitude { get; private set; }
+
     private DeliveryAddress()
     {
 
@@ -31,7 +35,9 @@ public class DeliveryAddress : ValueObject
         string ward,
         string district,
         string province,
-        string note)
+        string note,
+        double? latitude = null,
+        double? longitude = null)
     {
         FullName = fullName;
         PhoneNumber = phoneNumber;
@@ -40,6 +46,8 @@ public class DeliveryAddress : ValueObject
         District = district;
         Province = province;
         Note = note;
+        Latitude = latitude;
+        Longitude = longitude;
     }
 
     protected override IEnumerable<object> GetAtomicValues()
@@ -51,5 +59,7 @@ public class DeliveryAddress : ValueObject
         yield return District;
         yield return Province;
         yield return Note;
+        yield return Latitude ?? 0;
+        yield return Longitude ?? 0;
     }
 }
