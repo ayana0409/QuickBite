@@ -2,19 +2,18 @@ import { useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
-  Utensils,
-  ClipboardList,
-  Boxes,
-  DollarSign,
-  Building2,
+  Store,
+  UtensilsCrossed,
+  ShoppingBag,
+  Clock,
+  Layers,
+  Settings,
   LogOut,
   Menu,
   X,
-  Store,
-  UtensilsCrossed,
-  Bell,
-  Star,
   ShieldCheck,
+  Bell,
+  BarChart2,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -29,17 +28,18 @@ export default function MerchantLayout() {
   };
 
   const navItems = [
-    { to: '/merchant/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/merchant/menu', label: 'Thực đơn & Món ăn', icon: Utensils },
-    { to: '/merchant/orders', label: 'Đơn hàng Chờ duyệt', icon: ClipboardList },
-    { to: '/merchant/inventory', label: 'Quản lý Kho', icon: Boxes },
-    { to: '/merchant/revenue', label: 'Doanh thu & Hóa đơn', icon: DollarSign },
-    { to: '/merchant/reviews', label: 'Đánh giá & Phản hồi', icon: Star },
-    { to: '/merchant/profile', label: 'Hồ sơ Nhà hàng', icon: Building2 },
+    { to: '/merchant/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+    { to: '/merchant/orders', label: 'Quản lý Đơn hàng', icon: ShoppingBag },
+    { to: '/merchant/live-orders', label: 'Đơn hàng Realtime', icon: Clock },
+    { to: '/merchant/menu', label: 'Quản lý Thực đơn', icon: UtensilsCrossed },
+    { to: '/merchant/combos', label: 'Quản lý Combo', icon: Layers },
+    { to: '/merchant/analytics', label: 'Doanh thu & Báo cáo', icon: BarChart2 },
+    { to: '/merchant/profile', label: 'Hồ sơ Quán ăn', icon: Store },
+    { to: '/merchant/settings', label: 'Cài đặt Nhà hàng', icon: Settings },
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+    <div className="h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex font-sans">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -48,13 +48,13 @@ export default function MerchantLayout() {
         />
       )}
 
-      {/* Sidebar Component */}
+      {/* Sidebar Component: Fixed Height, Isolated Scroll */}
       <aside
-        className={`fixed lg:static top-0 left-0 bottom-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 ${
+        className={`fixed lg:static top-0 left-0 bottom-0 z-50 w-64 h-screen shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="p-4 space-y-6">
+        <div className="p-4 space-y-6 overflow-y-auto flex-1">
           {/* Header Brand */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -104,8 +104,8 @@ export default function MerchantLayout() {
           </nav>
         </div>
 
-        {/* Sidebar Footer User Info */}
-        <div className="p-4 border-t border-slate-800 space-y-3">
+        {/* Sidebar Footer User Info (Always pinned at bottom of sidebar) */}
+        <div className="p-4 border-t border-slate-800 space-y-3 shrink-0 bg-slate-900">
           {/* Switch to Admin Portal if user has Admin role */}
           {(user?.roles?.includes('Admin') || user?.role === 'Admin') && (
             <NavLink
@@ -114,7 +114,7 @@ export default function MerchantLayout() {
             >
               <div className="flex items-center gap-2">
                 <ShieldCheck className="w-4 h-4 text-amber-400" />
-                <span>Cổng Admin Portal</span>
+                <span>Cổng Quản Trị Hệ Thống</span>
               </div>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-mono">Chuyển ➔</span>
             </NavLink>
@@ -125,14 +125,14 @@ export default function MerchantLayout() {
               {user?.fullName?.charAt(0).toUpperCase() || 'M'}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold text-slate-200 truncate">{user?.fullName || 'Merchant Partner'}</p>
+              <p className="text-xs font-bold text-slate-200 truncate">{user?.fullName || 'Đối tác Nhà hàng'}</p>
               <p className="text-[10px] text-slate-400 truncate">{user?.email || 'merchant@quickbite.internal'}</p>
             </div>
           </div>
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Đăng xuất</span>
@@ -140,10 +140,10 @@ export default function MerchantLayout() {
         </div>
       </aside>
 
-      {/* Main Layout Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Layout Area: Fixed Height Container with Scrollable Body */}
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 shrink-0 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -178,8 +178,8 @@ export default function MerchantLayout() {
           </div>
         </header>
 
-        {/* Content Body */}
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        {/* Content Body: Independent Scroll Area */}
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>

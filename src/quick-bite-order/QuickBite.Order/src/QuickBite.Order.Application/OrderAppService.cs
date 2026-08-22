@@ -673,26 +673,35 @@ public class OrderAppService :
     /// </summary>
     public async Task<RestaurantOrderStatisticsDto> GetStatisticsAsync(GetOrderStatisticsInput input)
     {
-        var now = DateTime.UtcNow;
-        var todayStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
-        var yesterdayStart = todayStart.AddDays(-1);
-        var sevenDaysAgoStart = todayStart.AddDays(-6);
+        var vnOffset = TimeSpan.FromHours(7);
+        var nowVn = DateTime.UtcNow.Add(vnOffset);
+        var todayVn = nowVn.Date;
+        var yesterdayVn = todayVn.AddDays(-1);
+        var sevenDaysAgoVn = todayVn.AddDays(-6);
+
+        // Helper to check if an order contributes to revenue (excludes Cancelled, Refunded, WaitingPayment)
+        static bool IsRevenueOrder(OrderStatus status) =>
+            status != OrderStatus.Cancelled &&
+            status != OrderStatus.Refunded &&
+            status != OrderStatus.WaitingPayment &&
+            status != OrderStatus.Draft;
 
         var orderQuery = await _orderRepository.GetQueryableAsync();
 
-        // Filter orders for the current restaurant within the 7-day window
+        // Filter orders for the current restaurant within the 7-day window (with UTC offset buffer)
+        var bufferUtcStart = sevenDaysAgoVn.AddDays(-1);
         var recentOrdersQuery = orderQuery
-            .Where(x => x.RestaurantId == input.RestaurantId && x.CreationTime >= sevenDaysAgoStart)
+            .Where(x => x.RestaurantId == input.RestaurantId && x.CreationTime >= bufferUtcStart && x.Status != OrderStatus.Draft)
             .OrderByDescending(x => x.CreationTime);
 
-        var orders7Days = await AsyncExecuter.ToListAsync(recentOrdersQuery);
+        var ordersList = await AsyncExecuter.ToListAsync(recentOrdersQuery);
 
         // 1. KPI Calculations (Today vs Yesterday)
-        var todayOrders = orders7Days.Where(x => x.CreationTime >= todayStart && x.Status != OrderStatus.Draft).ToList();
-        var yesterdayOrders = orders7Days.Where(x => x.CreationTime >= yesterdayStart && x.CreationTime < todayStart && x.Status != OrderStatus.Draft).ToList();
+        var todayOrders = ordersList.Where(x => x.CreationTime.Add(vnOffset).Date == todayVn).ToList();
+        var yesterdayOrders = ordersList.Where(x => x.CreationTime.Add(vnOffset).Date == yesterdayVn).ToList();
 
-        decimal revenueToday = todayOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
-        decimal revenueYesterday = yesterdayOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+        decimal revenueToday = todayOrders.Where(x => IsRevenueOrder(x.Status)).Sum(x => x.TotalAmount);
+        decimal revenueYesterday = yesterdayOrders.Where(x => IsRevenueOrder(x.Status)).Sum(x => x.TotalAmount);
 
         string revenueChange = "+0%";
         bool isRevenuePositive = true;
@@ -756,19 +765,18 @@ public class OrderAppService :
             TotalReviews = 45,
         };
 
-        // 2. 7-Day Revenue Data
+        // 2. 7-Day Revenue Data (Vietnam UTC+7 Date Matching)
         var revenueData = new List<RevenueDataPointDto>();
         var cultureVi = new System.Globalization.CultureInfo("vi-VN");
 
         for (int i = 0; i < 7; i++)
         {
-            var currentDay = sevenDaysAgoStart.AddDays(i);
-            var nextDay = currentDay.AddDays(1);
+            var currentDayVn = sevenDaysAgoVn.AddDays(i);
 
-            var dayOrders = orders7Days.Where(x => x.CreationTime >= currentDay && x.CreationTime < nextDay && x.Status != OrderStatus.Draft).ToList();
-            var dayRevenue = dayOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+            var dayOrders = ordersList.Where(x => x.CreationTime.Add(vnOffset).Date == currentDayVn).ToList();
+            var dayRevenue = dayOrders.Where(x => IsRevenueOrder(x.Status)).Sum(x => x.TotalAmount);
 
-            string dayName = currentDay.DayOfWeek switch
+            string dayName = currentDayVn.DayOfWeek switch
             {
                 DayOfWeek.Monday => "T2",
                 DayOfWeek.Tuesday => "T3",
@@ -777,12 +785,12 @@ public class OrderAppService :
                 DayOfWeek.Friday => "T6",
                 DayOfWeek.Saturday => "T7",
                 DayOfWeek.Sunday => "CN",
-                _ => currentDay.ToString("ddd", cultureVi)
+                _ => currentDayVn.ToString("ddd", cultureVi)
             };
 
             revenueData.Add(new RevenueDataPointDto
             {
-                Date = currentDay.ToString("dd/MM"),
+                Date = currentDayVn.ToString("dd/MM"),
                 DayName = dayName,
                 Revenue = dayRevenue,
                 OrdersCount = dayOrders.Count,
@@ -790,7 +798,7 @@ public class OrderAppService :
         }
 
         // 3. Cancel Reasons Breakdown
-        var cancelledOrders = orders7Days.Where(x => x.Status == OrderStatus.Cancelled).ToList();
+        var cancelledOrders = ordersList.Where(x => x.Status == OrderStatus.Cancelled).ToList();
         var cancelReasonData = new List<CancelReasonDataPointDto>();
 
         if (cancelledOrders.Any())
@@ -848,14 +856,14 @@ public class OrderAppService :
         }
 
         // 4. Recent 5 Orders
-        var recent5 = orders7Days
+        var recent5 = ordersList
             .OrderByDescending(x => x.CreationTime)
             .Take(5)
             .ToList();
 
         var recentOrderDtos = recent5.Select(x =>
         {
-            var timeDiff = now - x.CreationTime;
+            var timeDiff = DateTime.UtcNow - x.CreationTime;
             string timeStr = timeDiff.TotalMinutes < 60
                 ? $"{Math.Max(1, (int)timeDiff.TotalMinutes)} phút trước"
                 : timeDiff.TotalHours < 24
@@ -892,39 +900,49 @@ public class OrderAppService :
 
     /// <summary>
     /// Aggregates and returns system-wide real-time order statistics, 30-day revenue history, and status distribution for Admin.
+    /// <summary>
+    /// Aggregates system-wide analytics for Admin Dashboard (Overview, 30-Day Revenue, Order Status Breakdown).
+    /// Uses Vietnam Local Time (UTC+7) and filters out Cancelled/Refunded/Unpaid orders from Revenue.
     /// </summary>
     [Authorize(OrderPermissions.Orders.AdminView)]
     public async Task<AdminOrderStatisticsDto> GetAdminStatisticsAsync()
     {
-        var now = DateTime.UtcNow;
-        var todayStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
-        var thirtyDaysAgoStart = todayStart.AddDays(-29);
+        var vnOffset = TimeSpan.FromHours(7);
+        var nowVn = DateTime.UtcNow.Add(vnOffset);
+        var todayVn = nowVn.Date;
+        var thirtyDaysAgoVn = todayVn.AddDays(-29);
 
         var orderQuery = await _orderRepository.GetQueryableAsync();
 
         // Fetch non-draft orders for aggregated statistics
         var nonDraftOrders = await AsyncExecuter.ToListAsync(orderQuery.Where(x => x.Status != OrderStatus.Draft));
 
+        // Helper to check if an order contributes to revenue (excludes Cancelled, Refunded, WaitingPayment)
+        static bool IsRevenueOrder(OrderStatus status) =>
+            status != OrderStatus.Cancelled &&
+            status != OrderStatus.Refunded &&
+            status != OrderStatus.WaitingPayment &&
+            status != OrderStatus.Draft;
+
         // 1. KPI Overview Calculations
         int totalOrders = nonDraftOrders.Count;
-        int todayOrders = nonDraftOrders.Count(x => x.CreationTime >= todayStart);
-        decimal totalRevenue = nonDraftOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
-        decimal revenueToday = nonDraftOrders.Where(x => x.CreationTime >= todayStart && x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+        int todayOrders = nonDraftOrders.Count(x => x.CreationTime.Add(vnOffset).Date == todayVn);
+        decimal totalRevenue = nonDraftOrders.Where(x => IsRevenueOrder(x.Status)).Sum(x => x.TotalAmount);
+        decimal revenueToday = nonDraftOrders.Where(x => x.CreationTime.Add(vnOffset).Date == todayVn && IsRevenueOrder(x.Status)).Sum(x => x.TotalAmount);
         int activeRestaurantsCount = nonDraftOrders.Select(x => x.RestaurantId).Distinct().Count();
 
-        // 2. 30-Day Revenue Chart Data
+        // 2. 30-Day Revenue Chart Data (Vietnam UTC+7 Date Matching)
         var revenue30Days = new List<RevenueDataPointDto>();
         var cultureVi = new System.Globalization.CultureInfo("vi-VN");
 
         for (int i = 0; i < 30; i++)
         {
-            var currentDay = thirtyDaysAgoStart.AddDays(i);
-            var nextDay = currentDay.AddDays(1);
+            var currentDayVn = thirtyDaysAgoVn.AddDays(i);
 
-            var dayOrders = nonDraftOrders.Where(x => x.CreationTime >= currentDay && x.CreationTime < nextDay).ToList();
-            var dayRevenue = dayOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+            var dayOrders = nonDraftOrders.Where(x => x.CreationTime.Add(vnOffset).Date == currentDayVn).ToList();
+            var dayRevenue = dayOrders.Where(x => IsRevenueOrder(x.Status)).Sum(x => x.TotalAmount);
 
-            string dayName = currentDay.DayOfWeek switch
+            string dayName = currentDayVn.DayOfWeek switch
             {
                 DayOfWeek.Monday => "T2",
                 DayOfWeek.Tuesday => "T3",
@@ -933,12 +951,12 @@ public class OrderAppService :
                 DayOfWeek.Friday => "T6",
                 DayOfWeek.Saturday => "T7",
                 DayOfWeek.Sunday => "CN",
-                _ => currentDay.ToString("ddd", cultureVi)
+                _ => currentDayVn.ToString("ddd", cultureVi)
             };
 
             revenue30Days.Add(new RevenueDataPointDto
             {
-                Date = currentDay.ToString("dd/MM"),
+                Date = currentDayVn.ToString("dd/MM"),
                 DayName = dayName,
                 Revenue = dayRevenue,
                 OrdersCount = dayOrders.Count,

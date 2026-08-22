@@ -40,7 +40,7 @@ export default function AdminLayout() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex font-sans">
+    <div className="h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex font-sans">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
         <div
@@ -49,13 +49,13 @@ export default function AdminLayout() {
         />
       )}
 
-      {/* Sidebar Component */}
+      {/* Sidebar Component: Fixed Height, Isolated Scroll */}
       <aside
-        className={`fixed lg:static top-0 left-0 bottom-0 z-50 w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 ${
+        className={`fixed lg:static top-0 left-0 bottom-0 z-50 w-64 h-screen shrink-0 bg-slate-900 border-r border-slate-800 flex flex-col justify-between transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
-        <div className="p-4 space-y-6">
+        <div className="p-4 space-y-6 overflow-y-auto flex-1">
           {/* Header Brand */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -105,8 +105,8 @@ export default function AdminLayout() {
           </nav>
         </div>
 
-        {/* Sidebar Footer User Info */}
-        <div className="p-4 border-t border-slate-800 space-y-3">
+        {/* Sidebar Footer User Info (Always stays pinned at bottom of sidebar) */}
+        <div className="p-4 border-t border-slate-800 space-y-3 shrink-0 bg-slate-900">
           {/* Switch to Merchant Portal if user has Merchant role */}
           {(user?.roles?.includes('Merchant') || user?.role === 'Merchant') && (
             <NavLink
@@ -133,7 +133,7 @@ export default function AdminLayout() {
 
           <button
             onClick={handleLogout}
-            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all"
+            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 rounded-xl text-xs font-bold transition-all cursor-pointer"
           >
             <LogOut className="w-4 h-4" />
             <span>Đăng xuất</span>
@@ -141,10 +141,10 @@ export default function AdminLayout() {
         </div>
       </aside>
 
-      {/* Main Layout Area */}
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Main Layout Area: Fixed Height Container with Scrollable Body */}
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden">
         {/* Top Navbar */}
-        <header className="h-16 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-16 shrink-0 bg-slate-900/80 backdrop-blur-xl border-b border-slate-800 px-4 sm:px-6 flex items-center justify-between z-30">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsSidebarOpen(true)}
@@ -179,8 +179,8 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        {/* Content Body */}
-        <main className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        {/* Content Body: Independent Scroll Area */}
+        <main className="flex-1 p-4 sm:p-6 overflow-y-auto overflow-x-hidden">
           <Outlet />
         </main>
       </div>
