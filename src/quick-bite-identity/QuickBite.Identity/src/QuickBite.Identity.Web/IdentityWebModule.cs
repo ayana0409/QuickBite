@@ -117,10 +117,26 @@ public class IdentityWebModule : AbpModule
                 OpenIddictConstants.Scopes.Email,
                 OpenIddictConstants.Scopes.Phone,
                 OpenIddictConstants.Scopes.Roles,
+                OpenIddictConstants.Scopes.OfflineAccess,
                 "Identity",
                 "quickbite.api",
                 "permissions"
             );
+
+            // Configure Token Lifetimes from Environment / Configuration with fallback to defaults
+            var refreshTokenLifetimeDaysStr = configuration["OpenIddict:RefreshTokenLifetimeDays"] 
+                ?? configuration["OPENIDDICT_REFRESH_TOKEN_LIFETIME_DAYS"];
+            if (int.TryParse(refreshTokenLifetimeDaysStr, out var refreshDays) && refreshDays > 0)
+            {
+                serverBuilder.SetRefreshTokenLifetime(TimeSpan.FromDays(refreshDays));
+            }
+
+            var accessTokenLifetimeMinutesStr = configuration["OpenIddict:AccessTokenLifetimeMinutes"] 
+                ?? configuration["OPENIDDICT_ACCESS_TOKEN_LIFETIME_MINUTES"];
+            if (int.TryParse(accessTokenLifetimeMinutesStr, out var accessMinutes) && accessMinutes > 0)
+            {
+                serverBuilder.SetAccessTokenLifetime(TimeSpan.FromMinutes(accessMinutes));
+            }
 
             if (!hostingEnvironment.IsDevelopment())
             {

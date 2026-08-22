@@ -74,7 +74,8 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
             OpenIddictConstants.Permissions.Scopes.Phone,
             OpenIddictConstants.Permissions.Scopes.Profile,
             OpenIddictConstants.Permissions.Scopes.Roles,
-            "Identity"
+            "Identity",
+            "offline_access"
         };
 
         var configurationSection = _configuration.GetSection("OpenIddict:Applications");
@@ -98,9 +99,9 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                     OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.RefreshToken
                 },
                 scopes: commonScopes,
-                redirectUri: $"{webClientRootUrl}api/auth/callback/oidc,http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,https://localhost:44391/signin-oidc,{webClientRootUrl}signin-oidc",
+                redirectUri: $"{webClientRootUrl}api/auth/callback/oidc,http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,https://localhost:44391/signin-oidc,{webClientRootUrl}signin-oidc,https://quickbite-wnkc.onrender.com/api/auth/callback/oidc,https://quickbite-wnkc.onrender.com/signin-oidc,https://quickbitemanager.onrender.com/signin-oidc",
                 clientUri: webClientRootUrl,
-                postLogoutRedirectUri: $"{webClientRootUrl}signout-callback-oidc,http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc"
+                postLogoutRedirectUri: $"{webClientRootUrl}signout-callback-oidc,http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc,https://quickbite-wnkc.onrender.com/signout-callback-oidc,https://quickbitemanager.onrender.com/signout-callback-oidc"
             );
         }
 
@@ -116,9 +117,28 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.Password, OpenIddictConstants.GrantTypes.RefreshToken
             },
             scopes: commonScopes,
-            redirectUri: "http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,http://localhost:3002/signin-oidc,http://localhost:3000/signin-oidc",
-            clientUri: "http://localhost:3002",
-            postLogoutRedirectUri: "http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc"
+            redirectUri: "http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,http://localhost:3002/signin-oidc,http://localhost:3000/signin-oidc,https://quickbite-wnkc.onrender.com/api/auth/callback/oidc,https://quickbite-wnkc.onrender.com/signin-oidc",
+            clientUri: "https://quickbite-wnkc.onrender.com",
+            postLogoutRedirectUri: "http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc,https://quickbite-wnkc.onrender.com/signout-callback-oidc"
+        );
+
+        // Admin & Merchant Portal Client (QuickBite_Portal)
+        await CreateApplicationAsync(
+            name: "QuickBite_Portal",
+            type: OpenIddictConstants.ClientTypes.Public,
+            consentType: OpenIddictConstants.ConsentTypes.Implicit,
+            displayName: "QuickBite Admin & Merchant Portal",
+            secret: null,
+            grantTypes: new List<string>
+            {
+                OpenIddictConstants.GrantTypes.Password,
+                OpenIddictConstants.GrantTypes.RefreshToken,
+                OpenIddictConstants.GrantTypes.AuthorizationCode
+            },
+            scopes: commonScopes,
+            redirectUri: "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://quickbitemanager.onrender.com,https://quickbitemanager.onrender.com/signin-oidc",
+            clientUri: "https://quickbitemanager.onrender.com",
+            postLogoutRedirectUri: "http://localhost:5173/login,http://localhost:3000/login,https://quickbitemanager.onrender.com/login,https://quickbitemanager.onrender.com/signout-callback-oidc"
         );
 
 

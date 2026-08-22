@@ -1214,7 +1214,62 @@ Base path: `/v1/payments`
 
 ## 5. Identity Service (`quick-bite-identity` — .NET / ABP Framework)
 
-> ABP sử dụng OpenIddict làm Authorization Server. Các endpoint CRUD dưới đây được generate tự động từ các Application Service.
+> ABP sử dụng OpenIddict làm Authorization Server (SSO). Hỗ trợ OAuth 2.0 Token Endpoint (`/connect/token`) với Password Grant, Refresh Token Grant, và Authorization Code Grant.
+
+---
+
+### 🔑 OpenIddict OAuth 2.0 Token API — `/connect/token`
+
+#### `POST /connect/token` (Password Grant — Login)
+*Cấp phát Access Token & Refresh Token khi người dùng đăng nhập bằng tài khoản và mật khẩu.*
+
+**Content-Type:** `application/x-www-form-urlencoded`
+
+**Request Body:**
+```
+grant_type=password
+client_id=QuickBite_Portal
+scope=openid profile email roles offline_access Identity
+username=admin@quickbite.vn
+password=P@ssword123
+```
+
+**Response** `200`:
+```json
+{
+  "access_token": "eyJhbGciOi...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "f47ac10b-58cc-4372-a567-0e02b2c3d479",
+  "id_token": "eyJhbGciOi..."
+}
+```
+
+---
+
+#### `POST /connect/token` (Refresh Token Grant — Silent Refresh)
+*Tự động lấy Access Token mới khi Access Token cũ hết hạn (sử dụng Refresh Token đã cấp).*
+
+**Content-Type:** `application/x-www-form-urlencoded`
+
+**Request Body:**
+```
+grant_type=refresh_token
+client_id=QuickBite_Portal
+refresh_token=f47ac10b-58cc-4372-a567-0e02b2c3d479
+scope=openid profile email roles offline_access Identity
+```
+
+**Response** `200`:
+```json
+{
+  "access_token": "eyJhbGciOi...",
+  "token_type": "Bearer",
+  "expires_in": 3600,
+  "refresh_token": "a1b2c3d4-...", // Optional new sliding refresh token
+  "id_token": "eyJhbGciOi..."
+}
+```
 
 ---
 
