@@ -891,6 +891,124 @@ public class OrderAppService :
     }
 
     /// <summary>
+    /// Aggregates and returns system-wide real-time order statistics, 30-day revenue history, and status distribution for Admin.
+    /// </summary>
+    [Authorize(OrderPermissions.Orders.AdminView)]
+    public async Task<AdminOrderStatisticsDto> GetAdminStatisticsAsync()
+    {
+        var now = DateTime.UtcNow;
+        var todayStart = new DateTime(now.Year, now.Month, now.Day, 0, 0, 0, DateTimeKind.Utc);
+        var thirtyDaysAgoStart = todayStart.AddDays(-29);
+
+        var orderQuery = await _orderRepository.GetQueryableAsync();
+
+        // Fetch non-draft orders for aggregated statistics
+        var nonDraftOrders = await AsyncExecuter.ToListAsync(orderQuery.Where(x => x.Status != OrderStatus.Draft));
+
+        // 1. KPI Overview Calculations
+        int totalOrders = nonDraftOrders.Count;
+        int todayOrders = nonDraftOrders.Count(x => x.CreationTime >= todayStart);
+        decimal totalRevenue = nonDraftOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+        decimal revenueToday = nonDraftOrders.Where(x => x.CreationTime >= todayStart && x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+        int activeRestaurantsCount = nonDraftOrders.Select(x => x.RestaurantId).Distinct().Count();
+
+        // 2. 30-Day Revenue Chart Data
+        var revenue30Days = new List<RevenueDataPointDto>();
+        var cultureVi = new System.Globalization.CultureInfo("vi-VN");
+
+        for (int i = 0; i < 30; i++)
+        {
+            var currentDay = thirtyDaysAgoStart.AddDays(i);
+            var nextDay = currentDay.AddDays(1);
+
+            var dayOrders = nonDraftOrders.Where(x => x.CreationTime >= currentDay && x.CreationTime < nextDay).ToList();
+            var dayRevenue = dayOrders.Where(x => x.Status != OrderStatus.Cancelled).Sum(x => x.TotalAmount);
+
+            string dayName = currentDay.DayOfWeek switch
+            {
+                DayOfWeek.Monday => "T2",
+                DayOfWeek.Tuesday => "T3",
+                DayOfWeek.Wednesday => "T4",
+                DayOfWeek.Thursday => "T5",
+                DayOfWeek.Friday => "T6",
+                DayOfWeek.Saturday => "T7",
+                DayOfWeek.Sunday => "CN",
+                _ => currentDay.ToString("ddd", cultureVi)
+            };
+
+            revenue30Days.Add(new RevenueDataPointDto
+            {
+                Date = currentDay.ToString("dd/MM"),
+                DayName = dayName,
+                Revenue = dayRevenue,
+                OrdersCount = dayOrders.Count,
+            });
+        }
+
+        // 3. Order Status Breakdown
+        var statusColorMap = new Dictionary<OrderStatus, (string Name, string Color)>
+        {
+            { OrderStatus.Completed, ("Đã giao hàng", "#10b981") },
+            { OrderStatus.Pending, ("Chờ xác nhận", "#f59e0b") },
+            { OrderStatus.Confirmed, ("Đã xác nhận", "#3b82f6") },
+            { OrderStatus.Preparing, ("Đang chuẩn bị", "#8b5cf6") },
+            { OrderStatus.Delivering, ("Đang giao hàng", "#06b6d4") },
+            { OrderStatus.Cancelled, ("Đã hủy đơn", "#ef4444") },
+            { OrderStatus.Refunded, ("Đã hoàn tiền", "#a855f7") },
+            { OrderStatus.WaitingPayment, ("Chờ thanh toán", "#ec4899") },
+            { OrderStatus.WaitingInventory, ("Chờ giữ kho", "#6366f1") },
+            { OrderStatus.WaitingStock, ("Chờ tồn kho", "#84cc16") },
+        };
+
+        var statusGroups = nonDraftOrders.GroupBy(x => x.Status).ToList();
+        var orderStatusBreakdown = new List<OrderStatusCountDto>();
+
+        foreach (var group in statusGroups)
+        {
+            var status = group.Key;
+            int count = group.Count();
+            double percentage = totalOrders > 0 ? Math.Round(((double)count / totalOrders) * 100, 1) : 0;
+
+            string name = status.ToString();
+            string color = "#64748b";
+
+            if (statusColorMap.TryGetValue(status, out var info))
+            {
+                name = info.Name;
+                color = info.Color;
+            }
+
+            orderStatusBreakdown.Add(new OrderStatusCountDto
+            {
+                Status = status.ToString(),
+                Name = name,
+                Count = count,
+                Percentage = percentage,
+                Color = color,
+            });
+        }
+
+        // Ensure baseline categories exist if dataset is empty
+        if (!orderStatusBreakdown.Any())
+        {
+            orderStatusBreakdown.Add(new OrderStatusCountDto { Status = "Completed", Name = "Đã giao hàng", Count = 0, Percentage = 0, Color = "#10b981" });
+            orderStatusBreakdown.Add(new OrderStatusCountDto { Status = "Pending", Name = "Chờ xác nhận", Count = 0, Percentage = 0, Color = "#f59e0b" });
+            orderStatusBreakdown.Add(new OrderStatusCountDto { Status = "Cancelled", Name = "Đã hủy đơn", Count = 0, Percentage = 0, Color = "#ef4444" });
+        }
+
+        return new AdminOrderStatisticsDto
+        {
+            TotalOrders = totalOrders,
+            TodayOrders = todayOrders,
+            TotalRevenue = totalRevenue,
+            RevenueToday = revenueToday,
+            ActiveRestaurantsCount = activeRestaurantsCount,
+            Revenue30Days = revenue30Days,
+            OrderStatusBreakdown = orderStatusBreakdown,
+        };
+    }
+
+    /// <summary>
     /// Helper method to fetch FoodItem replicas.
     /// </summary>
     private async Task<Dictionary<Guid, FoodItem>> GetFoodInfosAsync(IEnumerable<Guid> foodItemIds)

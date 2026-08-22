@@ -320,20 +320,23 @@ src/
  
 ### 5.7. API Gateway / BFF (NestJS)
  
-**Trách nhiệm:** Điểm vào duy nhất, xác thực token, rate-limit, aggregation, forward request.
+**Trách nhiệm:** Điểm vào duy nhất, xác thực token JWT (JWKS), phân quyền Role (Admin/Merchant/Customer), rate-limit, aggregation (BFF), Redis distributed caching, health monitoring thời gian thực và forward proxy request.
  
 **Kiến trúc:**
 ```
 src/
-├── auth/            # Verify JWT từ Identity (JWKS)
-├── proxy/           # Route tới từng service
-├── aggregation/     # BFF: gộp dữ liệu nhiều service cho 1 màn hình
-├── common/          # Rate limiter, logging, correlationId middleware
-└── graphql/         # (tuỳ chọn) schema stitching
+├── auth/            # Verify JWT từ Identity (JWKS), Passport Guards, Role Check
+├── proxy/           # Reverse Proxy & Cache Invalidation tới từng service
+├── admin/           # Admin Analytics BFF (/api/admin/stats/overview, /api/admin/stats/charts)
+├── merchant/        # Merchant Dashboard BFF (/api/merchant/dashboard, orders)
+├── health/          # Health Check & Diagnostics thời gian thực (/api/health)
+├── cache/           # Redis Distributed Cache Service & Invalidation
+├── config/          # Dynamic Config Service
+└── common/          # Rate limiter (@nestjs/throttler), logging, response wrapper
 ```
  
-**Tech:** NestJS, `@nestjs/throttler` (rate-limit), http-proxy, JWKS validation.
-**Lưu ý:** Gateway **không** chứa business logic; chỉ orchestration ở tầng edge.
+**Tech:** NestJS, `@nestjs/throttler` (rate-limit), Axios HttpService, JWKS validation, Redis Cache, Health Check Monitor.
+**Lưu ý:** Gateway đóng vai trò Edge BFF: gộp dữ liệu nhiều microservice thành các response thống kê tối ưu cho Frontend Admin & Merchant Portal.
  
 ---
  

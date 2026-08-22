@@ -33,4 +33,6 @@ public interface IOrderAppService : IApplicationService
     Task RefundAsync(Guid id, RefundOrderDto input = null);
 
     Task<RestaurantOrderStatisticsDto> GetStatisticsAsync(GetOrderStatisticsInput input);
+
+    Task<AdminOrderStatisticsDto> GetAdminStatisticsAsync();
 }

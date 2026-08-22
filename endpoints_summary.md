@@ -1563,3 +1563,190 @@ Base path: `/v1/payments`
 }
 ```
 
+---
+
+#### `GET /api/app/order/admin-statistics`
+*Tính toán và tổng hợp dữ liệu thống kê toàn hệ thống cho Admin: tổng số đơn, đơn hôm nay, tổng doanh thu, doanh thu hôm nay, chuỗi doanh thu 30 ngày và phân bố trạng thái đơn hàng.*
+
+**Auth:** JWT Bearer Token (Admin / `Order.Orders.AdminView`)
+
+**Response** `200`: `AdminOrderStatisticsDto`
+```json
+{
+  "totalOrders": 1250,
+  "todayOrders": 386,
+  "totalRevenue": 142800000.0,
+  "revenueToday": 18500000.0,
+  "activeRestaurantsCount": 48,
+  "revenue30Days": [
+    {
+      "date": "01/08",
+      "dayName": "T2",
+      "revenue": 5200000.0,
+      "ordersCount": 42
+    }
+  ],
+  "orderStatusBreakdown": [
+    {
+      "status": "Delivered",
+      "name": "Đã giao hàng",
+      "count": 920,
+      "percentage": 73.6,
+      "color": "#10b981"
+    },
+    {
+      "status": "Pending",
+      "name": "Chờ xác nhận",
+      "count": 130,
+      "percentage": 10.4,
+      "color": "#f59e0b"
+    },
+    {
+      "status": "Cancelled",
+      "name": "Đã hủy đơn",
+      "count": 80,
+      "percentage": 6.4,
+      "color": "#ef4444"
+    }
+  ]
+}
+```
+
+---
+
+## 5. API Gateway (`quick-bite-api-gateway` — NestJS, port 3001)
+
+### 📁 Health & Diagnostics API — `/api/health`
+
+#### `GET /api/health` (hoặc `GET /health`)
+*Kiểm tra tình trạng sức khỏe kết nối thời gian thực của API Gateway, Redis, MongoDB và tất cả microservices (Identity, Catalog, Order, Inventory, Payment).*
+
+**Response** `200` (hoặc `503` nếu có service Unhealthy):
+```json
+{
+  "status": "Healthy", // "Healthy" | "Degraded" | "Unhealthy"
+  "total_duration_ms": 342,
+  "timestamp": "2026-08-22T06:50:00.000Z",
+  "entries": {
+    "system_resources": {
+      "status": "Healthy",
+      "description": "API Gateway memory operational.",
+      "duration_ms": 12,
+      "data": { "working_set_mb": 64, "heap_total_mb": 42, "heap_used_mb": 28 }
+    },
+    "redis": { "status": "Healthy", "description": "Redis connection healthy.", "duration_ms": 5 },
+    "mongodb": { "status": "Healthy", "description": "MongoDB connection healthy.", "duration_ms": 8 },
+    "identity_service": { "status": "Healthy", "description": "identity_service is healthy", "duration_ms": 45 },
+    "order_service": { "status": "Healthy", "description": "order_service is healthy", "duration_ms": 52 },
+    "catalog_service": { "status": "Healthy", "description": "catalog_service is healthy", "duration_ms": 38 },
+    "inventory_service": { "status": "Healthy", "description": "inventory_service is healthy", "duration_ms": 40 },
+    "payment_service": { "status": "Healthy", "description": "payment_service is healthy", "duration_ms": 44 }
+  }
+}
+```
+
+---
+
+### 📁 Admin Analytics API — `/api/admin/stats`
+
+#### `GET /api/admin/stats/overview`
+*Tổng hợp các chỉ số KPI vận hành toàn hệ thống cho trang Admin Dashboard (Tổng số nhà hàng Active, Đơn hàng hôm nay, Tổng doanh thu hệ thống).*
+*Dữ liệu được lưu Redis Cache tại Gateway (TTL: 24h) nhằm giảm tải tối đa cho downstream services. Truyền query param `?refresh=true` nếu muốn ép tính toán lại.*
+
+**Auth:** JWT Bearer Token (Yêu cầu Role Admin)
+
+**Query Params:** `?refresh=true` (Tùy chọn - Ép tính toán và cập nhật cache mới)
+
+**Response** `200`:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Admin overview statistics retrieved successfully",
+  "data": {
+    "totalActiveRestaurants": 48,
+    "todayOrders": 386,
+    "totalSystemRevenue": 142800000,
+    "cachedAt": "2026-08-22T07:05:00.000Z"
+  },
+  "cached": true
+}
+```
+
+---
+
+#### `GET /api/admin/stats/charts`
+*Tổng hợp dữ liệu chuỗi thời gian doanh thu 30 ngày và tỷ lệ phân bố các trạng thái đơn hàng toàn hệ thống.*
+*Dữ liệu được lưu Redis Cache tại Gateway (TTL: 24h). Truyền query param `?refresh=true` nếu muốn ép tính toán lại.*
+
+**Auth:** JWT Bearer Token (Yêu cầu Role Admin)
+
+**Query Params:** `?refresh=true` (Tùy chọn - Ép tính toán và cập nhật cache mới)
+
+**Response** `200`:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Admin charts statistics retrieved successfully",
+  "data": {
+    "revenueChart": [
+      {
+        "date": "01/08",
+        "dayName": "T2",
+        "revenue": 5200000,
+        "ordersCount": 42
+      }
+    ],
+    "orderStatusChart": [
+      {
+        "status": "Delivered",
+        "name": "Đã giao hàng",
+        "count": 920,
+        "percentage": 73.6,
+        "color": "#10b981"
+      },
+      {
+        "status": "Pending",
+        "name": "Chờ xác nhận",
+        "count": 130,
+        "percentage": 10.4,
+        "color": "#f59e0b"
+      }
+    ],
+    "cachedAt": "2026-08-22T07:05:00.000Z"
+  },
+  "cached": true
+}
+```
+
+---
+
+#### `POST /api/admin/stats/reset-cache` (hoặc `POST /api/admin/stats/refresh`)
+*Chủ động xóa toàn bộ Redis Cache của Admin Analytics (`admin:stats:*`) trên API Gateway và thực thi tính toán lại dữ liệu mới nhất từ Catalog Service & Order Service.*
+
+**Auth:** JWT Bearer Token (Yêu cầu Role Admin)
+
+**Response** `200`:
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "message": "Admin analytics cache has been invalidated and refreshed with fresh data",
+  "data": {
+    "overview": {
+      "totalActiveRestaurants": 48,
+      "todayOrders": 386,
+      "totalSystemRevenue": 142800000,
+      "cachedAt": "2026-08-22T07:05:00.000Z"
+    },
+    "charts": {
+      "revenueChart": [ ... ],
+      "orderStatusChart": [ ... ],
+      "cachedAt": "2026-08-22T07:05:00.000Z"
+    }
+  }
+}
+```
+
+

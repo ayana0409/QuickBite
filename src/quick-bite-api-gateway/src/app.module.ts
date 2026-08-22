@@ -7,6 +7,7 @@ import { DynamicConfigService } from './config/dynamic-config.service';
 import { ProxyModule } from './proxy/proxy.module';
 import { CacheModule } from './cache/cache.module';
 import { MerchantModule } from './merchant/merchant.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { MerchantModule } from './merchant/merchant.module';
     HealthModule,
     CacheModule,
     MerchantModule,
+    AdminModule,
     ProxyModule,
   ],
   providers: [
