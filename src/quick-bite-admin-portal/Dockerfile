@@ -8,15 +8,15 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Accept build arguments for Vite environment variables
-ARG VITE_API_GATEWAY_URL=https://quick-bite-gw.onrender.com
-ARG VITE_IDENTITY_SERVICE_URL=https://quick-bite-identity.onrender.com
-ARG VITE_OIDC_CLIENT_ID=Identity_Swagger
-ARG VITE_OIDC_SCOPE="openid profile roles Identity"
-ARG VITE_IDENTITY_URL=https://quick-bite-identity.onrender.com
-ARG VITE_ORDER_URL=https://quick-bite-order.onrender.com/api/app
-ARG VITE_CATALOG_URL=https://quick-bite-catalog.onrender.com
-ARG VITE_INVENTORY_URL=https://quick-bite-inventory.onrender.com/api/v1
-ARG VITE_PAYMENT_URL=https://quick-bite-payment.onrender.com/v1
+ARG VITE_API_GATEWAY_URL
+ARG VITE_IDENTITY_SERVICE_URL
+ARG VITE_OIDC_CLIENT_ID
+ARG VITE_OIDC_SCOPE
+ARG VITE_IDENTITY_URL
+ARG VITE_ORDER_URL
+ARG VITE_CATALOG_URL
+ARG VITE_INVENTORY_URL
+ARG VITE_PAYMENT_URL
 
 # Export arguments as environment variables for the Vite build step
 ENV VITE_API_GATEWAY_URL=$VITE_API_GATEWAY_URL
