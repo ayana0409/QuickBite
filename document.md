@@ -44,157 +44,165 @@
 ### 1.1. Bối cảnh nghiệp vụ 
 QuickBite cho phép khách hàng duyệt nhà hàng, đặt món, thanh toán online và theo dõi đơn giao. Nghiệp vụ chia thành các **bounded context** rõ ràng theo DDD: 
 
-| Bounded Context | Trách nhiệm | Service | 
-|---|---|---| 
-| **Identity & Access** | Đăng ký, đăng nhập, phân quyền, multi-tenant | Identity | 
-| **Ordering** | Vòng đời đơn hàng, orchestration Saga | Order | 
-| **Catalog** | Nhà hàng, thực đơn, món ăn | Catalog | 
-| **Payment** | Uỷ quyền, thu tiền, hoàn tiền | Payment | 
-| **Inventory** | Tồn kho nguyên liệu, giữ chỗ (reservation) | Inventory | 
-| **Notification** | Email/SMS/Push/Realtime | Notification | 
+| Bounded Context | Trách nhiệm | Service | Database |
+|---|---|---|---|
+| **Identity & Access** | Đăng ký, đăng nhập, phân quyền, multi-tenant | Identity (.NET 10 / ABP) | **PostgreSQL** |
+| **Ordering** | Vòng đời đơn hàng, orchestration Saga | Order (.NET 10 / ABP) | **MySQL** |
+| **Catalog** | Nhà hàng, thực đơn, món ăn, xét duyệt, reviews | Catalog (NestJS 11) | **PostgreSQL** |
+| **Payment** | Uỷ quyền, thu tiền, hoàn tiền, Mock Gateway | Payment (Spring Boot 3.3) | **PostgreSQL** |
+| **Inventory** | Tồn kho nguyên liệu, giữ chỗ (reservation) | Inventory (Spring Boot 3.3) | **PostgreSQL** |
+| **Edge Gateway / BFF** | Rate limit, JWKS auth, Aggregation, Dynamic config | API Gateway (NestJS 11) | **Redis + MongoDB** |
 
-### 1.2. Quyết định kiến trúc chủ đạo (ADR tóm tắt) 
-- **DB-per-service:** mỗi service sở hữu database riêng, không chia sẻ schema. 
-- **Async-first:** giao tiếp giữa service ưu tiên event qua Kafka; sync (REST/gRPC) chỉ dùng cho query cần realtime. 
-- **Choreography + Orchestration lai:** luồng đơn hàng dùng **orchestration Saga**; các phản ứng phụ (notification) dùng **choreography**.
-- **Contract-first event:** mọi event định nghĩa schema (Avro/JSON Schema) và quản lý version qua Schema Registry. 
-
---- 
-
-## 2. Nguyên tắc phân bổ ngôn ngữ 
-
-> **Triết lý:** Mỗi stack được gán vào domain phù hợp với thế mạnh của nó, không gán ngẫu nhiên. Đây là điểm dễ "ăn điểm" khi trình bày/phỏng vấn. 
-
-| Stack | Điểm mạnh | Domain được giao | 
-|---|---|---| 
-| **.NET (ABP)** |Permission, DDD building blocks, OpenIddict | **Identity + Order** (lõi nghiệp vụ) | 
-| **Spring Boot** | Hệ sinh thái JVM tài chính, transaction, JPA locking | **Payment + Inventory** (tiền & kho) | 
-| **NestJS** | Realtime (WS/SSE), I/O-bound, TypeScript nhanh | **Catalog + Notification + Gateway** | 
-
-**Ghi nhớ nguyên tắc:** .NET giữ *domain lõi*, Spring giữ *tiền bạc & tồn kho*, NestJS giữ *I/O nặng & realtime*. 
-
---- 
-
-## 3. Kiến trúc tổng thể 
-
-``` 
-                        ┌─────────────────────┐ 
-       Web / Mobile ───►│   API Gateway (BFF) │  NestJS 
-                        │  auth · rate-limit  │ 
-                        └──────────┬──────────┘ 
-            ┌───────────────┬──────┴───────┬───────────────┐ 
-            ▼               ▼              ▼               ▼ 
-    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ 
-    │  Identity    │ │   Order      │ │  Catalog     │ │ Notification │ 
-    │  .NET / ABP  │ │  .NET / ABP  │ │  NestJS      │ │  NestJS (WS) │ 
-    └──────────────┘ └──────┬───────┘ └──────────────┘ └──────────────┘ 
-                            │ (Saga orchestrator) 
-             ┌──────────────┴──────────────┐ 
-             ▼                             ▼ 
-    ┌──────────────┐              ┌──────────────┐ 
-    │  Payment     │              │  Inventory   │
-    │  Spring Boot │              │  Spring Boot │ 
-    └──────┬───────┘              └──────┬───────┘ 
-           │                             │ 
-           └──────────► Apache Kafka ◄────┘ 
-                    (Event Bus + Schema Registry) 
-
-  Observability: OpenTelemetry → Jaeger · Prometheus · Grafana 
-  Infra: Docker Compose (dev) / Kubernetes (prod) 
-``` 
-
---- 
-
-## 4. Danh sách Kafka Topics & Event Schema 
-
-### 4.1. Topics 
-| Topic | Partition key | Producer | Consumer | 
-|---|---|---|---| 
-| `order-events` | orderId | Order | Payment, Inventory, Notification | 
-| `payment-events` | orderId | Payment | Order (saga) | 
-| `inventory-events` | orderId | Inventory | Order (saga) | 
-| `delivery-events` | orderId | Delivery/Order | Notification | 
-| `notification-events` | userId | nhiều service | Notification | 
-
-### 4.2. Ví dụ Event Schema (JSON Schema) 
-
-```json 
-{ 
- "eventId": "uuid", 
- "eventType": "order.created", 
- "version": 1, 
- "occurredAt": "2026-07-22T16:00:00Z", 
- "tenantId": "tenant-abc", 
- "correlationId": "uuid", 
- "payload": { 
-   "orderId": "ORD-1001", 
-   "customerId": "CUST-55", 
-   "items": [{ "sku": "PIZZA-01", "qty": 2, "price": 120000 }], 
-   "totalAmount": 240000, 
-   "currency": "VND" 
- } 
-} 
-``` 
-
-> **Quy ước bắt buộc:** mọi event có `eventId` (idempotency), `correlationId` (tracing), `version` (schema evolution), `tenantId` (multi-tenant). 
-
---- 
-
-## 5. Chi tiết từng Service 
-
-### 5.1. Identity Service (.NET/ABP) 
-
-**Trách nhiệm:** Quản lý user, tenant, role/permission, phát hành token OAuth2/OIDC (OpenIddict). 
-
-**Kiến trúc nội bộ:** ABP Layered (DDD) 
-``` 
-src/ 
-├── QuickBite.Identity.Domain/          # Entities: User, Tenant, Role 
-│   ├── Users/ 
-│   └── Tenants/ 
-├── QuickBite.Identity.Domain.Shared/   # Consts, Enums, LocalizationKeys 
-├── QuickBite.Identity.Application/      # AppServices, DTOs 
-├── QuickBite.Identity.Application.Contracts/ 
-├── QuickBite.Identity.EntityFrameworkCore/  # DbContext, Migrations 
-├── QuickBite.Identity.HttpApi/          # Controllers 
-└── QuickBite.Identity.HttpApi.Host/     # Startup, OpenIddict config 
-``` 
-
-**Tech:** ABP Framework, OpenIddict, EF Core, SQL Server, Redis (cache token/permission). 
-**Event phát ra:** `user.registered`, `tenant.created`. 
+### 1.2. Quyết định kiến trúc chủ đạo (ADR tóm tắt)
+- **DB-per-service:** mỗi service sở hữu database riêng, không chia sẻ schema (Order dùng MySQL; Identity, Payment, Inventory, Catalog dùng PostgreSQL).
+- **Async-first:** giao tiếp giữa service ưu tiên event qua Kafka; sync (REST) chỉ dùng cho query cần realtime hoặc Edge Gateway proxy.
+- **Orchestration Saga:** luồng đơn hàng dùng **MassTransit State Machine** trên Order Service; các phản ứng bù trừ tự động (Compensation) khi có lỗi.
+- **Contract-first event:** mọi event định nghĩa schema rõ ràng với `eventId`, `correlationId`, `tenantId`, `version`.
 
 ---
-### 5.2. Order Service (.NET/ABP) 
 
-**Trách nhiệm:** Lõi nghiệp vụ đặt hàng; đóng vai **Saga Orchestrator**. 
+## 2. Nguyên tắc phân bổ ngôn ngữ
 
-**Domain model (DDD):** 
-- Aggregate Root: `Order` 
-- Entities: `OrderItem` 
-- Value Objects: `Money`, `Address`, `OrderStatus` 
-- Domain Events: `OrderCreated`, `OrderConfirmed`, `OrderCancelled` 
+> **Triết lý:** Mỗi stack được gán vào domain phù hợp với thế mạnh của nó, không gán ngẫu nhiên. Đây là điểm dễ "ăn điểm" khi trình bày/phỏng vấn.
 
-**Kiến trúc nội bộ:** 
-``` 
-src/ 
-├── QuickBite.Order.Domain/ 
-│   ├── Orders/ 
-│   │   ├── Order.cs               # Aggregate Root 
-│   │   ├── OrderItem.cs 
-│   │   └── OrderManager.cs        # Domain Service 
-│   └── Sagas/ 
-│       └── OrderSagaStateMachine.cs  # MassTransit state machine 
-├── QuickBite.Order.Application/ 
-├── QuickBite.Order.EntityFrameworkCore/ 
-│   └── Outbox/                    # Bảng OutboxMessage 
-├── QuickBite.Order.HttpApi.Host/ 
-└── QuickBite.Order.Kafka/         # Producers/Consumers 
-``` 
+| Stack | Điểm mạnh | Domain được giao | Database |
+|---|---|---|---|
+| **.NET 10 (ABP 10)** | Permission, DDD building blocks, OpenIddict | **Identity Service** (IAM, Security) | **PostgreSQL** |
+| **.NET 10 (ABP 10)** | MassTransit Saga State Machine, Outbox worker | **Order Service** (Lõi điều phối đơn hàng) | **MySQL** |
+| **Spring Boot 3.3** | Hệ sinh thái JVM tài chính, Hexagonal Architecture | **Payment Service** (Thanh toán & Mock Sandbox) | **PostgreSQL** |
+| **Spring Boot 3.3** | High-throughput inventory hold, Outbox/Inbox | **Inventory Service** (Kho & Giữ chỗ tồn kho) | **PostgreSQL** |
+| **NestJS 11** | Non-blocking I/O, dynamic JSON handling | **Catalog Service** (Nhà hàng, Món, Review, Request) | **PostgreSQL** |
+| **NestJS 11** | Edge routing, Rate limit, 3-tier dynamic config | **API Gateway / BFF** (Edge security & Aggregation) | **Redis + MongoDB** |
 
-**Tech:** ABP, MassTransit (Saga State Machine) + Kafka, EF Core, PostgreSQL. 
-**Pattern áp dụng:** Saga (orchestration), Outbox, Inbox. 
-**Event phát ra:** `order.created`, `order.confirmed`, `order.cancelled`. 
-**Event tiêu thụ:** `payment.authorized/failed`, `stock.reserved/rejected`. 
+**Ghi nhớ nguyên tắc:** .NET giữ *domain lõi & Saga*, Spring giữ *tiền bạc & tồn kho*, NestJS giữ *I/O nặng, dynamic config & API Gateway*.
+
+---
+
+## 3. Kiến trúc tổng thể
+
+```
+                        ┌───────────────────────────────┐
+       Web / Mobile ───►│       API Gateway (BFF)       │  NestJS 11
+                        │ auth(JWKS) · rate-limit · BFF │  Redis + MongoDB Config
+                        └───────────────┬───────────────┘
+            ┌───────────────────┬───────┴───────┬───────────────────┐
+            ▼                   ▼               ▼                   ▼
+    ┌──────────────┐    ┌──────────────┐ ┌──────────────┐    ┌──────────────┐
+    │   Identity   │    │    Order     │ │   Catalog    │    │ Payment/Inv  │
+    │  .NET 10/ABP │    │  .NET 10/ABP │ │  NestJS 11   │    │ Spring Boot  │
+    │ (PostgreSQL) │    │   (MySQL)    │ │ (PostgreSQL) │    │ (PostgreSQL) │
+    └──────────────┘    └───────┬──────┘ └──────────────┘    └──────────────┘
+                                │ (Saga orchestrator)
+                 ┌──────────────┴──────────────┐
+                 ▼                             ▼
+        ┌──────────────┐              ┌──────────────┐
+        │   Payment    │              │  Inventory   │
+        │ Spring Boot  │              │ Spring Boot  │
+        │ (PostgreSQL) │              │ (PostgreSQL) │
+        └──────┬───────┘              └──────┬───────┘
+               │                             │
+               └──────────► Apache Kafka ◄───┘
+                    (order-events · fulfillment-events · catalog-events)
+
+  Observability: OpenTelemetry → Serilog / Winston / Logback
+  Data per service: Order (MySQL), Identity/Payment/Inventory/Catalog (PostgreSQL), Gateway (Redis + Mongo)
+```
+
+---
+
+## 4. Danh sách Kafka Topics & Event Schema
+
+### 4.1. Topics
+| Topic | Partition key | Producer | Consumer |
+|---|---|---|---|
+| `order-events` | `orderId` | Order | Payment, Inventory, Notification |
+| `fulfillment-events` | `orderId` | Payment, Inventory | Order (saga) |
+| `catalog-events` | `restaurantId` | Catalog | Order, Customer Web |
+| `notification-events` | `userId` | Nhiều service | Notification / Consumer |
+
+### 4.2. Ví dụ Event Schema (JSON Schema)
+
+```json
+{
+  "eventId": "uuid",
+  "eventType": "order.created",
+  "version": 1,
+  "occurredAt": "2026-08-22T16:00:00Z",
+  "tenantId": "tenant-default",
+  "correlationId": "uuid",
+  "payload": {
+    "orderId": "ORD-1001",
+    "customerId": "CUST-55",
+    "restaurantId": "REST-001",
+    "items": [{ "sku": "BURGER-01", "quantity": 2, "unitPrice": 120000 }],
+    "totalAmount": 240000,
+    "currency": "VND"
+  }
+}
+```
+
+> **Quy ước bắt buộc:** mọi event có `eventId` (idempotency), `correlationId` (tracing), `version` (schema evolution), `tenantId` (multi-tenant).
+
+---
+
+## 5. Chi tiết từng Service
+
+### 5.1. Identity Service (.NET 10 / ABP Framework)
+
+**Trách nhiệm:** Quản lý user, tenant, role/permission, phát hành token OAuth2/OIDC (OpenIddict 7.2), endpoint JWKS cho Gateway xác thực token.
+
+**Kiến trúc nội bộ:** ABP Layered (DDD)
+```
+src/
+├── QuickBite.Identity.Domain/          # Entities: User, Tenant, Role
+├── QuickBite.Identity.Domain.Shared/   # Consts, Enums, LocalizationKeys
+├── QuickBite.Identity.Application/      # AppServices, DTOs
+├── QuickBite.Identity.Application.Contracts/
+├── QuickBite.Identity.EntityFrameworkCore/  # DbContext (PostgreSQL)
+├── QuickBite.Identity.HttpApi/          # Controllers
+└── QuickBite.Identity.HttpApi.Host/     # Startup, OpenIddict config, JWKS
+```
+
+**Tech:** ABP Framework 10.0.0, .NET 10, OpenIddict 7.2, EF Core PostgreSQL (`Volo.Abp.EntityFrameworkCore.PostgreSql`), Redis.
+**Event phát ra:** `user.registered`.
+
+---
+
+### 5.2. Order Service (.NET 10 / ABP Framework)
+
+**Trách nhiệm:** Lõi nghiệp vụ đặt hàng; đóng vai **Saga Orchestrator State Machine**.
+
+**Database:** **MySQL** (`Volo.Abp.EntityFrameworkCore.MySQL 10.0.0`).
+
+**Domain model (DDD):**
+- Aggregate Root: `Order`
+- Entities: `OrderItem`, `OrderTracking`
+- Value Objects: `Money`, `Address`, `OrderStatus`
+- Domain Events: `OrderCreated`, `OrderConfirmed`, `OrderCancelled`
+
+**Kiến trúc nội bộ:**
+```
+src/
+├── QuickBite.Order.Domain/
+│   ├── Orders/
+│   │   ├── AggregateRoots/Order.cs     # Aggregate Root
+│   │   ├── Entities/OrderItem.cs
+│   │   ├── Managers/OrderManager.cs    # Domain Service
+│   │   └── Outbox / Inbox Entities
+├── QuickBite.Order.Infrastructure/
+│   ├── MassTransit/
+│   │   └── StateMachine/OrderStateMachine.cs  # Saga State Machine
+│   ├── Kafka/                          # Producers, Consumers, TopicConstants
+│   └── BackgroundWorkers/InboxCleanupWorker.cs
+├── QuickBite.Order.Application/
+├── QuickBite.Order.EntityFrameworkCore/ # DbContext (MySQL Migrations)
+└── QuickBite.Order.HttpApi.Host/
+```
+
+**Tech:** ABP Framework 10, .NET 10, **MySQL**, MassTransit 8.3.6 (Kafka State Machine), Confluent.Kafka 2.11.1.
+**Pattern áp dụng:** Saga Orchestration, Transactional Outbox, Idempotent Inbox.
+**Event phát ra:** `order.created`, `order.confirmed`, `order.cancelled`.
+**Event tiêu thụ:** `payment.authorized`, `payment.failed`, `stock.reserved`, `stock.rejected` (từ `fulfillment-events`). 
 
 --- 
 
