@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuickBite.Identity.Accounts;
 using System;
@@ -10,6 +11,7 @@ using Volo.Abp.Validation;
 
 namespace QuickBite.Identity.Web.Pages.Accounts;
 
+[Authorize(Roles = "admin,Admin")]
 public class EditModel : AbpPageModel
 {
     private readonly IAccountService _accountService;

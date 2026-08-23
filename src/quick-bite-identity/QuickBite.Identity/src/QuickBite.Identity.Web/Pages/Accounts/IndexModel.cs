@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using QuickBite.Identity.Accounts;
 using System;
@@ -7,6 +8,7 @@ using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using Volo.Abp.Authorization;
 using Volo.Abp.Identity;
 
+[Authorize(Roles = "admin,Admin")]
 public class IndexModel : AbpPageModel
 {
     private readonly IAccountService _accountService;

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
 using Volo.Abp.Authorization.Permissions;
@@ -11,6 +12,7 @@ using Volo.Abp.Validation;
 
 namespace QuickBite.Identity.Web.Pages.Roles;
 
+[Authorize(Roles = "admin,Admin")]
 public class EditModel : AbpPageModel
 {
     private readonly IIdentityRoleAppService _roleService;

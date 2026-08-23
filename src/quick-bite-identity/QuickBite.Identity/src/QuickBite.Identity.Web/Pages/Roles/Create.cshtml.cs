@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Volo.Abp.AspNetCore.Mvc.UI.RazorPages;
@@ -8,6 +9,7 @@ using Volo.Abp.Validation;
 
 namespace QuickBite.Identity.Web.Pages.Roles;
 
+[Authorize(Roles = "admin,Admin")]
 public class CreateModel : AbpPageModel
 {
     private readonly IIdentityRoleAppService _roleService;
