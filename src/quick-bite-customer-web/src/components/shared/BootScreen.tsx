@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useMemo } from "react";
 import {
   Server,
   Shield,
@@ -8,102 +8,362 @@ import {
   CreditCard,
   Database,
   Boxes,
-  Utensils,
-  Activity,
-  CheckCircle2,
-  RefreshCw,
+  Flame,
+  Zap,
+  Radio,
+  Rocket,
+  ChevronRight,
+  Gauge,
+  Layers,
+  HardDrive,
+  Workflow,
+  Clock,
+  Orbit,
+  X,
 } from "lucide-react";
 
 interface BootScreenProps {
   onReady?: () => void;
 }
 
-interface ServiceNode {
+export interface SubEntryNode {
   id: string;
+  parentId: string;
   name: string;
-  apiKey: string;
-  tech: string;
-  color: string;
-  icon: React.ElementType;
+  shortLabel: string;
+  type: "database" | "kafka" | "masstransit" | "system" | "jobs";
+  angle: number;
   x: number;
   y: number;
+  defaultDesc: string;
+  description?: string;
+  status: "Standby" | "Priming" | "Healthy";
+  durationMs?: number;
+  details?: string;
 }
 
-const SERVICES: ServiceNode[] = [
+export interface ServiceNodeInfo {
+  id: string;
+  name: string;
+  shortLabel: string;
+  code: string;
+  apiKey: string;
+  tech: string;
+  role: string;
+  color: string;
+  accentColor: string;
+  icon: React.ElementType;
+  angle: number;
+  x: number;
+  y: number;
+  staggerDelay: number;
+  entries: {
+    key: string;
+    name: string;
+    shortLabel: string;
+    type: "database" | "kafka" | "masstransit" | "system" | "jobs";
+    angle: number;
+    defaultDesc: string;
+  }[];
+}
+
+// --------------------------------------------------------------------------
+// EDGE-TO-EDGE GIANT 3-RING STARSHIP MATRIX (CX = 500, CY = 500)
+// Uniform Node Radius: NODE_RADIUS = 52px (Diameter 104px) for ALL 22 nodes!
+// Ring 1 (Core Gateway): R = 0
+// Ring 2 (5 Services): R = 230px
+// Ring 3 (16 Sub-entries): R = 430px (Fills 98.2% of the canvas!)
+// --------------------------------------------------------------------------
+const CX = 500;
+const CY = 500;
+const NODE_RADIUS = 52; // Massive 104px diameter circular engines
+const R_SERVICES = 230;
+const R_ENTRIES = 430;
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+const getCoords = (radius: number, angleDeg: number) => ({
+  x: Number((CX + radius * Math.cos(toRad(angleDeg))).toFixed(1)),
+  y: Number((CY + radius * Math.sin(toRad(angleDeg))).toFixed(1)),
+});
+
+// 5 Parent Services (Middle Ring) with Sub-entries (Outer Ring)
+const SERVICE_DEFINITIONS: ServiceNodeInfo[] = [
   {
     id: "identity",
-    name: "Identity",
+    name: "Identity Service",
+    shortLabel: "IDENTITY",
+    code: "RAPTOR-01",
     apiKey: "identity_service",
-    tech: ".NET 8",
+    tech: ".NET 10 / ABP",
+    role: "OpenIddict & Identity Token Authority",
     color: "from-purple-500 to-indigo-600",
+    accentColor: "#a855f7",
     icon: Shield,
-    x: 20,
-    y: 20,
+    angle: -90,
+    ...getCoords(R_SERVICES, -90),
+    staggerDelay: 300,
+    entries: [
+      {
+        key: "database",
+        name: "PostgreSQL Database",
+        shortLabel: "PG-DB",
+        type: "database",
+        angle: -105,
+        defaultDesc: "PostgreSQL database connection healthy",
+      },
+      {
+        key: "system_resources",
+        name: "Host Resources",
+        shortLabel: "SYS-RAM",
+        type: "system",
+        angle: -75,
+        defaultDesc: "Working set memory & CPU operational",
+      },
+    ],
   },
   {
     id: "catalog",
-    name: "Catalog",
+    name: "Catalog Service",
+    shortLabel: "CATALOG",
+    code: "RAPTOR-02",
     apiKey: "catalog_service",
-    tech: "NestJS",
+    tech: "NestJS / Fastify",
+    role: "Menu, Product & Restaurant Matrix",
     color: "from-cyan-400 to-teal-500",
+    accentColor: "#06b6d4",
     icon: Database,
-    x: 80,
-    y: 20,
-  },
-  {
-    id: "order",
-    name: "Order",
-    apiKey: "order_service",
-    tech: ".NET 8",
-    color: "from-amber-400 to-orange-500",
-    icon: ShoppingBag,
-    x: 18,
-    y: 80,
+    angle: -18,
+    ...getCoords(R_SERVICES, -18),
+    staggerDelay: 600,
+    entries: [
+      {
+        key: "database",
+        name: "PostgreSQL Database",
+        shortLabel: "PG-DB",
+        type: "database",
+        angle: -38,
+        defaultDesc: "PostgreSQL database connection healthy",
+      },
+      {
+        key: "kafka",
+        name: "Kafka Broker",
+        shortLabel: "KAFKA",
+        type: "kafka",
+        angle: -18,
+        defaultDesc: "Active cluster brokers: 1 (5 topics)",
+      },
+      {
+        key: "system_resources",
+        name: "Host Resources",
+        shortLabel: "SYS-RAM",
+        type: "system",
+        angle: 2,
+        defaultDesc: "GC heap & working set memory nominal",
+      },
+    ],
   },
   {
     id: "payment",
-    name: "Payment",
+    name: "Payment Service",
+    shortLabel: "PAYMENT",
+    code: "RAPTOR-03",
     apiKey: "payment_service",
-    tech: "Java Spring",
+    tech: "Java Spring Boot 3",
+    role: "Transaction Pipeline & Sandbox Vault",
     color: "from-emerald-400 to-green-500",
+    accentColor: "#10b981",
     icon: CreditCard,
-    x: 82,
-    y: 80,
+    angle: 54,
+    ...getCoords(R_SERVICES, 54),
+    staggerDelay: 900,
+    entries: [
+      {
+        key: "database",
+        name: "PostgreSQL Database",
+        shortLabel: "PG-DB",
+        type: "database",
+        angle: 38,
+        defaultDesc: "PostgreSQL database connection healthy",
+      },
+      {
+        key: "kafka",
+        name: "Kafka Listener",
+        shortLabel: "KAFKA",
+        type: "kafka",
+        angle: 54,
+        defaultDesc: "Active listeners: 1 container running",
+      },
+      {
+        key: "system_resources",
+        name: "JVM Resources",
+        shortLabel: "JVM-SYS",
+        type: "system",
+        angle: 70,
+        defaultDesc: "JVM heap allocated: 71MB working set",
+      },
+    ],
   },
   {
     id: "inventory",
-    name: "Inventory",
+    name: "Inventory Service",
+    shortLabel: "INVENTORY",
+    code: "RAPTOR-04",
     apiKey: "inventory_service",
-    tech: "Java Spring",
+    tech: "Java Spring Boot 3",
+    role: "Stock Reservation & Warehouse Silo",
     color: "from-blue-400 to-indigo-500",
+    accentColor: "#3b82f6",
     icon: Boxes,
-    x: 50,
-    y: 88,
+    angle: 126,
+    ...getCoords(R_SERVICES, 126),
+    staggerDelay: 1200,
+    entries: [
+      {
+        key: "database",
+        name: "PostgreSQL Database",
+        shortLabel: "PG-DB",
+        type: "database",
+        angle: 110,
+        defaultDesc: "PostgreSQL database connection healthy",
+      },
+      {
+        key: "kafka",
+        name: "Kafka Consumer",
+        shortLabel: "KAFKA",
+        type: "kafka",
+        angle: 126,
+        defaultDesc: "Active listener containers: 2 running",
+      },
+      {
+        key: "system_resources",
+        name: "JVM Resources",
+        shortLabel: "JVM-SYS",
+        type: "system",
+        angle: 142,
+        defaultDesc: "JVM working set: 53MB operational",
+      },
+    ],
+  },
+  {
+    id: "order",
+    name: "Order Service",
+    shortLabel: "ORDER",
+    code: "RAPTOR-05",
+    apiKey: "order_service",
+    tech: ".NET 10 / EF Core",
+    role: "Order Lifecycle & Saga State Machine",
+    color: "from-amber-400 to-orange-500",
+    accentColor: "#f59e0b",
+    icon: ShoppingBag,
+    angle: 198,
+    ...getCoords(R_SERVICES, 198),
+    staggerDelay: 1500,
+    entries: [
+      {
+        key: "masstransit-bus",
+        name: "MassTransit Bus",
+        shortLabel: "BUS-MT",
+        type: "masstransit",
+        angle: 170,
+        defaultDesc: "OrderSaga loopback instance ready",
+      },
+      {
+        key: "database",
+        name: "MySQL Database",
+        shortLabel: "SQL-DB",
+        type: "database",
+        angle: 184,
+        defaultDesc: "MySQL database connection healthy",
+      },
+      {
+        key: "kafka",
+        name: "Kafka Producer",
+        shortLabel: "KAFKA",
+        type: "kafka",
+        angle: 198,
+        defaultDesc: "Active cluster brokers: 2 running",
+      },
+      {
+        key: "system_resources",
+        name: "Host Resources",
+        shortLabel: "SYS-TH",
+        type: "system",
+        angle: 212,
+        defaultDesc: "36 active worker threads operational",
+      },
+      {
+        key: "background_jobs",
+        name: "Background Jobs",
+        shortLabel: "BG-JOB",
+        type: "jobs",
+        angle: 226,
+        defaultDesc: "Background job execution active",
+      },
+    ],
   },
 ];
 
+// Flatten all entries for the Outer Ring
+const ALL_OUTER_ENTRIES: SubEntryNode[] = SERVICE_DEFINITIONS.flatMap((svc) =>
+  svc.entries.map((entry) => ({
+    id: `${svc.id}_${entry.key}`,
+    parentId: svc.id,
+    name: entry.name,
+    shortLabel: entry.shortLabel,
+    type: entry.type,
+    angle: entry.angle,
+    ...getCoords(R_ENTRIES, entry.angle),
+    defaultDesc: entry.defaultDesc,
+    status: "Standby",
+  }))
+);
+
+type NodeState = "Standby" | "Priming" | "Healthy";
+
+interface LogEntry {
+  id: string;
+  time: string;
+  message: string;
+  level: "info" | "success" | "warn" | "accent";
+}
+
 export default function BootScreen({ onReady }: BootScreenProps) {
-  const [statusMessage, setStatusMessage] = useState<string>(
-    "Đang đánh thức toàn bộ hệ thống Microservices & API Gateway..."
-  );
-  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
-  const [litNodes, setLitNodes] = useState<string[]>(["gateway"]);
-  const [serviceStatuses, setServiceStatuses] = useState<
-    Record<string, "Healthy" | "Degraded" | "Unhealthy" | "Pending">
-  >({
-    gateway: "Pending",
-    identity_service: "Pending",
-    order_service: "Pending",
-    catalog_service: "Pending",
-    inventory_service: "Pending",
-    payment_service: "Pending",
+  // Service health status registry
+  const [serviceStatuses, setServiceStatuses] = useState<Record<string, NodeState>>({
+    gateway: "Standby",
+    identity_service: "Standby",
+    order_service: "Standby",
+    catalog_service: "Standby",
+    inventory_service: "Standby",
+    payment_service: "Standby",
   });
 
-  const animationRef = useRef<any>(null);
-  // Set tracking completed/healthy services so we NEVER ping them again
+  // Sub-node entries health map
+  const [subEntriesMap, setSubEntriesMap] = useState<Record<string, SubEntryNode>>(() => {
+    const map: Record<string, SubEntryNode> = {};
+    ALL_OUTER_ENTRIES.forEach((entry) => {
+      map[entry.id] = { ...entry };
+    });
+    return map;
+  });
+
+  // Starship Staggered Ignition Active Nodes
+  const [ignitedServices, setIgnitedServices] = useState<string[]>([]);
+  const [selectedItem, setSelectedItem] = useState<{
+    title: string;
+    category: string;
+    status: string;
+    tech: string;
+    details: string;
+  } | null>(null);
+
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const [elapsedTimeTenths, setElapsedTimeTenths] = useState<number>(0);
+
   const completedServicesRef = useRef<Set<string>>(new Set());
 
-  // Map serviceKey -> URLs from environment variables
+  // Environment URLs
   const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "https://quick-bite-identity.onrender.com";
   const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "https://quick-bite-order.onrender.com/api/app";
   const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "https://quick-bite-catalog.onrender.com";
@@ -111,168 +371,110 @@ export default function BootScreen({ onReady }: BootScreenProps) {
   const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://quick-bite-payment.onrender.com/v1";
   const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quick-bite-gw.onrender.com";
 
-  // 1. Anime.js Topology Motion Effects (Universal v3 & v4 compatibility)
-  useEffect(() => {
-    let isSubscribed = true;
-
-    import("animejs")
-      .then((animeModule: any) => {
-        if (!isSubscribed) return;
-
-        const animateFn =
-          typeof animeModule.animate === "function"
-            ? animeModule.animate
-            : typeof animeModule.default === "function"
-              ? (target: any, params: any) => animeModule.default({ targets: target, ...params })
-              : typeof animeModule === "function"
-                ? (target: any, params: any) => animeModule({ targets: target, ...params })
-                : null;
-
-        const staggerFn =
-          typeof animeModule.stagger === "function"
-            ? animeModule.stagger
-            : typeof animeModule.default?.stagger === "function"
-              ? animeModule.default.stagger
-              : (val: number) => (_el: any, i: number) => i * val;
-
-        if (!animateFn) return;
-
-        try {
-          // Pulse Gateway
-          animationRef.current = animateFn("#gateway-center-node", {
-            scale: [0.96, 1.08],
-            rotate: [-1, 1],
-            direction: "alternate",
-            loop: true,
-            easing: "easeInOutSine",
-            duration: 1300,
-          });
-
-          // Particles
-          animateFn(".cyber-particle", {
-            translateY: [-25, 25],
-            translateX: [-25, 25],
-            scale: [0.7, 1.2],
-            opacity: [0.2, 0.6],
-            direction: "alternate",
-            loop: true,
-            easing: "easeInOutQuad",
-            duration: 3500,
-            delay: staggerFn(250),
-          });
-
-          // Laser lines
-          animateFn(".topology-dash-line", {
-            strokeDashoffset: [24, 0],
-            easing: "linear",
-            duration: 1800,
-            delay: staggerFn(180),
-            loop: true,
-          });
-        } catch {
-          // Ignore animation init errors
-        }
-      })
-      .catch(() => { });
-
-    return () => {
-      isSubscribed = false;
-      if (animationRef.current && typeof animationRef.current.pause === "function") {
-        animationRef.current.pause();
-      }
+  // Append telemetry log
+  const pushLog = (message: string, level: "info" | "success" | "warn" | "accent" = "info") => {
+    const timeStr = `T+${(elapsedTimeTenths / 10).toFixed(1)}s`;
+    const newLog: LogEntry = {
+      id: Math.random().toString(36).substring(2, 9),
+      time: timeStr,
+      message,
+      level,
     };
+    setLogs((prev) => [...prev.slice(-30), newLog]);
+  };
+
+  // 1. Mission Timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedTimeTenths((t) => t + 1);
+    }, 100);
+    return () => clearInterval(timer);
   }, []);
 
-  // 2. Sequential Lighting Animation
-  useEffect(() => {
-    let active = true;
-
-    const t1 = setTimeout(() => {
-      if (active) setLitNodes(["gateway", "identity", "catalog"]);
-    }, 800);
-
-    const t2 = setTimeout(() => {
-      if (active) setLitNodes(["gateway", "identity", "catalog", "order", "payment", "inventory"]);
-    }, 1800);
-
-    return () => {
-      active = false;
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, []);
-
-  // 3. Single-Ping per Service with Long Wait & No Redundant Retries
+  // 2. Staggered Ignition Firing Sequence (Starship Ring Sequence)
   useEffect(() => {
     let isCancelled = false;
 
-    // Trigger one-time server-side wake-up ping across all services in background
+    pushLog("QUICK BITE: Initiating giant edge-to-edge ignition sequence...", "accent");
+
+    // Center Core (Gateway) ignites first
+    setTimeout(() => {
+      if (isCancelled) return;
+      setIgnitedServices((prev) => [...prev, "gateway"]);
+      pushLog("CORE RING [L-1]: API Gateway flight router ignited", "info");
+    }, 100);
+
+    // Stagger ignition of 5 Middle Ring services
+    SERVICE_DEFINITIONS.forEach((svc) => {
+      setTimeout(() => {
+        if (isCancelled) return;
+        setIgnitedServices((prev) => [...prev, svc.id]);
+        pushLog(`MIDDLE RING [L-2]: ${svc.name} [${svc.code}] ignited`, "info");
+      }, svc.staggerDelay);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  // 3. Parse Health Response entries into Outer Ring sub-nodes
+  const handleHealthEntries = (serviceId: string, data: any) => {
+    const rawEntries = data?.entries || data?.data?.entries || {};
+
+    setSubEntriesMap((prev) => {
+      const nextMap = { ...prev };
+      Object.entries(rawEntries).forEach(([entryKey, entryVal]: [string, any]) => {
+        const subId = `${serviceId}_${entryKey}`;
+        const isHealthy = entryVal?.status === "Healthy" || entryVal?.status === "ok";
+
+        if (nextMap[subId]) {
+          nextMap[subId] = {
+            ...nextMap[subId],
+            status: isHealthy ? "Healthy" : "Priming",
+            durationMs: entryVal?.duration_ms,
+            description: entryVal?.description || nextMap[subId].defaultDesc,
+            details: entryVal?.data ? JSON.stringify(entryVal.data) : undefined,
+          };
+        }
+      });
+      return nextMap;
+    });
+  };
+
+  // 4. Parallel Single-Ping with 90s Long Connection Retention
+  useEffect(() => {
+    let isCancelled = false;
+
+    // Wake-up ping
     fetch("/api/system/health/wake-up", { method: "GET", cache: "no-store" }).catch(() => { });
 
-    // Ping Gateway once and wait for response; stop completely once healthy
-    const pingGateway = async () => {
-      if (completedServicesRef.current.has("gateway")) return;
-
-      let attempts = 0;
-      const maxAttempts = 6;
-
-      while (!completedServicesRef.current.has("gateway") && attempts < maxAttempts && !isCancelled) {
-        attempts++;
-        try {
-          // Long-timeout fetch to allow Gateway cold-start to complete on same connection
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-          const res = await fetch("/api/gateway/health", {
-            method: "GET",
-            cache: "no-store",
-            signal: controller.signal,
-          });
-
-          clearTimeout(timeoutId);
-
-          if (isCancelled) return;
-
-          if (res.ok) {
-            const data = await res.json().catch(() => null);
-            if (data && (data.status === "Healthy" || data.status === "ok")) {
-              completedServicesRef.current.add("gateway");
-              setServiceStatuses((prev) => ({ ...prev, gateway: "Healthy" }));
-              return; // STOP! Never call gateway again!
-            }
-          }
-        } catch {
-          // Socket drop / cold start initial reset
-        }
-
-        if (!isCancelled && !completedServicesRef.current.has("gateway")) {
-          await new Promise((r) => setTimeout(r, 3000));
-        }
-      }
-
-      if (!isCancelled && !completedServicesRef.current.has("gateway")) {
-        completedServicesRef.current.add("gateway");
-        setServiceStatuses((prev) => ({ ...prev, gateway: "Healthy" }));
-      }
-    };
-
-    // Ping a specific microservice ONCE and hold connection until it answers; NEVER call again once healthy
-    const pingSingleService = async (serviceKey: string, healthUrl: string) => {
+    const pingService = async (serviceKey: string, serviceId: string, url: string, fallbackProxy?: string) => {
       if (completedServicesRef.current.has(serviceKey)) return;
 
-      setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Degraded" }));
+      setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Priming" }));
+
+      // Set entries to priming
+      setSubEntriesMap((prev) => {
+        const nextMap = { ...prev };
+        Object.values(nextMap).forEach((sub) => {
+          if (sub.parentId === serviceId && sub.status !== "Healthy") {
+            nextMap[sub.id].status = "Priming";
+          }
+        });
+        return nextMap;
+      });
 
       let attempts = 0;
-      const maxAttempts = 6;
+      const maxAttempts = 8;
 
       while (!completedServicesRef.current.has(serviceKey) && attempts < maxAttempts && !isCancelled) {
         attempts++;
         try {
-          // Long 90-second timeout: Render holds the open HTTP connection while container boots up
           const controller = new AbortController();
           const timeoutId = setTimeout(() => controller.abort(), 90000);
 
-          const res = await fetch(healthUrl, {
+          const res = await fetch(url, {
             method: "GET",
             headers: { Accept: "application/json, text/plain, */*" },
             signal: controller.signal,
@@ -283,252 +485,623 @@ export default function BootScreen({ onReady }: BootScreenProps) {
 
           if (isCancelled) return;
 
-          // When 200/204 or any OK status returns, container is up!
           if (res.ok || res.status === 200 || res.status === 204) {
+            const data = await res.json().catch(() => ({ status: "Healthy" }));
             completedServicesRef.current.add(serviceKey);
             setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
-            return; // DONE! Never ping this service again!
+
+            handleHealthEntries(serviceId, data);
+            pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} [100% THRUST]`, "success");
+            return;
           }
         } catch {
           if (isCancelled) return;
 
-          // Fallback no-cors ping to trigger wake-up packet if CORS is negotiating
+          if (fallbackProxy) {
+            try {
+              const proxyRes = await fetch(fallbackProxy, {
+                method: "GET",
+                cache: "no-store",
+                signal: AbortSignal.timeout(8000),
+              });
+              if (proxyRes.ok) {
+                const proxyData = await proxyRes.json().catch(() => null);
+                if (proxyData && (proxyData.status === "Healthy" || proxyData.status === "ok")) {
+                  completedServicesRef.current.add(serviceKey);
+                  setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
+                  handleHealthEntries(serviceId, proxyData);
+                  pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} via Gateway Proxy`, "success");
+                  return;
+                }
+              }
+            } catch { }
+          }
+
           try {
-            fetch(healthUrl, { method: "GET", mode: "no-cors" }).catch(() => { });
+            fetch(url, { method: "GET", mode: "no-cors" }).catch(() => { });
           } catch { }
         }
 
-        // Wait 3s before retrying this specific pending service only
         if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
-          await new Promise((r) => setTimeout(r, 3000));
+          await new Promise((r) => setTimeout(r, 2500));
         }
       }
 
-      // If exhausted, default to Healthy to avoid permanently blocking user
+      // Default to healthy if timeout
       if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
         completedServicesRef.current.add(serviceKey);
         setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
+        setSubEntriesMap((prev) => {
+          const nextMap = { ...prev };
+          Object.values(nextMap).forEach((sub) => {
+            if (sub.parentId === serviceId) {
+              nextMap[sub.id].status = "Healthy";
+            }
+          });
+          return nextMap;
+        });
+        pushLog(`Service ${serviceId} timeout window completed. Flight profile locked.`, "warn");
       }
     };
 
-    // Launch all individual service workers in parallel
-    const initialDelay = setTimeout(() => {
+    // Stagger worker launches
+    const launchTimer = setTimeout(() => {
       if (isCancelled) return;
-      pingGateway();
 
-      const SERVICE_PRIMARY_URLS: Record<string, string> = {
-        identity_service: `${identityUrl}/health`,
-        order_service: `${orderUrl}/health`,
-        catalog_service: `${catalogUrl}/health`,
-        inventory_service: `${inventoryUrl}/health`,
-        payment_service: `${paymentUrl}/health`,
-      };
+      // 1. Gateway Core
+      pingService("gateway", "gateway", `${gatewayUrl}/health`, "/api/gateway/health");
 
-      Object.entries(SERVICE_PRIMARY_URLS).forEach(([key, url]) => {
-        pingSingleService(key, url);
+      // 2. Microservices
+      const targets = [
+        { key: "identity_service", id: "identity", url: `${identityUrl}/health` },
+        { key: "catalog_service", id: "catalog", url: `${catalogUrl}/health` },
+        { key: "order_service", id: "order", url: `${orderUrl}/health` },
+        { key: "payment_service", id: "payment", url: `${paymentUrl}/health` },
+        { key: "inventory_service", id: "inventory", url: `${inventoryUrl}/health` },
+      ];
+
+      targets.forEach((t, index) => {
+        setTimeout(() => {
+          if (!isCancelled) {
+            pingService(t.key, t.id, t.url);
+          }
+        }, 220 * (index + 1));
       });
-    }, 400);
+    }, 250);
 
     return () => {
       isCancelled = true;
-      clearTimeout(initialDelay);
+      clearTimeout(launchTimer);
     };
-  }, [catalogUrl, identityUrl, inventoryUrl, orderUrl, paymentUrl]);
+  }, [catalogUrl, gatewayUrl, identityUrl, inventoryUrl, orderUrl, paymentUrl]);
 
-  // 4. Watch all services — when all 5 microservices are Healthy, trigger redirect
+  // 5. Thrust Calculation (Gateway + 5 Services = 6 Main Engines)
+  const healthyEnginesCount = useMemo(() => {
+    const mainKeys = ["gateway", "identity_service", "catalog_service", "order_service", "payment_service", "inventory_service"];
+    return mainKeys.filter((k) => serviceStatuses[k] === "Healthy").length;
+  }, [serviceStatuses]);
+
+  const healthySubNodesCount = useMemo(() => {
+    return Object.values(subEntriesMap).filter((s) => s.status === "Healthy").length;
+  }, [subEntriesMap]);
+
+  const thrustPercentage = Math.round((healthyEnginesCount / 6) * 100);
+
+  // 6. Watch All 6 Engines & Trigger Liftoff
   useEffect(() => {
-    const areMicroservicesHealthy = SERVICES.every((s) => {
-      const status = serviceStatuses[s.apiKey];
-      return status === "Healthy";
-    });
-
-    if (areMicroservicesHealthy && redirectCountdown === null) {
-      setStatusMessage("Tất cả microservices đã sẵn sàng! Đang chuyển hướng...");
+    const allSixHealthy = healthyEnginesCount === 6;
+    if (allSixHealthy && redirectCountdown === null) {
+      pushLog("ALL 3 RINGS NOMINAL: Super Heavy Raptor Cluster at 100% thrust. LIFTOFF!", "success");
       setRedirectCountdown(1);
     }
-  }, [serviceStatuses, redirectCountdown]);
+  }, [healthyEnginesCount, redirectCountdown]);
 
-  // 5. Countdown timer to trigger onReady
+  // 7. Countdown Timer
   useEffect(() => {
     if (redirectCountdown === null) return;
-
     if (redirectCountdown <= 0) {
       if (onReady) onReady();
       return;
     }
-
     const timer = setTimeout(() => {
       setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
     }, 1000);
-
     return () => clearTimeout(timer);
   }, [redirectCountdown, onReady]);
 
-  const healthyCount = SERVICES.filter((s) => serviceStatuses[s.apiKey] === "Healthy").length;
+  // Latest log message for ticker
+  const latestLog = logs[logs.length - 1];
 
   return (
-    <div className="fixed inset-0 bg-slate-950 text-slate-100 flex flex-col justify-between p-4 sm:p-8 z-50 overflow-hidden font-sans select-none">
-      {/* Background Glowing Particles */}
-      <div className="cyber-particle absolute top-10 left-10 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="cyber-particle absolute top-1/2 right-10 w-80 h-80 bg-red-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="cyber-particle absolute bottom-10 left-1/3 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="fixed inset-0 w-screen h-screen bg-[#020409] text-slate-100 flex flex-col justify-between p-2 sm:p-3 z-50 overflow-hidden font-sans select-none">
 
-      {/* Header Bar */}
-      <header className="w-full max-w-5xl mx-auto flex items-center justify-between z-10 py-3 px-6 bg-slate-900/60 backdrop-blur-md rounded-2xl border border-slate-800 shadow-xl">
+      {/* Background Starship Warp Field */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1300px] h-[1300px] bg-[radial-gradient(circle,rgba(99,102,241,0.2)_0%,rgba(249,115,22,0.12)_40%,transparent_70%)] blur-3xl animate-pulse" />
+
+        {/* Blueprint coordinate matrix */}
+        <div
+          className="absolute inset-0 opacity-[0.045]"
+          style={{
+            backgroundImage: `linear-gradient(#6366f1 1px, transparent 1px), linear-gradient(90deg, #6366f1 1px, transparent 1px)`,
+            backgroundSize: "45px 45px",
+          }}
+        />
+      </div>
+
+      {/* Top Header: Mission Control Telemetry HUD */}
+      <header className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 z-10 py-2 px-4 sm:px-6 bg-slate-950/90 backdrop-blur-2xl rounded-2xl border border-slate-800/80 shadow-2xl shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-orange-500 to-red-500 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
-            <Utensils className="w-5 h-5 text-white" />
+          <div className="w-10 h-10 bg-gradient-to-tr from-orange-500 via-amber-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/40">
+            <Rocket className="w-5 h-5 text-white animate-bounce" />
           </div>
           <div>
-            <h1 className="text-lg font-black tracking-tight text-white flex items-center gap-2">
-              QuickBite <span className="text-xs text-orange-400 font-mono font-bold uppercase">Customer App</span>
-            </h1>
-            <p className="text-xs text-slate-400">Microservice Topology Booting System</p>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-base sm:text-xl font-black tracking-tight text-white uppercase">
+                QuickBite <span className="text-orange-400 font-mono">Quick Bite Launch Matrix</span>
+              </h1>
+              <span className="text-[10px] font-mono font-bold px-2.5 py-0.5 bg-orange-500/20 text-orange-300 border border-orange-500/40 rounded-full">
+                3-TIER ENGINE MATRIX
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400 font-mono">
+              Core Gateway &bull; 5 Microservices &bull; 16 Sub-system Entries (Full Screen Display)
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900 border border-slate-800 rounded-full text-xs text-slate-300">
-            <Activity className="w-4 h-4 text-orange-400 animate-pulse" />
-            <span>Đã thức: <strong className="text-white font-mono">{healthyCount} / 5</strong></span>
+        {/* Telemetry Numbers */}
+        <div className="flex items-center gap-2.5">
+          {/* Main Thrust Gauge */}
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl font-mono">
+            <Gauge className="w-4 h-4 text-orange-400" />
+            <div className="text-left">
+              <div className="text-[8.5px] text-slate-400 uppercase">Total Thrust</div>
+              <div className="text-xs font-bold text-white">
+                <span className="text-emerald-400 text-sm">{thrustPercentage}%</span>
+                <span className="text-slate-400 ml-1">({healthyEnginesCount}/6 Engines)</span>
+              </div>
+            </div>
           </div>
 
-          <span
-            className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 border ${redirectCountdown !== null
-                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 animate-pulse"
-                : "bg-orange-500/20 text-orange-300 border-orange-500/50"
+          {/* Sub-node Entries */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-900/90 border border-slate-800 rounded-xl font-mono">
+            <Layers className="w-4 h-4 text-cyan-400" />
+            <div className="text-left">
+              <div className="text-[8.5px] text-slate-400 uppercase">Entries Nominal</div>
+              <div className="text-xs font-bold text-cyan-300">
+                {healthySubNodesCount}/{ALL_OUTER_ENTRIES.length}
+              </div>
+            </div>
+          </div>
+
+          {/* Launch Status Pill */}
+          <div
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-2 border transition-all ${redirectCountdown !== null
+              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-lg shadow-emerald-500/20 animate-pulse"
+              : "bg-orange-500/15 text-orange-300 border-orange-500/40"
               }`}
           >
             <span
               className={`w-2.5 h-2.5 rounded-full ${redirectCountdown !== null ? "bg-emerald-400 animate-ping" : "bg-orange-400 animate-pulse"
                 }`}
             />
-            {redirectCountdown !== null
-              ? `VÀO ỨNG DỤNG (${redirectCountdown}s)`
-              : "ĐANG WAKE-UP"}
-          </span>
+            {redirectCountdown !== null ? `LIFTOFF T-0 (${redirectCountdown}s)` : "IGNITION SEQUENCE"}
+          </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="w-full max-w-4xl mx-auto my-auto z-10 flex flex-col items-center">
-        {/* Topology Diagram Container */}
-        <div className="relative w-full max-w-xl h-80 sm:h-96 my-4 bg-slate-900/40 backdrop-blur-xl border border-slate-800/80 rounded-3xl p-4 shadow-2xl flex items-center justify-center">
-          {/* SVG Connection Lines */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none">
-            {SERVICES.map((s) => {
-              const isLit = litNodes.includes(s.id);
+      {/* Main Edge-to-Edge Starship Canvas */}
+      <main className="w-full flex-1 z-10 flex flex-col items-center justify-center relative min-h-0 py-1">
+
+        {/* Large SVG Matrix (Fills 100% available viewport height and width) */}
+        <div className="relative w-full h-full bg-slate-950/70 backdrop-blur-2xl border border-slate-800/90 rounded-3xl p-1 shadow-2xl overflow-hidden flex items-center justify-center">
+
+          <svg viewBox="0 0 1000 1000" className="w-full h-full max-h-full">
+            <defs>
+              {/* Plasma Glowing Conduits */}
+              <linearGradient id="plasma-flame" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#f97316" stopOpacity="1" />
+                <stop offset="50%" stopColor="#f59e0b" stopOpacity="0.8" />
+                <stop offset="100%" stopColor="#ef4444" stopOpacity="1" />
+              </linearGradient>
+              <linearGradient id="plasma-emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.9" />
+                <stop offset="100%" stopColor="#10b981" stopOpacity="1" />
+              </linearGradient>
+              <filter id="matrix-glow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="8" result="blur" />
+                <feComposite in="SourceGraphic" in2="blur" operator="over" />
+              </filter>
+            </defs>
+
+            {/* -------------------------------------------------------- */}
+            {/* STARSHIP 3 CONCENTRIC RING TRACKS                        */}
+            {/* -------------------------------------------------------- */}
+            {/* Ring 2 Track (Middle Ring - 230px) */}
+            <circle
+              cx={CX}
+              cy={CY}
+              r={R_SERVICES}
+              fill="none"
+              stroke="rgba(99, 102, 241, 0.28)"
+              strokeWidth="2.5"
+              strokeDasharray="8 5"
+            />
+            <text x={CX} y={CY - R_SERVICES - 58} textAnchor="middle" fill="#818cf8" fontSize="12" fontFamily="monospace" fontWeight="bold" opacity="0.85">
+              LAYER 2: MICROSERVICES CLUSTER
+            </text>
+
+            {/* Ring 3 Track (Outer Ring - 430px) */}
+            <circle
+              cx={CX}
+              cy={CY}
+              r={R_ENTRIES}
+              fill="none"
+              stroke="rgba(6, 182, 212, 0.25)"
+              strokeWidth="2.5"
+              strokeDasharray="10 6"
+            />
+            <text x={CX} y={CY - R_ENTRIES - 58} textAnchor="middle" fill="#22d3ee" fontSize="12" fontFamily="monospace" fontWeight="bold" opacity="0.85">
+              LAYER 3: SUB-SYSTEM ENTRIES
+            </text>
+
+            {/* -------------------------------------------------------- */}
+            {/* 1. CONDUITS: Core Gateway (Center) -> 5 Services (Ring 2) */}
+            {/* -------------------------------------------------------- */}
+            {SERVICE_DEFINITIONS.map((svc) => {
+              const isIgnited = ignitedServices.includes(svc.id);
+              const isHealthy = serviceStatuses[svc.apiKey] === "Healthy";
+
               return (
-                <g key={s.id}>
-                  {/* Background Base Line */}
+                <g key={`core-to-${svc.id}`}>
                   <line
-                    x1="50%"
-                    y1="50%"
-                    x2={`${s.x}%`}
-                    y2={`${s.y}%`}
-                    stroke={isLit ? "rgba(249, 115, 22, 0.4)" : "rgba(51, 65, 85, 0.4)"}
-                    strokeWidth="2"
-                    strokeDasharray="6 4"
+                    x1={CX}
+                    y1={CY}
+                    x2={svc.x}
+                    y2={svc.y}
+                    stroke={isHealthy ? "rgba(16, 185, 129, 0.65)" : isIgnited ? "rgba(249, 115, 22, 0.55)" : "rgba(51, 65, 85, 0.35)"}
+                    strokeWidth={isHealthy ? "5" : "3"}
+                    strokeDasharray={isHealthy ? "none" : "8 5"}
                   />
-                  {/* Animated Dash Overlay */}
-                  {isLit && (
+                  {isIgnited && (
                     <line
-                      className="topology-dash-line"
-                      x1="50%"
-                      y1="50%"
-                      x2={`${s.x}%`}
-                      y2={`${s.y}%`}
-                      stroke="url(#orange-red-gradient)"
-                      strokeWidth="3"
-                      strokeDasharray="12 12"
+                      x1={CX}
+                      y1={CY}
+                      x2={svc.x}
+                      y2={svc.y}
+                      stroke={isHealthy ? "url(#plasma-emerald)" : "url(#plasma-flame)"}
+                      strokeWidth="6"
+                      strokeDasharray="24 28"
+                      className="animate-[dash_1s_linear_infinite]"
                     />
                   )}
                 </g>
               );
             })}
-            <defs>
-              <linearGradient id="orange-red-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#f97316" />
-                <stop offset="100%" stopColor="#ef4444" />
-              </linearGradient>
-            </defs>
+
+            {/* -------------------------------------------------------- */}
+            {/* 2. CONDUITS: 5 Services (Ring 2) -> Sub-entries (Ring 3) */}
+            {/* -------------------------------------------------------- */}
+            {ALL_OUTER_ENTRIES.map((sub) => {
+              const parent = SERVICE_DEFINITIONS.find((s) => s.id === sub.parentId);
+              if (!parent) return null;
+
+              const parentIgnited = ignitedServices.includes(parent.id);
+              const entryData = subEntriesMap[sub.id];
+              const isSubHealthy = entryData?.status === "Healthy";
+
+              return (
+                <g key={`svc-to-${sub.id}`}>
+                  <line
+                    x1={parent.x}
+                    y1={parent.y}
+                    x2={sub.x}
+                    y2={sub.y}
+                    stroke={
+                      isSubHealthy
+                        ? "rgba(16, 185, 129, 0.65)"
+                        : parentIgnited
+                          ? "rgba(249, 115, 22, 0.55)"
+                          : "rgba(51, 65, 85, 0.3)"
+                    }
+                    strokeWidth={isSubHealthy ? "4" : "2.5"}
+                    strokeDasharray={isSubHealthy ? "none" : "6 4"}
+                  />
+                </g>
+              );
+            })}
+
+            {/* -------------------------------------------------------- */}
+            {/* 3. LAYER 3 NODES: 16 GIANT Outer Ring Entries            */}
+            {/* (Equal size: NODE_RADIUS = 52px - Diameter 104px)        */}
+            {/* -------------------------------------------------------- */}
+            {ALL_OUTER_ENTRIES.map((sub) => {
+              const parent = SERVICE_DEFINITIONS.find((s) => s.id === sub.parentId);
+              const parentIgnited = ignitedServices.includes(sub.parentId);
+              const entryData = subEntriesMap[sub.id];
+              const isHealthy = entryData?.status === "Healthy";
+              const isPriming = entryData?.status === "Priming" || parentIgnited;
+
+              return (
+                <g
+                  key={`outer-node-${sub.id}`}
+                  transform={`translate(${sub.x}, ${sub.y})`}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setSelectedItem({
+                      title: sub.name,
+                      category: `Layer 3 Entry &bull; ${parent?.name}`,
+                      status: isHealthy ? "Healthy (Nominal)" : "Priming / Waking",
+                      tech: sub.type.toUpperCase(),
+                      details: entryData?.description || sub.defaultDesc,
+                    })
+                  }
+                >
+                  {/* Outer Laser Glow Halo */}
+                  {isHealthy && (
+                    <circle r={NODE_RADIUS + 10} fill="none" stroke="#10b981" strokeWidth="4" opacity="0.55" filter="url(#matrix-glow)" />
+                  )}
+
+                  {/* Giant Circular Outer Thruster (Radius = 52px) */}
+                  <circle
+                    r={NODE_RADIUS}
+                    fill={isHealthy ? "#064e3b" : isPriming ? "#451a03" : "#090e1a"}
+                    stroke={isHealthy ? "#10b981" : isPriming ? "#f97316" : "#334155"}
+                    strokeWidth="4.5"
+                  />
+
+                  {/* Inner Gimbal Ring */}
+                  <circle
+                    r={NODE_RADIUS - 12}
+                    fill={isHealthy ? "#022c22" : "#030712"}
+                    stroke={isHealthy ? "#34d399" : "#1e293b"}
+                    strokeWidth="2"
+                  />
+
+                  {/* Text inside circle (MASSIVE & CRYSTAL CLEAR) */}
+                  <text
+                    y="-4"
+                    textAnchor="middle"
+                    fill={isHealthy ? "#a7f3d0" : isPriming ? "#fdba74" : "#cbd5e1"}
+                    fontSize="13.5"
+                    fontFamily="monospace"
+                    fontWeight="900"
+                  >
+                    {sub.shortLabel}
+                  </text>
+                  <text
+                    y="16"
+                    textAnchor="middle"
+                    fill={isHealthy ? "#34d399" : isPriming ? "#f59e0b" : "#64748b"}
+                    fontSize="10.5"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {isHealthy ? "NOMINAL" : isPriming ? "FIRING" : "STANDBY"}
+                  </text>
+
+                  {/* Name Subtitle under node */}
+                  <text
+                    y={NODE_RADIUS + 16}
+                    textAnchor="middle"
+                    fill={isHealthy ? "#6ee7b7" : "#94a3b8"}
+                    fontSize="10.5"
+                    fontFamily="sans-serif"
+                    fontWeight="bold"
+                  >
+                    {sub.name.split(" ")[0]}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* -------------------------------------------------------- */}
+            {/* 4. LAYER 2 NODES: 5 GIANT Middle Ring Microservices      */}
+            {/* (Equal size: NODE_RADIUS = 52px - Diameter 104px)        */}
+            {/* -------------------------------------------------------- */}
+            {SERVICE_DEFINITIONS.map((svc) => {
+              const isIgnited = ignitedServices.includes(svc.id);
+              const status = serviceStatuses[svc.apiKey];
+              const isHealthy = status === "Healthy";
+              const isPriming = status === "Priming" || isIgnited;
+
+              return (
+                <g
+                  key={`mid-node-${svc.id}`}
+                  transform={`translate(${svc.x}, ${svc.y})`}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setSelectedItem({
+                      title: svc.name,
+                      category: `Layer 2 Microservice &bull; ${svc.code}`,
+                      status: isHealthy ? "Healthy (100% Thrust)" : isPriming ? "Igniting..." : "Standby",
+                      tech: svc.tech,
+                      details: svc.role,
+                    })
+                  }
+                >
+                  {/* Outer Heatshield Halo */}
+                  <circle
+                    r={NODE_RADIUS + 12}
+                    fill={isHealthy ? "rgba(16, 185, 129, 0.28)" : isPriming ? "rgba(249, 115, 22, 0.32)" : "transparent"}
+                    stroke={isHealthy ? "#10b981" : isPriming ? "#f97316" : "#334155"}
+                    strokeWidth="3.5"
+                    strokeDasharray={isHealthy ? "none" : "8 5"}
+                    filter={isHealthy ? "url(#matrix-glow)" : undefined}
+                  />
+
+                  {/* Main Circular Thruster (Radius = 52px - Equal Size) */}
+                  <circle
+                    r={NODE_RADIUS}
+                    fill={isHealthy ? "#064e3b" : isPriming ? "#451a03" : "#090d1a"}
+                    stroke={isHealthy ? "#10b981" : isPriming ? svc.accentColor : "#1e293b"}
+                    strokeWidth="5"
+                  />
+
+                  {/* Inner Gimbal Ring */}
+                  <circle
+                    r={NODE_RADIUS - 12}
+                    fill={isHealthy ? "#022c22" : "#030712"}
+                    stroke={isHealthy ? "#34d399" : "#334155"}
+                    strokeWidth="2.5"
+                  />
+
+                  {/* Text inside circle (MASSIVE & CRYSTAL CLEAR) */}
+                  <text
+                    y="-4"
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    fontSize="13.5"
+                    fontWeight="900"
+                  >
+                    {svc.shortLabel}
+                  </text>
+                  <text
+                    y="16"
+                    textAnchor="middle"
+                    fill={isHealthy ? "#34d399" : isPriming ? "#f59e0b" : "#64748b"}
+                    fontSize="11"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {isHealthy ? "100%" : isPriming ? "FIRING" : "IDLE"}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* -------------------------------------------------------- */}
+            {/* 5. LAYER 1 NODE: 1 GIANT Center Core Engine (Gateway)    */}
+            {/* (Equal size: NODE_RADIUS = 52px - Diameter 104px)        */}
+            {/* -------------------------------------------------------- */}
+            {(() => {
+              const isHealthy = serviceStatuses.gateway === "Healthy";
+              const isPriming = serviceStatuses.gateway === "Priming" || ignitedServices.includes("gateway");
+
+              return (
+                <g
+                  transform={`translate(${CX}, ${CY})`}
+                  className="cursor-pointer"
+                  onClick={() =>
+                    setSelectedItem({
+                      title: "API Gateway (Central Flight Router)",
+                      category: "Layer 1 Core Engine &bull; Port 5000",
+                      status: isHealthy ? "Healthy (Core Thrust 100%)" : "Igniting Reverse Proxy",
+                      tech: "Ocelot / HTTP Reverse Proxy",
+                      details: "Central ingress gateway routing tokens, orders, catalog and payment requests.",
+                    })
+                  }
+                >
+                  {/* Super Heavy Core Halo */}
+                  <circle
+                    r={NODE_RADIUS + 16}
+                    fill={isHealthy ? "rgba(16, 185, 129, 0.35)" : isPriming ? "rgba(249, 115, 22, 0.4)" : "rgba(99, 102, 241, 0.25)"}
+                    stroke={isHealthy ? "#10b981" : "#f97316"}
+                    strokeWidth="4"
+                    strokeDasharray={isHealthy ? "none" : "8 5"}
+                    filter="url(#matrix-glow)"
+                  />
+
+                  {/* Circular Raptor Core Nozzle (Radius = 52px - Equal Size) */}
+                  <circle
+                    r={NODE_RADIUS}
+                    fill={isHealthy ? "#064e3b" : isPriming ? "#451a03" : "#060914"}
+                    stroke={isHealthy ? "#10b981" : "#f97316"}
+                    strokeWidth="5.5"
+                  />
+
+                  {/* Inner Combustion Chamber */}
+                  <circle
+                    r={NODE_RADIUS - 12}
+                    fill={isHealthy ? "#022c22" : "#030712"}
+                    stroke={isHealthy ? "#34d399" : "#f97316"}
+                    strokeWidth="2.5"
+                  />
+
+                  {/* Text Title inside circle (MASSIVE & CRYSTAL CLEAR) */}
+                  <text
+                    y="-5"
+                    textAnchor="middle"
+                    fill="#ffffff"
+                    fontSize="13.5"
+                    fontWeight="900"
+                    letterSpacing="0.5"
+                  >
+                    GATEWAY
+                  </text>
+                  <text
+                    y="16"
+                    textAnchor="middle"
+                    fill={isHealthy ? "#6ee7b7" : isPriming ? "#fed7aa" : "#94a3b8"}
+                    fontSize="11"
+                    fontFamily="monospace"
+                    fontWeight="bold"
+                  >
+                    {isHealthy ? "100%" : isPriming ? "IGNITING" : "CORE"}
+                  </text>
+                </g>
+              );
+            })()}
           </svg>
 
-          {/* Central API Gateway Node */}
-          <div
-            id="gateway-center-node"
-            className="absolute z-20 w-24 h-24 sm:w-28 sm:h-28 rounded-3xl bg-gradient-to-tr from-orange-500 via-amber-500 to-red-500 p-1 flex flex-col items-center justify-center text-center shadow-2xl transition-transform"
-          >
-            <div className="w-full h-full bg-slate-950/90 rounded-[22px] flex flex-col items-center justify-center p-2">
-              <Server className="w-7 h-7 text-orange-400 mb-1" />
-              <span className="text-[11px] font-black tracking-wide text-white uppercase">API Gateway</span>
-              <span className="text-[9px] font-mono text-orange-300">Port 5000</span>
-            </div>
-          </div>
-
-          {/* Microservice Nodes Surround */}
-          {SERVICES.map((s) => {
-            const Icon = s.icon;
-            const isLit = litNodes.includes(s.id);
-            const status = serviceStatuses[s.apiKey];
-
-            return (
-              <div
-                key={s.id}
-                style={{ left: `${s.x}%`, top: `${s.y}%` }}
-                className={`absolute z-20 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center transition-all duration-700 ${isLit ? "opacity-100 scale-100" : "opacity-40 scale-90"
-                  }`}
-              >
-                <div
-                  className={`w-14 h-14 sm:w-16 sm:h-16 rounded-2xl p-0.5 shadow-xl transition-all duration-300 ${status === "Healthy"
-                      ? "bg-gradient-to-tr from-emerald-400 to-teal-500 ring-2 ring-emerald-400/50"
-                      : "bg-gradient-to-tr " + s.color
-                    }`}
+          {/* Floating Node Detail Card (When user clicks any node) */}
+          {selectedItem && (
+            <div className="absolute bottom-3 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 sm:w-96 bg-slate-900/95 backdrop-blur-2xl border-2 border-orange-500/50 rounded-2xl p-4 shadow-2xl text-xs z-30 animate-in fade-in slide-in-from-bottom-3">
+              <div className="flex justify-between items-center mb-1.5">
+                <span className="font-bold text-white flex items-center gap-2 text-sm">
+                  <Zap className="w-4 h-4 text-orange-400" />
+                  {selectedItem.title}
+                </span>
+                <button
+                  onClick={() => setSelectedItem(null)}
+                  className="p-1 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white"
                 >
-                  <div className="w-full h-full bg-slate-950/90 rounded-[14px] flex flex-col items-center justify-center p-1.5">
-                    <Icon className={`w-5 h-5 ${status === "Healthy" ? "text-emerald-400" : "text-slate-200"}`} />
-                    <span className="text-[10px] font-bold text-slate-100 mt-1">{s.name}</span>
-                  </div>
-                </div>
-
-                <div className="mt-1 flex items-center gap-1 bg-slate-900/90 px-2 py-0.5 rounded-md border border-slate-800 shadow-md">
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${status === "Healthy"
-                        ? "bg-emerald-400 animate-pulse"
-                        : status === "Degraded"
-                          ? "bg-amber-400 animate-ping"
-                          : "bg-slate-500"
-                      }`}
-                  />
-                  <span className="text-[9px] font-mono text-slate-300">
-                    {status === "Healthy" ? "Ready" : status === "Degraded" ? "Waking..." : s.tech}
-                  </span>
-                </div>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
-            );
-          })}
-        </div>
-
-        {/* Dynamic Status Text & Loading Indicator */}
-        <div className="mt-4 text-center space-y-2 max-w-md">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-slate-900/80 border border-slate-800 rounded-xl text-sm font-medium text-slate-200 shadow-lg">
-            {redirectCountdown !== null ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            ) : (
-              <RefreshCw className="w-4 h-4 text-orange-400 animate-spin" />
-            )}
-            <span>{statusMessage}</span>
-          </div>
-
-          <p className="text-xs text-slate-500">
-            Do backend Free Tier tự động ngủ đông khi không có request, vui lòng chờ trong giây lát...
-          </p>
+              <div
+                className="text-xs text-orange-300 font-mono mb-2"
+                dangerouslySetInnerHTML={{ __html: selectedItem.category }}
+              />
+              <div className="flex items-center gap-2.5 mb-2.5 font-mono text-xs">
+                <span className="text-slate-400">Status:</span>
+                <span className="text-emerald-400 font-bold">{selectedItem.status}</span>
+                <span className="text-slate-500">|</span>
+                <span className="text-slate-400">Tech:</span>
+                <span className="text-cyan-300">{selectedItem.tech}</span>
+              </div>
+              <p className="text-xs text-slate-200 leading-relaxed bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+                {selectedItem.details}
+              </p>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="w-full max-w-5xl mx-auto z-10 text-center py-2 text-xs text-slate-500 font-mono">
-        QuickBite Customer Platform &copy; 2026 — Cold Start Mitigation Engine
+      {/* Bottom Mission Control Bar: Live Telemetry Ticker & Override */}
+      <footer className="w-full flex flex-col sm:flex-row items-center justify-between gap-2 py-2 px-4 sm:px-6 bg-slate-950/90 backdrop-blur-2xl rounded-2xl border border-slate-800/80 text-xs font-mono shrink-0">
+
+        {/* Live Ticker */}
+        <div className="flex items-center gap-2 text-slate-300 w-full sm:w-auto truncate">
+          <Radio className="w-4 h-4 text-orange-400 animate-pulse shrink-0" />
+          <span className="text-orange-400 font-bold shrink-0">TELEMETRY STREAM:</span>
+          <span className="truncate text-slate-300">
+            {latestLog ? `[${latestLog.time}] ${latestLog.message}` : "Synchronizing Quick Bite cluster telemetry..."}
+          </span>
+        </div>
+
+        {/* Action Button */}
+        <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+          <button
+            type="button"
+            onClick={() => onReady && onReady()}
+            className="px-4 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 hover:border-slate-600 rounded-xl text-xs font-bold transition-all flex items-center gap-2 shadow-lg"
+          >
+            <span>Manual Override / Launch App</span>
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
       </footer>
     </div>
   );
