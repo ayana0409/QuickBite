@@ -1,6 +1,290 @@
-/* Your Global Styles */
+/* ==========================================================================
+   QUICK UNIVERSE - GLOBAL SYSTEM DESIGN & NAVBAR/SIDEBAR THEME
+   ========================================================================== */
 
-:root .lpx-brand-logo {
-    --lpx-logo: url('/images/logo/leptonx/logo-light.png');
-    --lpx-logo-icon: url('/images/logo/leptonx/logo-light-thumbnail.png');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap');
+
+:root {
+    --qu-font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --qu-bg-root: #060813;
+    --qu-bg-surface: #0f172a;
+    --qu-bg-surface-elevated: #1e293b;
+    --qu-navbar-bg: rgba(15, 23, 42, 0.94);
+    --qu-border: rgba(255, 255, 255, 0.08);
+    --qu-border-glow: rgba(99, 102, 241, 0.3);
+    
+    --qu-primary: #6366f1;
+    --qu-primary-grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+    --qu-primary-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c026d3 100%);
+    
+    --qu-text-main: #f8fafc;
+    --qu-text-muted: #94a3b8;
+    --qu-text-subtle: #64748b;
+}
+
+html, body {
+    font-family: var(--qu-font) !important;
+    background-color: var(--qu-bg-root) !important;
+    color: var(--qu-text-main) !important;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden !important;
+    margin: 0;
+    padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Custom Sleek Scrollbar
+   -------------------------------------------------------------------------- */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.8);
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.35);
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(139, 92, 246, 0.7);
+}
+
+/* --------------------------------------------------------------------------
+   LeptonX Layout & Wrapper
+   -------------------------------------------------------------------------- */
+.lpx-wrapper,
+.lpx-content-container,
+.main-content {
+    overflow-x: hidden !important;
+    background-color: var(--qu-bg-root) !important;
+}
+
+/* --------------------------------------------------------------------------
+   LeptonX Sidebar Container - Flush to the very top (y = 0)
+   -------------------------------------------------------------------------- */
+.lpx-sidebar,
+.lpx-sidebar-container,
+.lpx-sidebar-wrapper {
+    top: 0 !important;
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    background: var(--qu-navbar-bg) !important;
+    backdrop-filter: blur(20px) !important;
+    border-right: 1px solid var(--qu-border) !important;
+    overflow-x: hidden !important;
+}
+
+/* --------------------------------------------------------------------------
+   LeptonX Brand Header & Logo - Positioned directly at the top
+   -------------------------------------------------------------------------- */
+.lpx-brand-container,
+.lpx-sidebar-header,
+.lpx-brand,
+.lpx-logo-container,
+.lpx-sidebar-logo {
+    top: 0 !important;
+    margin-top: 0 !important;
+    height: auto !important;
+    min-height: 54px !important;
+    padding: 12px 14px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    position: relative !important;
+    border-bottom: 1px solid var(--qu-border) !important;
+    margin-bottom: 6px !important;
+    overflow: hidden !important;
+    box-sizing: border-box !important;
+}
+
+:root .lpx-brand-logo,
+.lpx-brand-logo {
+    --lpx-logo: url('/images/logo/quick-universe-logo.svg') !important;
+    --lpx-logo-icon: url('/images/logo/quick-universe-icon.svg') !important;
+    background-size: contain !important;
+    background-position: left center !important;
+    background-repeat: no-repeat !important;
+    height: 28px !important;
+    max-height: 28px !important;
+    width: 155px !important;
+    max-width: 100% !important;
+    display: block !important;
+    margin: 0 !important;
+    flex-shrink: 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   LeptonX Navigation Menu (Clean spacing under logo)
+   -------------------------------------------------------------------------- */
+.lpx-sidebar .lpx-nav-menu,
+.lpx-sidebar .lpx-menu,
+.lpx-nav-menu {
+    padding-top: 4px !important;
+    margin-top: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 4px !important;
+}
+
+.lpx-nav-menu .lpx-menu-item-link,
+.navbar-nav .nav-link,
+.lpx-menu .lpx-menu-item {
+    font-family: var(--qu-font) !important;
+    font-size: 13.5px !important;
+    font-weight: 600 !important;
+    color: var(--qu-text-muted) !important;
+    padding: 10px 14px !important;
+    border-radius: 8px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    margin: 0 4px !important;
+    text-decoration: none !important;
+    position: relative !important;
+}
+
+.lpx-nav-menu .lpx-menu-item-link:hover,
+.navbar-nav .nav-link:hover,
+.lpx-menu .lpx-menu-item:hover {
+    color: #ffffff !important;
+    background: rgba(99, 102, 241, 0.12) !important;
+    border: 1px solid rgba(139, 92, 246, 0.25) !important;
+    transform: translateX(2px);
+}
+
+.lpx-nav-menu .lpx-menu-item.active .lpx-menu-item-link,
+.navbar-nav .nav-item.active .nav-link,
+.navbar-nav .nav-link.active {
+    color: #ffffff !important;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(139, 92, 246, 0.3) 100%) !important;
+    border: 1px solid rgba(139, 92, 246, 0.4) !important;
+    font-weight: 700 !important;
+    box-shadow: 0 4px 15px rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Icon enhancements in navigation */
+.lpx-menu-item-link .fa-atom,
+.nav-link .fa-atom {
+    color: #a78bfa !important;
+}
+
+.lpx-menu-item-link .fa-utensils,
+.nav-link .fa-utensils {
+    color: #f97316 !important;
+}
+
+.lpx-menu-item-link .fa-link,
+.nav-link .fa-link {
+    color: #06b6d4 !important;
+}
+
+.lpx-menu-item-link .fa-users,
+.nav-link .fa-users,
+.lpx-menu-item-link .fa-user-shield,
+.nav-link .fa-user-shield {
+    color: #38bdf8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Topbar Header (When present)
+   -------------------------------------------------------------------------- */
+.lpx-header,
+.navbar,
+.lpx-topbar {
+    background: var(--qu-navbar-bg) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+    border-bottom: 1px solid var(--qu-border) !important;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* --------------------------------------------------------------------------
+   User Profile & Dropdown Menu
+   -------------------------------------------------------------------------- */
+.lpx-user-menu,
+.lpx-context-menu,
+.dropdown-menu {
+    background: rgba(15, 23, 42, 0.96) !important;
+    backdrop-filter: blur(24px) !important;
+    -webkit-backdrop-filter: blur(24px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7),
+                0 0 20px rgba(99, 102, 241, 0.15) !important;
+    padding: 8px !important;
+    margin-top: 6px !important;
+}
+
+.dropdown-item,
+.lpx-context-menu .lpx-menu-item {
+    color: var(--qu-text-muted) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    border-radius: 8px !important;
+    padding: 8px 12px !important;
+    transition: all 0.2s ease !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+}
+
+.dropdown-item:hover,
+.lpx-context-menu .lpx-menu-item:hover {
+    background: rgba(99, 102, 241, 0.15) !important;
+    color: #ffffff !important;
+    transform: translateX(3px);
+}
+
+.dropdown-divider {
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    margin: 4px 0 !important;
+}
+
+/* --------------------------------------------------------------------------
+   General Cards & Content Containers
+   -------------------------------------------------------------------------- */
+.card {
+    background: var(--qu-bg-surface) !important;
+    border: 1px solid var(--qu-border) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3) !important;
+}
+
+.card-header {
+    background: transparent !important;
+    border-bottom: 1px solid var(--qu-border) !important;
+    font-weight: 700 !important;
+    color: #ffffff !important;
+}
+
+.card-footer {
+    background: transparent !important;
+    border-top: 1px solid var(--qu-border) !important;
+}
+
+.table {
+    color: var(--qu-text-main) !important;
+    border-color: var(--qu-border) !important;
+}
+
+.table th {
+    background: rgba(30, 41, 59, 0.5) !important;
+    color: #e2e8f0 !important;
+    border-color: var(--qu-border) !important;
+    font-weight: 600 !important;
+    font-size: 13px !important;
+}
+
+.table td {
+    border-color: var(--qu-border) !important;
+    vertical-align: middle !important;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(99, 102, 241, 0.06) !important;
 }

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 36" width="200" height="36">
+  <defs>
+    <linearGradient id="cosmicGradLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="50%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#d946ef" />
+    </linearGradient>
+    <linearGradient id="textGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#c4b5fd" />
+    </linearGradient>
+    <radialGradient id="centerGlowLogo" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="70%" stop-color="#818cf8" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </radialGradient>
+  </defs>
+
+  <!-- Left Icon Emblem -->
+  <g transform="translate(0, 2) scale(0.32)">
+    <ellipse cx="50" cy="50" rx="42" ry="16" fill="none" stroke="url(#cosmicGradLogo)" stroke-width="4.5" transform="rotate(-30 50 50)" stroke-dasharray="8 3" opacity="0.9" />
+    <ellipse cx="50" cy="50" rx="42" ry="16" fill="none" stroke="url(#cosmicGradLogo)" stroke-width="4.5" transform="rotate(30 50 50)" opacity="0.9" />
+    <ellipse cx="50" cy="50" rx="42" ry="16" fill="none" stroke="url(#cosmicGradLogo)" stroke-width="4.5" transform="rotate(90 50 50)" opacity="0.7" />
+    <circle cx="86" cy="30" r="5" fill="#38bdf8" />
+    <circle cx="14" cy="70" r="4.5" fill="#f43f5e" />
+    <circle cx="50" cy="8" r="4.5" fill="#a855f7" />
+    <circle cx="50" cy="50" r="14" fill="url(#centerGlowLogo)" />
+    <circle cx="50" cy="50" r="8" fill="#ffffff" />
+  </g>
+
+  <!-- Typography Text -->
+  <text x="38" y="23" font-family="'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif" font-size="15" font-weight="800" fill="url(#textGrad)" letter-spacing="0.3">QUICK UNIVERSE</text>
+</svg>

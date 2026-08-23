@@ -16,4 +16,6 @@ public class IdentityBrandingProvider : DefaultBrandingProvider
     }
 
     public override string AppName => _localizer["AppName"] ?? "Quick Universe";
+    public override string LogoUrl => "/images/logo/quick-universe-logo.svg";
+    public override string LogoReverseUrl => "/images/logo/quick-universe-logo.svg";
 }

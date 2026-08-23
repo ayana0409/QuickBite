@@ -1,60 +1,643 @@
 @page
-<div class="row mb-3">
-    <div class="col-xl-6 col-12 d-flex">
-        <div class="card h-lg-100 w-100 overflow-hidden">
-            <div class="card-body">
-                <div class="starting-content">
-                    <h3>Getting Started</h3>
-                    <p class="lead text-muted mb-2">Learn how to create and run a new web application using the application startup template.</p>
-                    <a href="https://docs.abp.io/en/commercial/latest/getting-started" class="btn btn-brand mb-4" target="_blank">Getting Started</a>
+@model QuickBite.Identity.Web.Pages.IndexModel
+@inject Volo.Abp.Users.ICurrentUser CurrentUser
 
-                    <h4>Web Application Development Tutorial</h4>
-                    <p class="text-muted mb-2">Learn how to build an ABP based web application named Acme.BookStore.</p>
-                    <a href="https://docs.abp.io/en/commercial/latest/tutorials/book-store/part-1?UI=MVC&DB=EF" class="btn btn-primary soft mb-4" target="_blank">Explore Tutorial</a>
+<!-- Quick Universe Ecosystem Home Stylesheet -->
+<link rel="stylesheet" href="/css/quick-universe-home.css" />
 
-                    <h4>Customize Lepton Theme</h4>
-                    <p class="text-muted mb-2">Learn how to customize LeptonX Theme as you wish.</p>
-                    <a href="https://docs.abp.io/en/commercial/latest/themes/lepton/customizing-lepton-theme" class="btn btn-primary soft mb-5 mb-xl-0" target="_blank">Customize Lepton</a>
-                </div>
-                <img class="card-bg-image" src="/images/getting-started/bg-01.png">
+<style>
+    :root {
+        --qu-card-bg: #0f172a;
+        --qu-card-border: rgba(255, 255, 255, 0.08);
+        --qu-card-glow: rgba(99, 102, 241, 0.15);
+        --qu-text-main: #f8fafc;
+        --qu-text-muted: #94a3b8;
+        --qu-text-subtle: #64748b;
+        --qu-primary-grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #d946ef 100%);
+        --qu-primary-hover: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #c026d3 100%);
+    }
+
+    .universe-home-wrapper {
+        margin-bottom: 40px;
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    /* Hero Welcome Banner */
+    .universe-hero-banner {
+        position: relative;
+        background: linear-gradient(135deg, rgba(30, 27, 75, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%);
+        border: 1px solid rgba(139, 92, 246, 0.25);
+        border-radius: 20px;
+        padding: 36px 40px;
+        margin-bottom: 32px;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5), 0 0 30px rgba(99, 102, 241, 0.12);
+        overflow: hidden;
+    }
+
+    .universe-hero-banner::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: var(--qu-primary-grad);
+    }
+
+    .universe-hero-banner::after {
+        content: '';
+        position: absolute;
+        right: -50px;
+        bottom: -50px;
+        width: 250px;
+        height: 250px;
+        background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .badge-cosmos {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        border-radius: 9999px;
+        background: rgba(99, 102, 241, 0.15);
+        border: 1px solid rgba(139, 92, 246, 0.35);
+        color: #c4b5fd;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 16px;
+    }
+
+    .universe-hero-title {
+        font-size: 32px;
+        font-weight: 800;
+        color: #ffffff;
+        letter-spacing: -0.5px;
+        margin-bottom: 10px;
+    }
+
+    .universe-hero-title span {
+        background: var(--qu-primary-grad);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .universe-hero-subtitle {
+        font-size: 15px;
+        color: #94a3b8;
+        max-width: 680px;
+        line-height: 1.6;
+        margin-bottom: 24px;
+    }
+
+    .hero-meta-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .meta-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 8px;
+        font-size: 12.5px;
+        color: #cbd5e1;
+    }
+
+    .pulse-dot-green {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: #10b981;
+        box-shadow: 0 0 8px #10b981;
+        animation: pulseDot 2s infinite;
+    }
+
+    @@keyframes pulseDot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Section Header */
+    .section-header-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .section-header-title h3 {
+        font-size: 20px;
+        font-weight: 700;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .section-header-title h3 i {
+        color: #8b5cf6;
+    }
+
+    /* Project Cards Grid */
+    .ecosystem-projects-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+        margin-bottom: 36px;
+    }
+
+    .project-card {
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    }
+
+    .project-card:hover {
+        border-color: rgba(139, 92, 246, 0.4);
+        transform: translateY(-4px);
+        box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.5), 0 0 25px rgba(99, 102, 241, 0.15);
+    }
+
+    .project-card.is-upcoming {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px dashed rgba(255, 255, 255, 0.12);
+        opacity: 0.75;
+    }
+
+    .project-card.is-upcoming:hover {
+        border-color: rgba(255, 255, 255, 0.25);
+        transform: none;
+        box-shadow: none;
+    }
+
+    .card-top-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        margin-bottom: 20px;
+    }
+
+    .project-icon-box {
+        width: 52px;
+        height: 52px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+        color: #ffffff;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    .icon-quickbite {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        box-shadow: 0 8px 16px rgba(249, 115, 22, 0.3);
+    }
+
+    .icon-shorterlink {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        box-shadow: 0 8px 16px rgba(6, 182, 212, 0.3);
+    }
+
+    .icon-logistics {
+        background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    }
+
+    .icon-cloud {
+        background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    }
+
+    .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 9999px;
+        font-size: 11.5px;
+        font-weight: 600;
+    }
+
+    .status-active {
+        background: rgba(16, 185, 129, 0.12);
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        color: #34d399;
+    }
+
+    .status-upcoming {
+        background: rgba(148, 163, 184, 0.1);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+        color: #94a3b8;
+    }
+
+    .project-title {
+        font-size: 20px;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 6px;
+    }
+
+    .project-tagline {
+        font-size: 13.5px;
+        font-weight: 500;
+        color: #a78bfa;
+        margin-bottom: 12px;
+    }
+
+    .project-desc {
+        font-size: 13.5px;
+        line-height: 1.6;
+        color: #94a3b8;
+        margin-bottom: 20px;
+        min-height: 44px;
+    }
+
+    .project-highlights {
+        list-style: none;
+        padding: 0;
+        margin: 0 0 24px 0;
+    }
+
+    .project-highlights li {
+        font-size: 12.5px;
+        color: #cbd5e1;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .project-highlights li i {
+        color: #10b981;
+        font-size: 11px;
+    }
+
+    .project-card.is-upcoming .project-highlights li i {
+        color: #64748b;
+    }
+
+    .url-preview-box {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-family: 'SFMono-Regular', Consolas, monospace;
+        font-size: 12px;
+        color: #94a3b8;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .url-preview-box i {
+        color: #64748b;
+        flex-shrink: 0;
+    }
+
+    .url-preview-box span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Action Buttons */
+    .btn-ecosystem-action {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        width: 100%;
+        height: 46px;
+        border-radius: 10px;
+        font-size: 14px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.25s ease;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-quickbite {
+        background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(249, 115, 22, 0.35);
+    }
+
+    .btn-quickbite:hover {
+        background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+        color: #ffffff !important;
+        box-shadow: 0 6px 20px rgba(249, 115, 22, 0.5);
+        transform: translateY(-2px);
+    }
+
+    .btn-shorterlink {
+        background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
+    }
+
+    .btn-shorterlink:hover {
+        background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%);
+        color: #ffffff !important;
+        box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+        transform: translateY(-2px);
+    }
+
+    .btn-disabled {
+        background: rgba(255, 255, 255, 0.05);
+        color: #64748b !important;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        cursor: not-allowed;
+    }
+
+    /* Footer Architecture Card */
+    .universe-footer-banner {
+        background: #0f172a;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 16px;
+        padding: 24px 32px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .footer-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .footer-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: rgba(99, 102, 241, 0.15);
+        color: #a78bfa;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+    }
+
+    .footer-text h4 {
+        font-size: 15px;
+        font-weight: 700;
+        color: #ffffff;
+        margin-bottom: 2px;
+    }
+
+    .footer-text p {
+        font-size: 13px;
+        color: #94a3b8;
+        margin: 0;
+    }
+
+    .footer-badges {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    /* Responsive */
+    @@media (max-width: 992px) {
+        .ecosystem-projects-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .universe-hero-banner {
+            padding: 28px 24px;
+        }
+
+        .universe-hero-title {
+            font-size: 26px;
+        }
+    }
+</style>
+
+<div class="universe-home-wrapper">
+
+    <!-- Hero Welcome Banner -->
+    <div class="universe-hero-banner">
+        <div class="badge-cosmos">
+            <i class="fa-solid fa-atom"></i> Quick Universe Ecosystem Portal
+        </div>
+        
+        <h1 class="universe-hero-title">
+            Welcome back, <span>@(CurrentUser.Name ?? CurrentUser.UserName ?? "Explorer")</span>!
+        </h1>
+        
+        <p class="universe-hero-subtitle">
+            Explore and seamlessly navigate across all connected applications in the Quick Universe ecosystem, powered by your unified Single Sign-On (SSO) account.
+        </p>
+
+        <div class="hero-meta-chips">
+            <div class="meta-chip">
+                <span class="pulse-dot-green"></span> Unified SSO Active
+            </div>
+            <div class="meta-chip">
+                <i class="fa-solid fa-shield-halved" style="color: #6366f1;"></i> OpenID Connect Certified
+            </div>
+            <div class="meta-chip">
+                <i class="fa-solid fa-user-check" style="color: #a78bfa;"></i> Logged in as: @(CurrentUser.UserName)
             </div>
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 d-flex">
-        <div class="row">
-            <div class="col-12 d-flex">
-                <div class="card overflow-hidden">
-                    <div class="card-body pb-0">
-                        <div class="abp-support abp-logo mb-2"></div>
-                        <p class="text-muted mb-2">You can check for similar problems and solutions, or open a new topic to discuss your specific issue.</p>
-                        <a href="https://support.abp.io/QA/Questions" class="btn btn-brand soft" target="_blank">Visit Support</a>
-                        <img class="" src="/images/getting-started/img-support.png">
+    <!-- Section Title -->
+    <div class="section-header-title">
+        <h3><i class="fa-solid fa-layer-group"></i> Connected Ecosystem Applications</h3>
+    </div>
+
+    <!-- Ecosystem Projects Grid -->
+    <div class="ecosystem-projects-grid">
+
+        <!-- 1. QuickBite Card -->
+        <div class="project-card">
+            <div>
+                <div class="card-top-row">
+                    <div class="project-icon-box icon-quickbite">
+                        <i class="fa-solid fa-utensils"></i>
                     </div>
+                    <span class="status-pill status-active">
+                        <span class="pulse-dot-green"></span> Live Platform
+                    </span>
+                </div>
+
+                <h4 class="project-title">QuickBite</h4>
+                <div class="project-tagline">Smart Gourmet & Restaurant Ordering Platform</div>
+                <p class="project-desc">
+                    Comprehensive multi-vendor food ordering platform with real-time live order tracking, menu catalogs, and integrated payment gateway.
+                </p>
+
+                <ul class="project-highlights">
+                    <li><i class="fa-solid fa-circle-check"></i> High-performance NestJS & Spring Boot Microservices</li>
+                    <li><i class="fa-solid fa-circle-check"></i> Real-time notification gateway & WebSocket dispatch</li>
+                    <li><i class="fa-solid fa-circle-check"></i> Seamless Single Sign-On integration</li>
+                </ul>
+
+                <div class="url-preview-box" title="@Model.QuickBiteUrl">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>@Model.QuickBiteUrl</span>
                 </div>
             </div>
-            <div class="col-12 d-flex">
-                <div class="card h-md-100 overflow-hidden">
-                    <div class="card-body pb-0">
-                        <div class="abp-blog abp-logo mb-2"></div>
-                        <p class="text-muted mb-2">You can find content on .NET development, cross-platform, ASP.NET application templates, ABP-related news, and more.</p>
-                        <a href="https://blog.abp.io/abp" class="btn btn-brand soft" target="_blank">Visit Blog</a>
-                        <img style="margin-bottom: -24px;" src="/images/getting-started/img-blog.png">
+
+            <a href="@Model.QuickBiteUrl" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="btn-ecosystem-action btn-quickbite">
+                Launch QuickBite <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+        </div>
+
+        <!-- 2. ShorterLink Card -->
+        <div class="project-card">
+            <div>
+                <div class="card-top-row">
+                    <div class="project-icon-box icon-shorterlink">
+                        <i class="fa-solid fa-link"></i>
                     </div>
+                    <span class="status-pill status-active">
+                        <span class="pulse-dot-green"></span> Live Platform
+                    </span>
                 </div>
+
+                <h4 class="project-title">ShorterLink</h4>
+                <div class="project-tagline">High-Performance URL Shortener & Analytics Suite</div>
+                <p class="project-desc">
+                    Fast and reliable link management platform featuring custom branded aliases, instant QR code generation, and real-time click analytics.
+                </p>
+
+                <ul class="project-highlights">
+                    <li><i class="fa-solid fa-circle-check"></i> Ultra-low latency link redirect engine</li>
+                    <li><i class="fa-solid fa-circle-check"></i> Detailed click-stream insights & analytics</li>
+                    <li><i class="fa-solid fa-circle-check"></i> Authenticated link lifecycle management</li>
+                </ul>
+
+                <div class="url-preview-box" title="@Model.ShorterLinkUrl">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>@Model.ShorterLinkUrl</span>
+                </div>
+            </div>
+
+            <a href="@Model.ShorterLinkUrl" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="btn-ecosystem-action btn-shorterlink">
+                Launch ShorterLink <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+        </div>
+
+        <!-- 3. QuickLogistics Card (In Development) -->
+        <div class="project-card is-upcoming">
+            <div>
+                <div class="card-top-row">
+                    <div class="project-icon-box icon-logistics">
+                        <i class="fa-solid fa-truck-fast"></i>
+                    </div>
+                    <span class="status-pill status-upcoming">
+                        <i class="fa-solid fa-cube"></i> In Development
+                    </span>
+                </div>
+
+                <h4 class="project-title">QuickLogistics</h4>
+                <div class="project-tagline">Smart Fleet Dispatch & Supply Chain Suite</div>
+                <p class="project-desc">
+                    Next-generation intelligent courier routing, multi-hub fleet management, and automated fulfillment tracking.
+                </p>
+
+                <ul class="project-highlights">
+                    <li><i class="fa-solid fa-circle-dot"></i> Automated driver dispatch algorithm</li>
+                    <li><i class="fa-solid fa-circle-dot"></i> Real-time GPS telemetry & routing</li>
+                </ul>
+
+                <div class="url-preview-box">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>https://logistics.quickuniverse.io (Coming Soon)</span>
+                </div>
+            </div>
+
+            <button class="btn-ecosystem-action btn-disabled" disabled>
+                <i class="fa-solid fa-hourglass-half"></i> Under Construction
+            </button>
+        </div>
+
+        <!-- 4. QuickCloud Card (In Development) -->
+        <div class="project-card is-upcoming">
+            <div>
+                <div class="card-top-row">
+                    <div class="project-icon-box icon-cloud">
+                        <i class="fa-solid fa-cloud-bolt"></i>
+                    </div>
+                    <span class="status-pill status-upcoming">
+                        <i class="fa-solid fa-sparkles"></i> In Development
+                    </span>
+                </div>
+
+                <h4 class="project-title">QuickCloud</h4>
+                <div class="project-tagline">Enterprise Developer Platform & Webhooks</div>
+                <p class="project-desc">
+                    Centralized developer portal for managing API tokens, event streams, webhook subscriptions, and cloud metrics.
+                </p>
+
+                <ul class="project-highlights">
+                    <li><i class="fa-solid fa-circle-dot"></i> OAuth2 client credentials & scopes management</li>
+                    <li><i class="fa-solid fa-circle-dot"></i> Developer SDKs & automated documentation</li>
+                </ul>
+
+                <div class="url-preview-box">
+                    <i class="fa-solid fa-lock"></i>
+                    <span>https://cloud.quickuniverse.io (Coming Soon)</span>
+                </div>
+            </div>
+
+            <button class="btn-ecosystem-action btn-disabled" disabled>
+                <i class="fa-solid fa-hourglass-half"></i> Under Construction
+            </button>
+        </div>
+
+    </div>
+
+    <!-- Security & Architecture Information Footer Banner -->
+    <div class="universe-footer-banner">
+        <div class="footer-left">
+            <div class="footer-icon">
+                <i class="fa-solid fa-fingerprint"></i>
+            </div>
+            <div class="footer-text">
+                <h4>Quick Universe Identity Gateway</h4>
+                <p>One unified security principal managing sessions, RBAC permissions, and tokens across all ecosystem microservices.</p>
+            </div>
+        </div>
+
+        <div class="footer-badges">
+            <div class="meta-chip">
+                <i class="fa-solid fa-lock" style="color: #10b981;"></i> 256-Bit TLS
+            </div>
+            <div class="meta-chip">
+                <i class="fa-solid fa-key" style="color: #6366f1;"></i> RSA OpenIddict Keys
             </div>
         </div>
     </div>
 
-    <div class="col-xl-3 col-md-6 d-flex">
-        <div class="card h-100 overflow-hidden">
-            <div class="card-body">
-                <div class="abp-community abp-logo mb-2"></div>
-                <p class="lead text-muted">A unique community platform for <span class="fw-bold">ABP Lovers!</span></p>
-                <p class="text-muted mb-2">Explore all ABP users' experiences with the ABP Framework, discover articles and videos on how to use ABP, and join raffles for a chance to win surprise gifts!</p>
-                <a class="btn btn-brand soft mb-3" href="https://community.abp.io/" target="_blank">Join ABP Community</a>
-            </div>
-            <img class="mt-3" src="/images/getting-started/img-community.png">
-        </div>
-    </div>
 </div>

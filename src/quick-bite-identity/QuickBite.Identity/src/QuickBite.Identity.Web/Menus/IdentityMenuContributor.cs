@@ -1,4 +1,6 @@
+using System;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using QuickBite.Identity.Localization;
 using QuickBite.Identity.MultiTenancy;
@@ -24,16 +26,50 @@ public class IdentityMenuContributor : IMenuContributor
         var administration = context.Menu.GetAdministration();
         var l = context.GetLocalizer<IdentityResource>();
         var currentUser = context.ServiceProvider.GetRequiredService<ICurrentUser>();
+        var configuration = context.ServiceProvider.GetRequiredService<IConfiguration>();
 
-        // Top-level menu: Home
+        // Read dynamic ecosystem URLs from configuration / environment variables
+        var quickBiteUrl = configuration["Ecosystem:QuickBiteUrl"] 
+                           ?? Environment.GetEnvironmentVariable("ECOSYSTEM_QUICKBITE_URL") 
+                           ?? "https://quickbite-wnkc.onrender.com";
+
+        var shorterLinkUrl = configuration["Ecosystem:ShorterLinkUrl"] 
+                             ?? Environment.GetEnvironmentVariable("ECOSYSTEM_SHORTERLINK_URL") 
+                             ?? "https://shink.onrender.com";
+
+        // Top-level menu: Ecosystem Home
         context.Menu.Items.Insert(
             0,
             new ApplicationMenuItem(
                 IdentityMenus.Home,
-                l["Menu:Home"],
+                l["Menu:Home"] ?? "Ecosystem Portal",
                 "~/",
-                icon: "fas fa-home",
+                icon: "fas fa-atom",
                 order: 0
+            )
+        );
+
+        // Ecosystem Link 1: QuickBite
+        context.Menu.AddItem(
+            new ApplicationMenuItem(
+                "QuickUniverse.QuickBite",
+                "QuickBite",
+                url: quickBiteUrl,
+                icon: "fas fa-utensils",
+                target: "_blank",
+                order: 1
+            )
+        );
+
+        // Ecosystem Link 2: ShorterLink
+        context.Menu.AddItem(
+            new ApplicationMenuItem(
+                "QuickUniverse.ShorterLink",
+                "ShorterLink",
+                url: shorterLinkUrl,
+                icon: "fas fa-link",
+                target: "_blank",
+                order: 2
             )
         );
 

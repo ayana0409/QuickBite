@@ -434,6 +434,7 @@ public class IdentityWebModule : AbpModule
         app.UseCorrelationId();
         app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.MapAbpStaticAssets();
+        app.UseStaticFiles();
         app.UseRouting();
 
         // Redirect legacy ABP /Account/Login requests to Quick Universe /auth/login
