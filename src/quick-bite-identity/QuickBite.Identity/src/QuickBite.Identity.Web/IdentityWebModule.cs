@@ -236,6 +236,7 @@ public class IdentityWebModule : AbpModule
 
             // Anonymous page
             options.Conventions.AllowAnonymousToPage("/auth/login");
+            options.Conventions.AllowAnonymousToPage("/Account/Login");
             options.Conventions.AllowAnonymousToPage("/Account/Register");
             options.Conventions.AllowAnonymousToPage("/Account/ForgotPassword");
             options.Conventions.AllowAnonymousToPage("/AccessDenied");
@@ -434,6 +435,19 @@ public class IdentityWebModule : AbpModule
         app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.MapAbpStaticAssets();
         app.UseRouting();
+
+        // Redirect legacy ABP /Account/Login requests to Quick Universe /auth/login
+        app.Use(async (httpContext, next) =>
+        {
+            if (httpContext.Request.Path.Equals("/Account/Login", StringComparison.OrdinalIgnoreCase))
+            {
+                var queryString = httpContext.Request.QueryString.Value;
+                httpContext.Response.Redirect("/auth/login" + queryString);
+                return;
+            }
+            await next();
+        });
+
         app.UseCors();
         app.UseAuthentication();
         app.UseAbpOpenIddictValidation();
