@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Localization;
 using QuickBite.Identity.Localization;
 using Volo.Abp.Ui.Branding;
 using Volo.Abp.DependencyInjection;
@@ -15,5 +15,5 @@ public class IdentityBrandingProvider : DefaultBrandingProvider
         _localizer = localizer;
     }
 
-    public override string AppName => _localizer["AppName"];
+    public override string AppName => _localizer["AppName"] ?? "Quick Universe";
 }

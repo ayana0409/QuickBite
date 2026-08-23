@@ -1,6 +1,5 @@
-@page 
+@page
 @model QuickBite.Identity.Web.Pages.Auth.LoginModel
-
 @{
     Layout = null;
 }
@@ -8,109 +7,288 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-
     <meta charset="utf-8" />
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Sign In &bull; Quick Universe SSO</title>
 
-    <title>QuickBite Identity</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
 
-    <!-- Bootstrap -->
-    <link rel="stylesheet"
-          href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" />
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
 
-    <!-- Font Awesome -->
-    <link rel="stylesheet"
-          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" />
-
+    <!-- Quick Universe SSO Theme -->
+    <link rel="stylesheet" href="/css/quick-universe-login.css" />
 </head>
+<body>
 
-<body class="bg-light">
+    <!-- Ambient Cosmic Atmosphere Background -->
+    <div class="universe-background" aria-hidden="true">
+        <div class="starfield-grid"></div>
+        <div class="nebula-orb orb-1"></div>
+        <div class="nebula-orb orb-2"></div>
+        <div class="nebula-orb orb-3"></div>
+    </div>
 
-    <div class="container vh-100 d-flex justify-content-center align-items-center">
-
-        <div class="card shadow-lg border-0"
-             style="width:820px;">
-
-            <div class="card-body p-5">
-
-                
-                <div class="card shadow border-0">
-                    <div class="card-body p-5">
-
-                        <div class="text-center mb-4">
-                            <h2 class="fw-bold">QuickBite Identity</h2>
-
-                            <p class="text-muted">
-                                Sign in to continue.
-                            </p>
-                        </div>
-
-                        <form method="post" asp-route-returnUrl="@Model.ReturnUrl">
-                            <input type="hidden" asp-for="ReturnUrl" />
-
-                            <!-- Show errors -->
-                            @if (!ViewData.ModelState.IsValid)
-                            {
-                                @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
-                                {
-                                    <div class="alert alert-danger">
-                                        @error.ErrorMessage
-                                    </div>
-                                }
-                            }
-
-                            <abp-input asp-for="LoginInput.UserNameOrEmailAddress"
-                                       label="Email or Username" />
-
-                            <abp-input asp-for="LoginInput.Password"
-                                       type="password"
-                                       label="Password" />
-
-                            <abp-input asp-for="LoginInput.RememberMe" />
-
-                            <div class="d-grid mt-4">
-                                <abp-button button-type="Primary"
-                                            type="submit"
-                                            size="Large">
-                                    Login
-                                </abp-button>
-                            </div>
-
-                        </form>
-
-                        <hr />
-
-                        <div class="text-center">
-                            <a asp-page="./ForgotPassword"
-                               class="text-decoration-none">
-                                Forgot password?
-                            </a>
-                        </div>
-
-                        <div class="text-center mt-2">
-
-                            Don't have an account?
-
-                            <a asp-page="./Register"
-                               class="fw-semibold text-decoration-none">
-                                Register
-                            </a>
-
-                        </div>
-
+    <!-- Main Container -->
+    <main class="universe-container" role="main">
+        
+        <!-- Left Panel: Quick Universe Showcase -->
+        <aside class="showcase-panel">
+            <div>
+                <!-- Brand Header -->
+                <div class="brand-header">
+                    <div class="brand-logo-badge">
+                        <i class="fa-solid fa-atom"></i>
+                    </div>
+                    <div class="brand-text-wrap">
+                        <h1>Quick Universe</h1>
+                        <span class="brand-tag">
+                            <span class="live-dot"></span> Universal SSO Portal
+                        </span>
                     </div>
                 </div>
 
+                <!-- Hero Thesis -->
+                <div class="hero-statement">
+                    <h2>One Identity.<br />Infinite Possibilities.</h2>
+                    <p>
+                        Seamlessly sign in once to access all products and developer services across the unified Quick ecosystem.
+                    </p>
+                </div>
             </div>
 
-        </div>
+            <!-- Ecosystem Applications -->
+            <div class="ecosystem-section">
+                <div class="ecosystem-title">
+                    <i class="fa-solid fa-layer-group"></i> Ecosystem Products
+                </div>
+                <div class="ecosystem-grid">
+                    <div class="ecosystem-card" title="QuickBite - Gourmet & Food Delivery">
+                        <div class="ecosystem-icon eco-quickbite">
+                            <i class="fa-solid fa-utensils"></i>
+                        </div>
+                        <div class="ecosystem-info">
+                            <h4>QuickBite</h4>
+                            <span>Food & Dining</span>
+                        </div>
+                    </div>
 
-    </div>
+                    <div class="ecosystem-card" title="ShorterLink - URL Shortener & Link Management">
+                        <div class="ecosystem-icon eco-shorterlink">
+                            <i class="fa-solid fa-link"></i>
+                        </div>
+                        <div class="ecosystem-info">
+                            <h4>ShorterLink</h4>
+                            <span>Link Management</span>
+                        </div>
+                    </div>
 
+                    <div class="ecosystem-card is-upcoming" title="In Development - Coming Soon">
+                        <div class="ecosystem-icon eco-upcoming">
+                            <i class="fa-solid fa-cube"></i>
+                        </div>
+                        <div class="ecosystem-info">
+                            <h4>In Development</h4>
+                            <span>Coming Soon</span>
+                        </div>
+                    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+                    <div class="ecosystem-card is-upcoming" title="In Development - Coming Soon">
+                        <div class="ecosystem-icon eco-upcoming">
+                            <i class="fa-solid fa-sparkles"></i>
+                        </div>
+                        <div class="ecosystem-info">
+                            <h4>In Development</h4>
+                            <span>Coming Soon</span>
+                        </div>
+                    </div>
+                </div>
 
+                <!-- Security Assurance -->
+                <div class="security-badge">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>Protected by OpenID Connect & 256-bit End-to-End Encryption</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Panel: Authentication Form -->
+        <section class="auth-panel">
+            
+            <!-- Mobile Brand Header (Visible on smaller screens) -->
+            <div class="mobile-brand-header">
+                <div class="brand-logo-badge" style="width: 40px; height: 40px; font-size: 18px;">
+                    <i class="fa-solid fa-atom"></i>
+                </div>
+                <div class="brand-text-wrap">
+                    <h1 style="font-size: 20px;">Quick Universe</h1>
+                    <span class="brand-tag"><span class="live-dot"></span> SSO Authentication</span>
+                </div>
+            </div>
+
+            <!-- Header -->
+            <div class="auth-header">
+                <h3>Welcome Back</h3>
+                <p>Sign in with your Quick Universe credentials</p>
+            </div>
+
+            <!-- Display Validation & Server Errors -->
+            @if (!ViewData.ModelState.IsValid)
+            {
+                <div class="alert-toast" role="alert">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                    <div>
+                        @foreach (var error in ViewData.ModelState.Values.SelectMany(v => v.Errors))
+                        {
+                            <div>@error.ErrorMessage</div>
+                        }
+                    </div>
+                </div>
+            }
+
+            <!-- Login Form -->
+            <form method="post" id="quickUniverseLoginForm" asp-route-returnUrl="@Model.ReturnUrl" novalidate>
+                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+
+                <!-- Username or Email Field -->
+                <div class="form-group">
+                    <label class="form-label" for="userNameOrEmail">Username or Email</label>
+                    <div class="input-wrapper">
+                        <i class="fa-regular fa-envelope input-icon-left"></i>
+                        <input type="text"
+                               id="userNameOrEmail"
+                               name="LoginInput.UserNameOrEmailAddress"
+                               value="@Model.LoginInput?.UserNameOrEmailAddress"
+                               class="form-control-universe"
+                               placeholder="name@quickuniverse.io or username"
+                               autocomplete="username"
+                               required
+                               autofocus />
+                    </div>
+                </div>
+
+                <!-- Password Field -->
+                <div class="form-group">
+                    <label class="form-label" for="passwordInput">Password</label>
+                    <div class="input-wrapper">
+                        <i class="fa-solid fa-lock input-icon-left"></i>
+                        <input type="password"
+                               id="passwordInput"
+                               name="LoginInput.Password"
+                               class="form-control-universe"
+                               placeholder="Enter your secret key"
+                               autocomplete="current-password"
+                               required />
+                        <button type="button"
+                                id="togglePasswordBtn"
+                                class="input-btn-right"
+                                aria-label="Toggle password visibility"
+                                title="Show/Hide password">
+                            <i class="fa-regular fa-eye" id="togglePasswordIcon"></i>
+                        </button>
+                    </div>
+                    <div class="caps-warning" id="capsLockWarning">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Caps Lock is ON
+                    </div>
+                </div>
+
+                <!-- Options: Remember Me & Forgot Password -->
+                <div class="form-options-row">
+                    <label class="custom-checkbox-wrap">
+                        <input type="checkbox"
+                               name="LoginInput.RememberMe"
+                               value="true"
+                               @(Model.LoginInput?.RememberMe == true ? "checked" : "") />
+                        <span class="checkbox-custom">
+                            <i class="fa-solid fa-check"></i>
+                        </span>
+                        <span>Remember for 30 days</span>
+                    </label>
+
+                    <a asp-page="/Account/ForgotPassword" class="forgot-link">
+                        Forgot password?
+                    </a>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" id="submitBtn" class="btn-submit-universe">
+                    <div class="btn-content">
+                        <span class="btn-text">Sign In to Universe</span>
+                        <i class="fa-solid fa-arrow-right-long btn-icon"></i>
+                        <span class="btn-spinner"></span>
+                    </div>
+                </button>
+            </form>
+
+            <div class="auth-divider">
+                <span>Quick Ecosystem</span>
+            </div>
+
+            <!-- Footer Prompt -->
+            <div class="auth-footer-prompt">
+                Don't have a Quick Universe ID?
+                <a asp-page="/Account/Register">Create account</a>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Client-side Interactive Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const passwordInput = document.getElementById('passwordInput');
+            const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+            const togglePasswordIcon = document.getElementById('togglePasswordIcon');
+            const capsLockWarning = document.getElementById('capsLockWarning');
+            const loginForm = document.getElementById('quickUniverseLoginForm');
+            const submitBtn = document.getElementById('submitBtn');
+
+            // 1. Password Visibility Toggle
+            if (togglePasswordBtn && passwordInput && togglePasswordIcon) {
+                togglePasswordBtn.addEventListener('click', () => {
+                    const isPassword = passwordInput.type === 'password';
+                    passwordInput.type = isPassword ? 'text' : 'password';
+                    togglePasswordIcon.className = isPassword ? 'fa-regular fa-eye-slash' : 'fa-regular fa-eye';
+                });
+            }
+
+            // 2. Caps Lock Detector
+            if (passwordInput && capsLockWarning) {
+                passwordInput.addEventListener('keyup', (e) => {
+                    if (e.getModifierState && e.getModifierState('CapsLock')) {
+                        capsLockWarning.style.display = 'flex';
+                    } else {
+                        capsLockWarning.style.display = 'none';
+                    }
+                });
+
+                passwordInput.addEventListener('blur', () => {
+                    capsLockWarning.style.display = 'none';
+                });
+            }
+
+            // 3. Form Submit Loading State & Double-click Prevention
+            if (loginForm && submitBtn) {
+                loginForm.addEventListener('submit', (e) => {
+                    const userNameInput = document.getElementById('userNameOrEmail');
+                    if (userNameInput && !userNameInput.value.trim()) {
+                        userNameInput.focus();
+                        return;
+                    }
+                    if (passwordInput && !passwordInput.value) {
+                        passwordInput.focus();
+                        return;
+                    }
+
+                    // Add loading state
+                    submitBtn.classList.add('is-loading');
+                });
+            }
+        });
+    </script>
 </body>
 </html>
-
