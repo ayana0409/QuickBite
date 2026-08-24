@@ -1,4 +1,5 @@
 using Google.Apis.Auth;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -24,17 +25,20 @@ public class AuthService : ApplicationService, IAuthService
     private readonly SignInManager<AbpIdentityUser> _signInManager;
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IHttpContextAccessor _httpContextAccessor;
 
     public AuthService(
         IdentityUserManager userManager,
         SignInManager<AbpIdentityUser> signInManager,
         IConfiguration configuration,
-        IHttpClientFactory httpClientFactory)
+        IHttpClientFactory httpClientFactory,
+        IHttpContextAccessor httpContextAccessor)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
+        _httpContextAccessor = httpContextAccessor;
     }
 
     public async Task<LoginResultDto> LoginAsync(LoginInputDto input)
@@ -216,8 +220,17 @@ public class AuthService : ApplicationService, IAuthService
             }
         }
 
+        // Flush all user changes into the database so OpenIddict /connect/token can find the user
+        if (CurrentUnitOfWork != null)
+        {
+            await CurrentUnitOfWork.SaveChangesAsync();
+        }
+
         // 4. Request JWT Access Token from OpenIddict /connect/token endpoint
-        var selfUrl = _configuration["App:SelfUrl"] ?? "https://localhost:44391";
+        var request = _httpContextAccessor.HttpContext?.Request;
+        var selfUrl = request != null
+            ? $"{request.Scheme}://{request.Host}"
+            : (_configuration["App:SelfUrl"] ?? "https://localhost:44391");
         var tokenEndpoint = $"{selfUrl.TrimEnd('/')}/connect/token";
 
         var clientId = _configuration["OpenIddict:Applications:Identity_Web:ClientId"] ?? "quickbite_web";
