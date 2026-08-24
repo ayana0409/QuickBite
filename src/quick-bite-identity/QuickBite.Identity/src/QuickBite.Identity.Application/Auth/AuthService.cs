@@ -192,6 +192,7 @@ public class AuthService : ApplicationService, IAuthService
 
             user.SetEmailConfirmed(true);
 
+            // Create user in ABP (ABP IdentityUserManager automatically assigns all roles where IsDefault = true)
             var createResult = await _userManager.CreateAsync(user, tempPassword);
             if (!createResult.Succeeded)
             {
@@ -200,9 +201,7 @@ public class AuthService : ApplicationService, IAuthService
                 throw new UserFriendlyException($"Unable to create user account: {errors}");
             }
 
-            // Assign default role: "Customer"
-            await _userManager.AddToRoleAsync(user, "Customer");
-            Logger.LogInformation("Successfully registered new Google user: {Email} with role Customer", email);
+            Logger.LogInformation("Successfully registered new Google user with default ABP roles: {Email}", email);
         }
         else
         {
