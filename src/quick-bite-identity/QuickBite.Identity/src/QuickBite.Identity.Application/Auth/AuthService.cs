@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using Volo.Abp;
 using Volo.Abp.Application.Services;
 using Volo.Abp.Identity;
+using Volo.Abp.Uow;
 using AbpIdentityUser = Volo.Abp.Identity.IdentityUser;
 using IHttpClientFactory = System.Net.Http.IHttpClientFactory;
 
@@ -26,19 +27,22 @@ public class AuthService : ApplicationService, IAuthService
     private readonly IConfiguration _configuration;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHttpContextAccessor _httpContextAccessor;
+    private readonly IUnitOfWorkManager _unitOfWorkManager;
 
     public AuthService(
         IdentityUserManager userManager,
         SignInManager<AbpIdentityUser> signInManager,
         IConfiguration configuration,
         IHttpClientFactory httpClientFactory,
-        IHttpContextAccessor httpContextAccessor)
+        IHttpContextAccessor httpContextAccessor,
+        IUnitOfWorkManager unitOfWorkManager)
     {
         _userManager = userManager;
         _signInManager = signInManager;
         _configuration = configuration;
         _httpClientFactory = httpClientFactory;
         _httpContextAccessor = httpContextAccessor;
+        _unitOfWorkManager = unitOfWorkManager;
     }
 
     public async Task<LoginResultDto> LoginAsync(LoginInputDto input)
@@ -85,6 +89,7 @@ public class AuthService : ApplicationService, IAuthService
         }
     }
 
+    [UnitOfWork(IsDisabled = true)]
     public async Task<GoogleLoginResultDto> GoogleLoginAsync(GoogleLoginDto input)
     {
         if (string.IsNullOrWhiteSpace(input.IdToken))
@@ -165,65 +170,67 @@ public class AuthService : ApplicationService, IAuthService
             throw new UserFriendlyException("Invalid Google token. Authentication failed.");
         }
 
-        // 3. Check if user already exists
-        var user = await _userManager.FindByEmailAsync(email);
-
         // Strong temporary password for internal OpenIddict token exchange
         var tempPassword = $"Gb_{Guid.NewGuid():N}!{Guid.NewGuid():N}"[..24] + "Aa1@";
+        string targetUserName = string.Empty;
 
-        if (user == null)
+        // 3. Create user or reset password within an isolated, committed Unit of Work
+        using (var uow = _unitOfWorkManager.Begin(requiresNew: true, isTransactional: true))
         {
-            // 4. Create new user if not found
-            var baseUsername = email.Split('@')[0];
-            var username = baseUsername;
+            var user = await _userManager.FindByEmailAsync(email);
 
-            // Ensure unique username
-            if (await _userManager.FindByNameAsync(username) != null)
+            if (user == null)
             {
-                username = $"{baseUsername}_{Guid.NewGuid():N}"[..Math.Min(baseUsername.Length + 7, 32)];
+                var baseUsername = email.Split('@')[0];
+                var username = baseUsername;
+
+                // Ensure unique username
+                if (await _userManager.FindByNameAsync(username) != null)
+                {
+                    username = $"{baseUsername}_{Guid.NewGuid():N}"[..Math.Min(baseUsername.Length + 7, 32)];
+                }
+
+                user = new AbpIdentityUser(
+                    GuidGenerator.Create(),
+                    username,
+                    email,
+                    CurrentTenant.Id
+                )
+                {
+                    Name = givenName ?? name ?? baseUsername,
+                    Surname = familyName ?? string.Empty
+                };
+
+                user.SetEmailConfirmed(true);
+
+                // Create user in ABP (ABP IdentityUserManager automatically assigns all roles where IsDefault = true)
+                var createResult = await _userManager.CreateAsync(user, tempPassword);
+                if (!createResult.Succeeded)
+                {
+                    var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
+                    Logger.LogError("Failed to create Google user: {Errors}", errors);
+                    throw new UserFriendlyException($"Unable to create user account: {errors}");
+                }
+
+                Logger.LogInformation("Successfully registered new Google user with default ABP roles: {Email}", email);
+            }
+            else
+            {
+                // Reset user password temporarily for OpenIddict token issue
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, tempPassword);
+                if (!resetResult.Succeeded)
+                {
+                    var errors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
+                    Logger.LogError("Failed to reset password for Google user {Email}: {Errors}", email, errors);
+                    throw new UserFriendlyException("Failed to process Google authentication.");
+                }
             }
 
-            user = new AbpIdentityUser(
-                GuidGenerator.Create(),
-                username,
-                email,
-                CurrentTenant.Id
-            )
-            {
-                Name = givenName ?? name ?? baseUsername,
-                Surname = familyName ?? string.Empty
-            };
+            targetUserName = user.UserName;
 
-            user.SetEmailConfirmed(true);
-
-            // Create user in ABP (ABP IdentityUserManager automatically assigns all roles where IsDefault = true)
-            var createResult = await _userManager.CreateAsync(user, tempPassword);
-            if (!createResult.Succeeded)
-            {
-                var errors = string.Join(", ", createResult.Errors.Select(e => e.Description));
-                Logger.LogError("Failed to create Google user: {Errors}", errors);
-                throw new UserFriendlyException($"Unable to create user account: {errors}");
-            }
-
-            Logger.LogInformation("Successfully registered new Google user with default ABP roles: {Email}", email);
-        }
-        else
-        {
-            // Reset user password temporarily for OpenIddict token issue
-            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var resetResult = await _userManager.ResetPasswordAsync(user, resetToken, tempPassword);
-            if (!resetResult.Succeeded)
-            {
-                var errors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
-                Logger.LogError("Failed to reset password for Google user {Email}: {Errors}", email, errors);
-                throw new UserFriendlyException("Failed to process Google authentication.");
-            }
-        }
-
-        // Flush all user changes into the database so OpenIddict /connect/token can find the user
-        if (CurrentUnitOfWork != null)
-        {
-            await CurrentUnitOfWork.SaveChangesAsync();
+            // Commit the transaction to PostgreSQL immediately so external requests can see this user
+            await uow.CompleteAsync();
         }
 
         // 4. Request JWT Access Token from OpenIddict /connect/token endpoint
@@ -241,7 +248,7 @@ public class AuthService : ApplicationService, IAuthService
             { "grant_type", "password" },
             { "client_id", clientId },
             { "client_secret", clientSecret },
-            { "username", user.UserName },
+            { "username", targetUserName },
             { "password", tempPassword },
             { "scope", "openid profile email phone roles Identity" }
         };
