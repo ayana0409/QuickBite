@@ -282,4 +282,65 @@ public class AuthService : ApplicationService, IAuthService
 
         return result;
     }
+
+    public async Task<RegisterResultDto> RegisterAsync(RegisterInputDto input)
+    {
+        if (input == null)
+        {
+            throw new UserFriendlyException("Dữ liệu đăng ký không hợp lệ.");
+        }
+
+        var cleanUserName = input.UserName.Trim();
+        var cleanEmail = input.EmailAddress.Trim().ToLowerInvariant();
+
+        // 1. Check if username or email already exists
+        if (await _userManager.FindByNameAsync(cleanUserName) != null)
+        {
+            throw new UserFriendlyException("Tên đăng nhập đã tồn tại trong hệ thống. Vui lòng chọn tên khác.");
+        }
+
+        if (await _userManager.FindByEmailAsync(cleanEmail) != null)
+        {
+            throw new UserFriendlyException("Địa chỉ email này đã được sử dụng. Vui lòng đăng nhập hoặc sử dụng email khác.");
+        }
+
+        // 2. Create AbpIdentityUser
+        var user = new AbpIdentityUser(
+            GuidGenerator.Create(),
+            cleanUserName,
+            cleanEmail,
+            CurrentTenant.Id
+        )
+        {
+            Name = !string.IsNullOrWhiteSpace(input.Name) ? input.Name.Trim() : cleanUserName,
+            Surname = string.Empty
+        };
+
+        if (!string.IsNullOrWhiteSpace(input.PhoneNumber))
+        {
+            user.SetPhoneNumber(input.PhoneNumber.Trim(), confirmed: false);
+        }
+
+        user.SetEmailConfirmed(true);
+
+        // 3. Create user in ABP (ABP IdentityUserManager automatically assigns all roles where IsDefault = true)
+        var result = await _userManager.CreateAsync(user, input.Password);
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+            Logger.LogError("Failed to register new customer account: {Errors}", errors);
+            throw new UserFriendlyException($"Đăng ký thất bại: {errors}");
+        }
+
+        Logger.LogInformation("Successfully registered new customer user: {UserName} ({Email})", user.UserName, user.Email);
+
+        return new RegisterResultDto
+        {
+            Success = true,
+            UserId = user.Id,
+            UserName = user.UserName,
+            Email = user.Email,
+            Message = "Đăng ký tài khoản thành công!"
+        };
+    }
 }

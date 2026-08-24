@@ -8,4 +8,5 @@ public interface IAuthService : IApplicationService
 {
     Task<LoginResultDto> LoginAsync(LoginInputDto input);
     Task<GoogleLoginResultDto> GoogleLoginAsync(GoogleLoginDto input);
+    Task<RegisterResultDto> RegisterAsync(RegisterInputDto input);
 }
