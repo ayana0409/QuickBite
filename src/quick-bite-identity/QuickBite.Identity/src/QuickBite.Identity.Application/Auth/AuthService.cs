@@ -85,36 +85,92 @@ public class AuthService : ApplicationService, IAuthService
     {
         if (string.IsNullOrWhiteSpace(input.IdToken))
         {
-            throw new UserFriendlyException("Google ID Token is required.");
+            throw new UserFriendlyException("Google Token is required.");
         }
 
-        // 1. Validate Google ID Token and extract payload
-        GoogleJsonWebSignature.Payload payload;
-        try
+        var rawToken = input.IdToken.Trim();
+        string email = string.Empty;
+        string? name = null;
+        string? givenName = null;
+        string? familyName = null;
+
+        // 1. First attempt: Validate as a signed Google JWT ID Token
+        if (rawToken.Contains('.') && rawToken.Split('.').Length == 3)
         {
-            payload = await GoogleJsonWebSignature.ValidateAsync(input.IdToken);
+            try
+            {
+                var jwtPayload = await GoogleJsonWebSignature.ValidateAsync(rawToken);
+                email = jwtPayload.Email;
+                name = jwtPayload.Name;
+                givenName = jwtPayload.GivenName;
+                familyName = jwtPayload.FamilyName;
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Google JWT ID token validation failed: {Message}", ex.Message);
+            }
         }
-        catch (Exception ex)
+
+        // 2. Second attempt: Validate as an OAuth2 Access Token (e.g. from useGoogleLogin)
+        if (string.IsNullOrWhiteSpace(email))
         {
-            Logger.LogWarning(ex, "Invalid Google ID Token provided: {Message}", ex.Message);
+            try
+            {
+                using var httpClient = new HttpClient();
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", rawToken);
+
+                var userInfoResponse = await httpClient.GetAsync("https://www.googleapis.com/oauth2/v3/userinfo");
+                if (userInfoResponse.IsSuccessStatusCode)
+                {
+                    var json = await userInfoResponse.Content.ReadAsStringAsync();
+                    using var doc = JsonDocument.Parse(json);
+                    var root = doc.RootElement;
+
+                    if (root.TryGetProperty("email", out var emailProp))
+                    {
+                        email = emailProp.GetString() ?? string.Empty;
+                    }
+                    if (root.TryGetProperty("name", out var nameProp))
+                    {
+                        name = nameProp.GetString();
+                    }
+                    if (root.TryGetProperty("given_name", out var givenNameProp))
+                    {
+                        givenName = givenNameProp.GetString();
+                    }
+                    if (root.TryGetProperty("family_name", out var familyNameProp))
+                    {
+                        familyName = familyNameProp.GetString();
+                    }
+                }
+                else
+                {
+                    var errContent = await userInfoResponse.Content.ReadAsStringAsync();
+                    Logger.LogWarning("Google userinfo verification failed with status {StatusCode}: {Error}", userInfoResponse.StatusCode, errContent);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Failed to verify token with Google OAuth2 userinfo API.");
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(email))
+        {
             throw new UserFriendlyException("Invalid Google token. Authentication failed.");
         }
 
-        if (string.IsNullOrWhiteSpace(payload.Email))
-        {
-            throw new UserFriendlyException("Google account must provide a verified email address.");
-        }
-
-        // 2. Check if user already exists
-        var user = await _userManager.FindByEmailAsync(payload.Email);
+        // 3. Check if user already exists
+        var user = await _userManager.FindByEmailAsync(email);
 
         // Strong temporary password for internal OpenIddict token exchange
         var tempPassword = $"Gb_{Guid.NewGuid():N}!{Guid.NewGuid():N}"[..24] + "Aa1@";
 
         if (user == null)
         {
-            // 3. Create new user if not found
-            var baseUsername = payload.Email.Split('@')[0];
+            // 4. Create new user if not found
+            var baseUsername = email.Split('@')[0];
             var username = baseUsername;
 
             // Ensure unique username
@@ -126,12 +182,12 @@ public class AuthService : ApplicationService, IAuthService
             user = new AbpIdentityUser(
                 GuidGenerator.Create(),
                 username,
-                payload.Email,
+                email,
                 CurrentTenant.Id
             )
             {
-                Name = payload.GivenName ?? payload.Name ?? baseUsername,
-                Surname = payload.FamilyName ?? string.Empty
+                Name = givenName ?? name ?? baseUsername,
+                Surname = familyName ?? string.Empty
             };
 
             user.SetEmailConfirmed(true);
@@ -146,7 +202,7 @@ public class AuthService : ApplicationService, IAuthService
 
             // Assign default role: "Customer"
             await _userManager.AddToRoleAsync(user, "Customer");
-            Logger.LogInformation("Successfully registered new Google user: {Email} with role Customer", payload.Email);
+            Logger.LogInformation("Successfully registered new Google user: {Email} with role Customer", email);
         }
         else
         {
@@ -156,7 +212,7 @@ public class AuthService : ApplicationService, IAuthService
             if (!resetResult.Succeeded)
             {
                 var errors = string.Join(", ", resetResult.Errors.Select(e => e.Description));
-                Logger.LogError("Failed to reset password for Google user {Email}: {Errors}", payload.Email, errors);
+                Logger.LogError("Failed to reset password for Google user {Email}: {Errors}", email, errors);
                 throw new UserFriendlyException("Failed to process Google authentication.");
             }
         }
