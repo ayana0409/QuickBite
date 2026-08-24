@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Lock, User as UserIcon, Loader2, AlertCircle, ArrowRight, KeyRound } from 'lucide-react';
 import { loginUser } from '../../services/authService';
+import { GoogleLoginButton } from '../../components/auth/GoogleLoginButton';
 
 const loginSchema = z.object({
   username: z.string().min(1, 'Vui lòng nhập tên đăng nhập hoặc email'),
@@ -168,6 +169,21 @@ export default function LoginPage() {
           )}
         </button>
       </form>
+
+      {/* Divider */}
+      <div className="relative my-2">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-slate-800" />
+        </div>
+        <div className="relative flex justify-center text-[11px] uppercase">
+          <span className="bg-slate-900/90 px-3 text-slate-400 font-semibold tracking-wider">
+            Hoặc tiếp tục với
+          </span>
+        </div>
+      </div>
+
+      {/* Google OAuth Button */}
+      <GoogleLoginButton onError={(err) => setErrorMessage(err)} />
 
       {/* Quick Demo Fill helper for development testing */}
       <div className="pt-3 border-t border-slate-800/80 space-y-2">
