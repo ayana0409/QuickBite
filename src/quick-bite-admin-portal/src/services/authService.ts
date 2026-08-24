@@ -83,6 +83,11 @@ export function extractUserFromClaims(claims: DecodedJwtClaims): User {
   const email = claims.email || `${username}@quickbite.internal`;
   const fullName = claims.given_name || claims.name || claims.preferred_username || username;
 
+  const isGoogle =
+    claims.idp === 'Google' ||
+    claims.iss?.includes('google') ||
+    (typeof window !== 'undefined' && localStorage.getItem('auth_provider') === 'google');
+
   return {
     id: claims.sub || 'user-id-unknown',
     email,
@@ -92,6 +97,8 @@ export function extractUserFromClaims(claims: DecodedJwtClaims): User {
     roles: rolesList,
     isActive: true,
     permissions,
+    provider: isGoogle ? 'google' : 'credentials',
+    isGoogle,
   };
 }
 
@@ -105,6 +112,10 @@ export async function loginUser(credentials: LoginRequest): Promise<User> {
   params.append('scope', import.meta.env.VITE_OIDC_SCOPE || 'openid profile email roles offline_access Identity');
   params.append('username', credentials.username);
   params.append('password', credentials.password);
+
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('auth_provider', 'credentials');
+  }
 
   // Send request to /connect/token
   const res = await identityClient.post('/connect/token', params);
@@ -126,6 +137,36 @@ export async function loginUser(credentials: LoginRequest): Promise<User> {
   // Store in Zustand with refresh_token
   useAuthStore.getState().setAuth(user, accessToken, response.refresh_token, response.id_token);
 
+  return user;
+}
+
+/**
+ * Perform Google OAuth login to ABP Identity Server
+ */
+export async function loginWithGoogle(idToken: string): Promise<User> {
+  const identityUrl = import.meta.env.VITE_IDENTITY_SERVICE_URL || 'https://quick-bite-identity.onrender.com';
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('auth_provider', 'google');
+  }
+
+  const res = await axios.post(`${identityUrl}/api/app/auth/google-login`, { idToken });
+  const response: OpenIdTokenResponse = res.data;
+
+  const accessToken = response.access_token;
+  if (!accessToken) {
+    throw new Error('Access token missing from authentication response');
+  }
+
+  const claims = parseJwt<DecodedJwtClaims>(accessToken) || parseJwt<DecodedJwtClaims>(response.id_token || '');
+  if (!claims) {
+    throw new Error('Unable to parse JWT token claims');
+  }
+
+  const user = extractUserFromClaims(claims);
+  user.provider = 'google';
+  user.isGoogle = true;
+
+  useAuthStore.getState().setAuth(user, accessToken, response.refresh_token, response.id_token);
   return user;
 }
 

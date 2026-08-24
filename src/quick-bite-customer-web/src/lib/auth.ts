@@ -79,6 +79,8 @@ export const authOptions: NextAuthOptions = {
             accessToken: tokenData.access_token,
             idToken: tokenData.id_token,
             refreshToken: tokenData.refresh_token,
+            provider: "credentials",
+            isGoogle: false,
           };
         } catch (e: any) {
           console.error("❌ [NextAuth Credentials Error]:", e.message);
@@ -87,7 +89,57 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // 2. OpenID Connect OAuth Provider (SSO)
+    // 2. Google OAuth Token Provider (Bridge ABP Backend JWT into NextAuth session)
+    CredentialsProvider({
+      id: "google-token",
+      name: "Google QuickBite Account",
+      credentials: {
+        accessToken: { label: "Access Token", type: "text" },
+        idToken: { label: "ID Token", type: "text" },
+        refreshToken: { label: "Refresh Token", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.accessToken) {
+          throw new Error("Missing access token from authentication service");
+        }
+
+        try {
+          const claims =
+            parseJwt(credentials.accessToken) ||
+            (credentials.idToken ? parseJwt(credentials.idToken) : null) ||
+            {};
+
+          const rawRoles = claims.role || claims.roles;
+          const roles = Array.isArray(rawRoles)
+            ? rawRoles
+            : rawRoles
+            ? [rawRoles]
+            : ["Customer"];
+
+          const username =
+            claims.preferred_username || claims.given_name || claims.sub || "google-user";
+          const fullName = claims.name || claims.given_name || username;
+
+          return {
+            id: claims.sub || "user-id",
+            name: fullName,
+            email: claims.email || `${username}@quickbite.internal`,
+            role: roles[0] || "Customer",
+            roles: roles,
+            accessToken: credentials.accessToken,
+            idToken: credentials.idToken,
+            refreshToken: credentials.refreshToken,
+            provider: "google",
+            isGoogle: true,
+          };
+        } catch (e: any) {
+          console.error("❌ [NextAuth Google Token Error]:", e.message);
+          throw new Error(e.message || "Failed to process token claims");
+        }
+      },
+    }),
+
+    // 3. OpenID Connect OAuth Provider (SSO)
     {
       id: "oidc",
       name: "QuickBite SSO",
@@ -132,6 +184,8 @@ export const authOptions: NextAuthOptions = {
           image: profile.picture || null,
           role: roles[0] || "Customer",
           roles: roles,
+          provider: "oidc",
+          isGoogle: false,
         };
       },
     },
@@ -146,17 +200,19 @@ export const authOptions: NextAuthOptions = {
         token.accessToken = (user as any).accessToken;
         token.idToken = (user as any).idToken;
         token.refreshToken = (user as any).refreshToken;
-        console.log("🎫 [JWT Callback] User logged in. Token has accessToken:", !!token.accessToken);
+        token.provider = (user as any).provider || "credentials";
+        token.isGoogle = !!(user as any).isGoogle;
+        console.log("🎫 [JWT Callback] User logged in via provider:", token.provider);
       }
 
       // SSO provider: accessToken comes from account.access_token — only overwrite when it exists.
-      // CredentialsProvider does NOT provide account.access_token, so skipping it prevents
-      // accidentally overwriting the accessToken set above with undefined.
       if (account && account.access_token) {
         token.accessToken = account.access_token;
         token.idToken = account.id_token;
         token.refreshToken = account.refresh_token;
         token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : 0;
+        token.provider = "oidc";
+        token.isGoogle = false;
         console.log("🎫 [JWT Callback] SSO Account connected. Token has accessToken:", !!token.accessToken);
       }
 
@@ -167,6 +223,8 @@ export const authOptions: NextAuthOptions = {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
         session.user.roles = token.roles as string[];
+        session.user.provider = token.provider as string;
+        session.user.isGoogle = !!token.isGoogle;
       }
 
       session.accessToken = token.accessToken as string;

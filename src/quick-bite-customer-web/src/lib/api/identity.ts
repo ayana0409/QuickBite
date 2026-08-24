@@ -26,7 +26,48 @@ export interface ChangePasswordDto {
   newPassword: string;
 }
 
+export interface GoogleLoginDto {
+  idToken: string;
+}
+
+export interface GoogleLoginResultDto {
+  access_token: string;
+  token_type: string;
+  expires_in: number;
+  id_token?: string;
+  refresh_token?: string;
+  scope?: string;
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
+
+/**
+ * Exchange Google ID Token for JWT Access Token with ABP Identity Service.
+ * Endpoint: POST /api/app/auth/google-login
+ */
+export async function loginWithGoogle(data: GoogleLoginDto): Promise<GoogleLoginResultDto> {
+  const identityUrl =
+    process.env.NEXT_PUBLIC_IDENTITY_URL ||
+    'https://quick-bite-identity.onrender.com';
+
+  const res = await fetch(`${identityUrl}/api/app/auth/google-login`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err?.error?.message || err?.message || 'Google login verification failed.'
+    );
+  }
+
+  return await res.json();
+}
 
 /**
  * Fetch the currently authenticated user's profile from Identity Service.

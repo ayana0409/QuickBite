@@ -9,6 +9,8 @@ export interface User {
   roles: Role[];
   isActive: boolean;
   permissions: string[];
+  provider?: string;
+  isGoogle?: boolean;
 }
 
 export interface Restaurant {
@@ -143,7 +145,10 @@ export interface DecodedJwtClaims {
   phone_number_verified?: string;
   email_verified?: string;
   permissions?: string | string[];
+  idp?: string;
+  iss?: string;
   exp?: number;
+  [key: string]: any;
 }
 
 export interface LoginRequest {

@@ -11,6 +11,8 @@ declare module "next-auth" {
       id?: string;
       role?: string;
       roles?: string[];
+      provider?: string;
+      isGoogle?: boolean;
     } & DefaultSession["user"];
   }
 
@@ -21,6 +23,8 @@ declare module "next-auth" {
     accessToken?: string;
     idToken?: string;
     refreshToken?: string;
+    provider?: string;
+    isGoogle?: boolean;
   }
 }
 
@@ -32,6 +36,8 @@ declare module "next-auth/adapters" {
     accessToken?: string;
     idToken?: string;
     refreshToken?: string;
+    provider?: string;
+    isGoogle?: boolean;
   }
 }
 
@@ -45,5 +51,7 @@ declare module "next-auth/jwt" {
     roles?: string[];
     role?: string;
     id?: string;
+    provider?: string;
+    isGoogle?: boolean;
   }
 }

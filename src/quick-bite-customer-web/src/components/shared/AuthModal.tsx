@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { signIn } from "next-auth/react";
+import Cookies from "js-cookie";
 import {
   Utensils,
   User as UserIcon,
@@ -15,6 +16,7 @@ import {
   ArrowRight,
   ShieldCheck,
 } from "lucide-react";
+import GoogleLoginButton from "../auth/GoogleLoginButton";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -49,6 +51,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             : res.error
         );
       } else if (res?.ok) {
+        Cookies.set("auth_provider", "credentials", { expires: 30 });
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem("auth_provider", "credentials");
+          } catch {}
+        }
         onClose();
         // Optional: refresh to ensure server components update
         window.location.reload();
@@ -183,20 +191,26 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white px-3 text-slate-400 font-semibold">
-                Hoặc
+                Hoặc tiếp tục với
               </span>
             </div>
           </div>
 
-          {/* SSO Button */}
-          <button
-            type="button"
-            onClick={handleSsoLogin}
-            className="w-full py-2.5 px-4 bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-bold text-xs rounded-xl border border-slate-200 hover:border-orange-200 transition-all flex items-center justify-center gap-2 cursor-pointer"
-          >
-            <ShieldCheck className="w-4 h-4 text-orange-500" />
-            <span>Đăng nhập qua QuickBite Identity (SSO)</span>
-          </button>
+          {/* Social / SSO Buttons */}
+          <div className="space-y-2.5">
+            {/* Google OAuth Button */}
+            <GoogleLoginButton onSuccess={onClose} />
+
+            {/* QuickBite Identity SSO Button */}
+            <button
+              type="button"
+              onClick={handleSsoLogin}
+              className="w-full py-2.5 px-4 bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-600 font-semibold text-xs rounded-xl border border-slate-200 hover:border-orange-200 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+            >
+              <ShieldCheck className="w-4 h-4 text-orange-500" />
+              <span>Đăng nhập qua QuickBite Identity (SSO)</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
