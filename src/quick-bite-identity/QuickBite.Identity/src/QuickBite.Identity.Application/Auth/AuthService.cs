@@ -230,7 +230,7 @@ public class AuthService : ApplicationService, IAuthService
             { "client_secret", clientSecret },
             { "username", user.UserName },
             { "password", tempPassword },
-            { "scope", "openid profile email phone roles Identity quickbite.api permissions" }
+            { "scope", "openid profile email phone roles Identity" }
         };
 
         // Bypass SSL validation for internal/localhost calls in development environments
