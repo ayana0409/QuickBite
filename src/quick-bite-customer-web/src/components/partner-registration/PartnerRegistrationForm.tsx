@@ -343,7 +343,7 @@ export default function PartnerRegistrationForm() {
         </p>
         <button
           type="button"
-          onClick={openAuthModal}
+          onClick={() => openAuthModal("login")}
           className="px-6 py-3 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold text-sm rounded-xl shadow-lg shadow-orange-500/25 transition-all hover:scale-105 active:scale-95 cursor-pointer inline-flex items-center gap-2"
         >
           <Sparkles className="w-4 h-4" />

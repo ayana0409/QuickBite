@@ -39,6 +39,22 @@ export interface GoogleLoginResultDto {
   scope?: string;
 }
 
+export interface RegisterInputDto {
+  userName: string;
+  emailAddress: string;
+  password: string;
+  name?: string;
+  phoneNumber?: string;
+}
+
+export interface RegisterResultDto {
+  success: boolean;
+  message?: string;
+  userId?: string;
+  userName?: string;
+  email?: string;
+}
+
 // ─── API Functions ────────────────────────────────────────────────────────────
 
 /**
@@ -91,4 +107,32 @@ export async function updateMyProfile(data: UpdateMyProfileDto): Promise<MyProfi
  */
 export async function changePassword(data: ChangePasswordDto): Promise<void> {
   return apiClient.post<void>('/api/identity/my-profile/change-password', data);
+}
+
+/**
+ * Register a new Customer account with ABP Identity Service.
+ * Endpoint: POST /api/app/auth/register
+ */
+export async function registerAccount(data: RegisterInputDto): Promise<RegisterResultDto> {
+  const identityUrl =
+    process.env.NEXT_PUBLIC_IDENTITY_URL ||
+    'https://quick-bite-identity.onrender.com';
+
+  const res = await fetch(`${identityUrl}/api/app/auth/register`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(data),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(
+      err?.error?.message || err?.message || 'Đăng ký tài khoản thất bại. Vui lòng kiểm tra lại thông tin.'
+    );
+  }
+
+  return await res.json();
 }

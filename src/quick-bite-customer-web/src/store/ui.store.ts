@@ -2,14 +2,26 @@ import { create } from "zustand";
 
 interface UiState {
   isAuthModalOpen: boolean;
-  openAuthModal: () => void;
+  authModalTab: "login" | "register";
+  openAuthModal: (tab?: "login" | "register") => void;
   closeAuthModal: () => void;
-  setAuthModalOpen: (open: boolean) => void;
+  setAuthModalOpen: (open: boolean, tab?: "login" | "register") => void;
+  setAuthModalTab: (tab: "login" | "register") => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
   isAuthModalOpen: false,
-  openAuthModal: () => set({ isAuthModalOpen: true }),
+  authModalTab: "login",
+  openAuthModal: (tab) =>
+    set({
+      isAuthModalOpen: true,
+      authModalTab: typeof tab === "string" ? tab : "login",
+    }),
   closeAuthModal: () => set({ isAuthModalOpen: false }),
-  setAuthModalOpen: (open: boolean) => set({ isAuthModalOpen: open }),
+  setAuthModalOpen: (open: boolean, tab = "login") =>
+    set({
+      isAuthModalOpen: open,
+      authModalTab: typeof tab === "string" ? tab : "login",
+    }),
+  setAuthModalTab: (tab: "login" | "register") => set({ authModalTab: tab }),
 }));
