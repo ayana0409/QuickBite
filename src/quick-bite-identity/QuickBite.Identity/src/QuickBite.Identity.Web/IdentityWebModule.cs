@@ -218,6 +218,7 @@ public class IdentityWebModule : AbpModule
         var configuration = context.Services.GetConfiguration();
         
         context.Services.AddTransient<PermissionClaimsPrincipalContributor>();
+        context.Services.AddHttpClient();
 
         ConfigureCors(context);
         ConfigureAuthentication(context);
