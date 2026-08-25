@@ -22,6 +22,7 @@ import { OrdersPage } from './pages/admin/OrdersPage';
 import { CategoryModerationPage } from './pages/admin/CategoryModerationPage';
 import { RequestsPage } from './pages/admin/RequestsPage';
 import { SystemConfig } from './pages/admin/SystemConfig';
+import { AdvancedReports } from './pages/admin/AdvancedReports';
 import MerchantDashboardPage from './pages/merchant/DashboardPage';
 import CreateRestaurantPage from './pages/merchant/CreateRestaurantPage';
 import MerchantMenuPage from './pages/merchant/MerchantMenuPage';
@@ -85,7 +86,7 @@ export default function App() {
             <Route path="orders" element={<OrdersPage />} />
             <Route path="categories" element={<CategoryModerationPage />} />
             <Route path="requests" element={<RequestsPage />} />
-            <Route path="analytics" element={<AdminDashboardPage />} />
+            <Route path="analytics" element={<AdvancedReports />} />
             <Route path="settings" element={<SystemConfig />} />
           </Route>
         </Route>
