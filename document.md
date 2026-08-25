@@ -166,6 +166,8 @@ src/
 **Tech:** ABP Framework 10.0.0, .NET 10, OpenIddict 7.2, EF Core PostgreSQL (`Volo.Abp.EntityFrameworkCore.PostgreSql`), Redis.
 **Event phát ra:** `user.registered`.
 
+> 📘 **Tài liệu Tích hợp SSO chi tiết:** Xem tại [Hướng Dẫn Tích Hợp QuickBite SSO (OAuth 2.0 / OIDC)](quickbite-sso-integration-guide.md) bao gồm đầy đủ endpoints, cURL, Axios Interceptors và cấu hình Resource Server.
+
 ---
 
 ### 5.2. Order Service (.NET 10 / ABP Framework)
