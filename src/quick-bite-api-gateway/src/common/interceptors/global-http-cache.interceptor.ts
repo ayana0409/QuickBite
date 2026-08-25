@@ -20,11 +20,12 @@ import { RedisCacheService } from '../../cache/redis-cache.service';
 export class GlobalHttpCacheInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HttpCache');
 
-  // Endpoints that should bypass global caching (health, config management, metrics)
-  private readonly excludedPrefixes = [
+  // Endpoints that should bypass global caching (health checks, config management, metrics)
+  private readonly defaultExcludedPatterns = [
     '/health',
     '/config',
     '/metrics',
+    '/system/health',
   ];
 
   constructor(
@@ -43,8 +44,14 @@ export class GlobalHttpCacheInterceptor implements NestInterceptor {
 
     const rawUrl = req.originalUrl || req.url;
 
-    // 2. Check excluded prefixes
-    if (this.excludedPrefixes.some((prefix) => rawUrl.startsWith(prefix))) {
+    // 2. Check excluded endpoints (default + custom env exclusions)
+    const customExcludes = (process.env.COALESCING_EXCLUDE_PATHS || '')
+      .split(',')
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const allExcluded = [...this.defaultExcludedPatterns, ...customExcludes];
+
+    if (allExcluded.some((pattern) => rawUrl.includes(pattern))) {
       return next.handle();
     }
 
