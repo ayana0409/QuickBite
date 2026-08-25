@@ -112,5 +112,31 @@ export class AdminController {
       authHeader,
     );
   }
+
+  /**
+   * GET /api/admin/users
+   * Returns aggregated paginated user list with roles (Globally Cached)
+   */
+  @Get('users')
+  async getAdminUsers(
+    @Req() req: Request,
+    @Query('skipCount') skipCount?: string,
+    @Query('maxResultCount') maxResultCount?: string,
+    @Query('filter') filter?: string,
+  ) {
+    const user = (req as any).user;
+    this.adminService.validateAdminRole(user);
+
+    const authHeader = req.headers.authorization;
+    return this.adminService.getAdminUsers(
+      {
+        skipCount: skipCount ? parseInt(skipCount, 10) : 0,
+        maxResultCount: maxResultCount ? parseInt(maxResultCount, 10) : 50,
+        filter,
+      },
+      authHeader,
+    );
+  }
 }
+
 

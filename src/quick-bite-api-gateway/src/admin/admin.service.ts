@@ -595,4 +595,154 @@ export class AdminService {
       limit,
     };
   }
+
+  /**
+   * Fetches paginated users list with aggregated roles from Identity Service (BFF Aggregator)
+   */
+  async getAdminUsers(
+    params: {
+      skipCount?: number;
+      maxResultCount?: number;
+      filter?: string;
+    },
+    authHeader?: string,
+  ): Promise<{
+    success: boolean;
+    statusCode: number;
+    message: string;
+    totalCount: number;
+    items: Array<{
+      id: string;
+      username: string;
+      email: string;
+      fullName: string;
+      role: 'Admin' | 'Merchant' | 'Customer';
+      roles: Array<'Admin' | 'Merchant' | 'Customer'>;
+      isActive: boolean;
+      permissions: string[];
+    }>;
+  }> {
+    const identityBaseUrl = await this.configService.getAsync(
+      'IDENTITY_URL',
+      'http://localhost:44391',
+    );
+    const cleanIdentityUrl = identityBaseUrl.replace(/\/$/, '');
+    const targetUrl = `${cleanIdentityUrl}/api/identity/users`;
+
+    const skipCount = Number(params.skipCount) || 0;
+    const maxResultCount = Math.min(100, Math.max(1, Number(params.maxResultCount) || 10));
+    const filter = params.filter?.trim() || undefined;
+
+    try {
+      const res = await firstValueFrom(
+        this.httpService.get(targetUrl, {
+          headers: authHeader ? { Authorization: authHeader } : undefined,
+          params: {
+            SkipCount: skipCount,
+            MaxResultCount: maxResultCount,
+            Filter: filter,
+          },
+          validateStatus: () => true,
+          timeout: 10000,
+        }),
+      );
+
+      if (res.status >= 200 && res.status < 300) {
+        const body = res.data;
+        const rawItems = Array.isArray(body?.items)
+          ? body.items
+          : Array.isArray(body)
+          ? body
+          : [];
+        const totalCount =
+          typeof body?.totalCount === 'number' ? body.totalCount : rawItems.length;
+
+        // Fetch roles in parallel for the current page users
+        const usersWithRoles = await Promise.all(
+          rawItems.map(async (u: any) => {
+            let rolesList: Array<'Admin' | 'Merchant' | 'Customer'> = [];
+            try {
+              const rolesRes = await firstValueFrom(
+                this.httpService.get(`${cleanIdentityUrl}/api/identity/users/${u.id}/roles`, {
+                  headers: authHeader ? { Authorization: authHeader } : undefined,
+                  validateStatus: () => true,
+                  timeout: 5000,
+                }),
+              );
+              if (rolesRes.status >= 200 && rolesRes.status < 300) {
+                const roleItems =
+                  rolesRes.data?.items ||
+                  (Array.isArray(rolesRes.data) ? rolesRes.data : []);
+                const fetchedRoleNames: string[] = roleItems
+                  .map((r: any) => (typeof r === 'string' ? r : r.name))
+                  .filter(Boolean);
+
+                rolesList = fetchedRoleNames.map((rn) => {
+                  const low = rn.toLowerCase();
+                  if (low === 'admin' || low === 'administrator') return 'Admin';
+                  if (low === 'merchant' || low === 'seller') return 'Merchant';
+                  return 'Customer';
+                });
+              }
+            } catch (roleErr: any) {
+              this.logger.warn(`Failed to fetch roles for user ${u.id}: ${roleErr.message}`);
+            }
+
+            if (rolesList.length === 0) {
+              const rawRoles = u.roles || u.roleNames || u.role;
+              if (Array.isArray(rawRoles)) {
+                rawRoles.forEach((r: string) => {
+                  const low = String(r).toLowerCase();
+                  if (low === 'admin' || low === 'administrator') rolesList.push('Admin');
+                  else if (low === 'merchant' || low === 'seller') rolesList.push('Merchant');
+                  else if (low === 'customer' || low === 'user') rolesList.push('Customer');
+                });
+              }
+            }
+
+            if (rolesList.length === 0) {
+              rolesList = ['Customer'];
+            }
+
+            const primaryRole: 'Admin' | 'Merchant' | 'Customer' = rolesList.includes('Admin')
+              ? 'Admin'
+              : rolesList.includes('Merchant')
+              ? 'Merchant'
+              : 'Customer';
+
+            return {
+              id: u.id,
+              username: u.userName || u.username,
+              email: u.email,
+              fullName: u.name
+                ? `${u.surname || ''} ${u.name}`.trim()
+                : u.userName || u.username,
+              role: primaryRole,
+              roles: rolesList,
+              isActive: u.isActive ?? !u.isLockedOut,
+              permissions: u.permissions || [],
+            };
+          }),
+        );
+
+        return {
+          success: true,
+          statusCode: 200,
+          message: 'Users retrieved successfully',
+          totalCount,
+          items: usersWithRoles,
+        };
+      }
+    } catch (err: any) {
+      this.logger.error(`❌ [ADMIN USERS] Error fetching users from Identity: ${err.message}`);
+    }
+
+    return {
+      success: true,
+      statusCode: 200,
+      message: 'Failed to retrieve users',
+      totalCount: 0,
+      items: [],
+    };
+  }
 }
