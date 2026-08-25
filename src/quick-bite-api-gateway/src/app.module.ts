@@ -9,6 +9,7 @@ import { CacheModule } from './cache/cache.module';
 import { MerchantModule } from './merchant/merchant.module';
 import { AdminModule } from './admin/admin.module';
 import { RequestCoalescingInterceptor } from './common/interceptors/request-coalescing.interceptor';
+import { GlobalHttpCacheInterceptor } from './common/interceptors/global-http-cache.interceptor';
 
 @Module({
   imports: [
@@ -33,6 +34,10 @@ import { RequestCoalescingInterceptor } from './common/interceptors/request-coal
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: GlobalHttpCacheInterceptor,
     },
     {
       provide: APP_INTERCEPTOR,

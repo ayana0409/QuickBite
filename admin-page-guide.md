@@ -190,6 +190,8 @@ Nhằm xử lý bài toán **Cold-Start (ngủ đông)** khi backend deploy trê
 3. **Trung tâm Xét duyệt Đối tác (`/admin/requests`):** Xem hồ sơ đăng ký mở quán của đối tác. Khi nhấn **Approve**, API Gateway gọi Catalog Service thực thi ACID transaction tạo mới nhà hàng.
 4. **Quản lý Người dùng (`/admin/users`):** Danh sách người dùng, phân vai trò (Admin / Merchant / Customer), khóa tài khoản vi phạm.
 5. **Kiểm duyệt Danh mục (`/admin/categories`):** Quản lý cây danh mục món ăn chuẩn toàn hệ thống.
+6. **Báo cáo Chuyên sâu (`/admin/reports` - Advanced Reports):** Phân tích tài chính & vận hành với biểu đồ cột kết hợp (`Recharts`), bộ lọc ngày (`startDate`, `endDate`), bộ lọc trạng thái (`status`), bảng dữ liệu chi tiết có phân trang `page`/`limit`, được tăng tốc bằng **Global Redis Caching** và **Request Coalescing** trên API Gateway.
+7. **Cấu hình Hệ thống (`/admin/settings` - System Config):** Giao diện quản trị tập trung các biến môi trường động (`GET_CACHE_TTL`, `RATE_LIMIT_TTL`, `RATE_LIMIT_MAX`, Microservice URLs) với cơ chế đồng bộ tức thì MongoDB ➔ Redis.
 
 ### 6.2. Dành cho Đối tác Nhà hàng (Merchant)
 1. **Merchant POS Dashboard (`/merchant/dashboard`):** Triage đơn hàng theo thời gian thực (Đơn mới, Đang nấu, Đang giao).

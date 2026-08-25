@@ -39,6 +39,7 @@ export const SERVICE_ENDPOINT_KEYS = [
 export const SYSTEM_PERFORMANCE_KEYS = [
   'RATE_LIMIT_TTL',
   'RATE_LIMIT_MAX',
+  'GET_CACHE_TTL',
 ] as const;
 
 /**
@@ -121,6 +122,15 @@ const CONFIG_METADATA: Record<string, ConfigMetadata> = {
     type: 'number',
     unit: 'requests',
   },
+  GET_CACHE_TTL: {
+    category: 'system_performance',
+    label: 'Global HTTP GET Cache TTL',
+    description: 'Universal Redis cache TTL in seconds for all GET endpoints (0s to disable cache, max 120s).',
+    placeholder: '30',
+    icon: Zap,
+    type: 'number',
+    unit: 's',
+  },
 };
 
 export const SystemConfig: React.FC = () => {
@@ -187,6 +197,14 @@ export const SystemConfig: React.FC = () => {
     if (!trimmedValue) {
       toast.warning(`Giá trị của biến ${key} không được để trống.`, 'Cảnh báo');
       return;
+    }
+
+    if (key === 'GET_CACHE_TTL') {
+      const num = parseInt(trimmedValue, 10);
+      if (isNaN(num) || num < 0 || num > 120 || String(num) !== trimmedValue) {
+        toast.warning(`${key} phải là số nguyên từ 0 đến 120 giây (0 = tắt cache).`, 'Giá trị không hợp lệ');
+        return;
+      }
     }
 
     setUpdatingKey(key);

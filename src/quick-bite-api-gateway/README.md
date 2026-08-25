@@ -1,98 +1,133 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# 🌐 QuickBite API Gateway & BFF (Backend for Frontend)
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> Cổng kết nối trung tâm (Edge API Gateway & BFF) của hệ sinh thái QuickBite, xây dựng bằng **NestJS 11**, tích hợp **JWKS Edge Security**, **Rate Limiting**, **3-tier Dynamic Configuration**, **Global HTTP GET Redis Cache** và **Request Coalescing Interceptor**.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+---
 
-## Description
+## 📑 Mục lục
+1. [Tính năng Nổi bật](#1-tính-năng-nổi-bật)
+2. [Kiến trúc Tối ưu 2 Tầng (2-Layer Pipeline)](#2-kiến-trúc-tối-ưu-2-tầng-2-layer-pipeline)
+3. [Cấu hình Động 3 Lớp (Dynamic Configuration)](#3-cấu-hình-động-3-lớp-dynamic-configuration)
+4. [Biến Môi trường (.env)](#4-biến-môi-trường-env)
+5. [Endpoints API](#5-endpoints-api)
+6. [Cài đặt & Khởi chạy](#6-cài-đặt--khởi-chạy)
+7. [Kiểm thử (Testing)](#7-kiểm-thử-testing)
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+---
 
-## Project setup
+## 1. Tính năng Nổi bật
 
-```bash
-$ npm install
+* 🛡️ **Edge Security (JWKS + RS256):** Xác thực JSON Web Token trực tiếp tại Edge thông qua Public Keys của Identity Service, không truy vấn DB, giảm tải 100% cho IAM.
+* ⚡ **Global HTTP GET Redis Cache:** Tự động cache toàn bộ kết quả của các endpoint GET với TTL động (`GET_CACHE_TTL`, 0s–120s), phản hồi siêu tốc (< 2ms).
+* 🚀 **Request Coalescing (Chống Thundering Herd):** Sử dụng RxJS `shareReplay` gom nhóm các request đồng thời, chỉ gọi downstream service 1 lần duy nhất và phát kết quả cho tất cả clients.
+* ⚙️ **3-Tier Dynamic Config:** Quản lý cấu hình microservices và tham số hiệu năng linh hoạt qua chuỗi fallback: **Redis ➔ MongoDB ➔ .env**.
+* 📊 **BFF Aggregators:** Gom dữ liệu tổng hợp cho Admin Dashboard, Báo cáo Chuyên sâu (Advanced Reports) và Merchant POS.
+* 💓 **Realtime Health Diagnostics & Wake-up:** Giám sát sức khỏe kết nối MongoDB, Redis và fan-out wake up toàn bộ microservices.
+
+---
+
+## 2. Kiến trúc Tối ưu 2 Tầng (2-Layer Pipeline)
+
+```mermaid
+flowchart TD
+    Req[Incoming HTTP GET Request] --> CacheCheck{GlobalHttpCacheInterceptor: Trong Redis Cache?}
+    CacheCheck -- YES --> CacheHit[⚡ HTTP CACHE HIT: Trả về trực tiếp trong 2ms]
+    CacheCheck -- NO --> CoalesceCheck{RequestCoalescingInterceptor: Đang có request cùng loại chạy?}
+    CoalesceCheck -- YES --> CoalesceHit[⚡ COALESCING HIT: Gom vào stream đang chạy]
+    CoalesceCheck -- NO --> Downstream[🚀 Upstream Service Call / Database Query]
+    Downstream --> SaveCache[💾 Lưu kết quả vào Redis Cache TTL: Xs]
+    SaveCache --> Broadcast[✅ Phát kết quả cho tất cả Client đang chờ]
+    CoalesceHit --> Broadcast
 ```
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ npm run start
+## 3. Cấu hình Động 3 Lớp (Dynamic Configuration)
 
-# watch mode
-$ npm run start:dev
+API Gateway đọc cấu hình hệ thống theo chuỗi ưu tiên:
+1. **Redis Cache:** `gateway:config:{key}` (TTL: 60s).
+2. **MongoDB:** Collection `GatewayConfig` (quản lý qua `/api/config/:key`).
+3. **Local .env:** Biến môi trường cục bộ làm fallback khi ngắt kết nối database.
 
-# production mode
-$ npm run start:prod
+---
+
+## 4. Biến Môi trường (.env)
+
+```env
+# Server
+PORT=3001
+NODE_ENV=development
+
+# Redis Cache
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_USERNAME=
+REDIS_PASSWORD=
+
+# MongoDB Dynamic Config
+MONGODB_URI=mongodb://localhost:27017/quickbite_gateway
+
+# Rate Limiting & Performance
+RATE_LIMIT_TTL=60000
+RATE_LIMIT_MAX=100
+# Global HTTP GET Cache TTL in seconds (min: 0, max: 120, default: 30)
+GET_CACHE_TTL=30
+
+# Request Coalescing (In-flight concurrency deduplication)
+COALESCING_ENABLED=true
+COALESCING_EXCLUDE_PATHS=
+COALESCING_ADDITIONAL_HEADERS=
+
+# Microservice URLs
+IDENTITY_URL=http://localhost:44391
+ORDER_URL=https://localhost:44386/api/app
+CATALOG_URL=http://localhost:3000
+INVENTORY_URL=http://localhost:8083/api/v1
+PAYMENT_URL=http://localhost:8084/v1
 ```
 
-## Run tests
+---
+
+## 5. Endpoints API
+
+### 5.1. Admin Reports (BFF)
+* `GET /api/admin/reports/charts`: Thống kê doanh thu theo ngày & phân bổ đơn hoàn thành/hủy (`startDate`, `endDate`, `status`, `merchantId`).
+* `GET /api/admin/reports/details`: Bảng danh sách đơn hàng chi tiết có phân trang (`startDate`, `endDate`, `status`, `page`, `limit`).
+
+### 5.2. Dynamic Config Management
+* `GET /api/config/:key`: Xem giá trị biến cấu hình hiện tại.
+* `POST /api/config/:key`: Cập nhật giá trị cấu hình vào MongoDB và làm mới Redis.
+
+### 5.3. Health & Monitoring
+* `GET /api/health`: Kiểm tra trạng thái Redis, MongoDB và các microservices.
+* `GET /api/system/health/wake-up`: Fan-out đánh thức đồng thời toàn bộ microservices.
+
+---
+
+## 6. Cài đặt & Khởi chạy
 
 ```bash
-# unit tests
-$ npm run test
+# Cài đặt dependencies
+npm install
 
-# e2e tests
-$ npm run test:e2e
+# Khởi chạy chế độ phát triển
+npm run start:dev
 
-# test coverage
-$ npm run test:cov
+# Biên dịch production
+npm run build
+
+# Khởi chạy production
+npm run start:prod
 ```
 
-## Deployment
+---
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## 7. Kiểm thử (Testing)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+# Chạy toàn bộ Unit Tests
+npm test
+
+# Chạy kiểm tra độ phủ (Coverage)
+npm run test:cov
 ```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

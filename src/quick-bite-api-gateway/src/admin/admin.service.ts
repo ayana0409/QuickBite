@@ -349,7 +349,7 @@ export class AdminService {
   }
 
   /**
-   * Generates dynamic report charts data with date range and status filtering
+   * Generates dynamic report charts data
    */
   async getReportsCharts(
     params: {
@@ -596,4 +596,3 @@ export class AdminService {
     };
   }
 }
-

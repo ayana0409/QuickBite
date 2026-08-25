@@ -328,23 +328,23 @@ src/
  
 ### 5.7. API Gateway / BFF (NestJS)
  
-**Trách nhiệm:** Điểm vào duy nhất, xác thực token JWT (JWKS), phân quyền Role (Admin/Merchant/Customer), rate-limit, aggregation (BFF), Redis distributed caching, health monitoring thời gian thực và forward proxy request.
+**Trách nhiệm:** Điểm vào duy nhất, xác thực token JWT (JWKS), phân quyền Role (Admin/Merchant/Customer), rate-limit, aggregation (BFF), Global Redis distributed caching (TTL động qua MongoDB), Request Coalescing chống Thundering Herd, health monitoring thời gian thực và forward proxy request.
  
 **Kiến trúc:**
 ```
 src/
 ├── auth/            # Verify JWT từ Identity (JWKS), Passport Guards, Role Check
 ├── proxy/           # Reverse Proxy & Cache Invalidation tới từng service
-├── admin/           # Admin Analytics BFF (/api/admin/stats/overview, /api/admin/stats/charts)
+├── admin/           # Admin Analytics & Advanced Reports BFF (/api/admin/reports/charts, /details)
 ├── merchant/        # Merchant Dashboard BFF (/api/merchant/dashboard, orders)
 ├── health/          # Health Check & Diagnostics thời gian thực (/api/health)
 ├── cache/           # Redis Distributed Cache Service & Invalidation
-├── config/          # Dynamic Config Service
-└── common/          # Rate limiter (@nestjs/throttler), logging, response wrapper
+├── config/          # Dynamic Config Service (Redis -> MongoDB -> .env)
+└── common/          # Rate limiter (@nestjs/throttler), GlobalHttpCacheInterceptor, RequestCoalescingInterceptor
 ```
  
-**Tech:** NestJS, `@nestjs/throttler` (rate-limit), Axios HttpService, JWKS validation, Redis Cache, Health Check Monitor.
-**Lưu ý:** Gateway đóng vai trò Edge BFF: gộp dữ liệu nhiều microservice thành các response thống kê tối ưu cho Frontend Admin & Merchant Portal.
+**Tech:** NestJS 11, `@nestjs/throttler` (rate-limit), Axios HttpService, JWKS validation, Redis Distributed Cache (`ioredis`), MongoDB Config Storage (`mongoose`), Concurrency Deduplication (`RxJS shareReplay`), Health Check Monitor.
+**Lưu ý:** Gateway đóng vai trò Edge BFF với **đường ống 2 tầng (2-Layer Pipeline)**: Tầng 1 Cache Redis phản hồi siêu tốc (< 2ms) và Tầng 2 Request Coalescing gom các truy vấn đồng thời giúp loại bỏ tải dư thừa cho toàn bộ microservice phía sau.
  
 ---
  

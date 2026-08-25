@@ -59,7 +59,7 @@ export class AdminController {
 
   /**
    * GET /api/admin/reports/charts
-   * Returns filtered revenue and stacked order volume charts
+   * Returns filtered revenue and stacked order volume charts (Globally Cached)
    */
   @Get('reports/charts')
   async getReportsCharts(
@@ -82,7 +82,7 @@ export class AdminController {
 
   /**
    * GET /api/admin/reports/details
-   * Returns paginated order details table data matching filter criteria
+   * Returns paginated order details table data matching filter criteria (Globally Cached)
    */
   @Get('reports/details')
   async getReportsDetails(

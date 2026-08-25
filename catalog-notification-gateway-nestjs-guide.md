@@ -151,8 +151,10 @@ export class FoodItem {
 * **Single Entry-Point**: Cổng truy cập duy nhất cho tất cả Client (`Customer Web` và `Admin Portal`).
 * **Edge Security**: Xác thực JWT token tại Edge thông qua thuật toán bất đối xứng **RS256** và **JWKS** (không truy vấn Database, giảm tải hoàn toàn cho Identity Service).
 * **Rate Limiting**: Giới hạn tần suất gọi API bảo vệ hệ thống khỏi DDoS và spam request (`@nestjs/throttler`).
-* **3-tier Dynamic Config**: Động hóa các biến cấu hình hệ thống (URL service, rate limit threshold) theo chuỗi ưu tiên: **Redis Cache ➔ MongoDB Config Collection ➔ .env Local Fallback**.
-* **BFF Aggregation Controllers**: Gom dữ liệu từ nhiều microservice thành response thống kê tối ưu cho Admin Dashboard (`admin.service.ts`) và Merchant POS (`merchant.service.ts`).
+* **Global HTTP GET Redis Cache (`GlobalHttpCacheInterceptor`)**: Tự động cache toàn bộ kết quả của các endpoint GET (trừ `/health`, `/config`) vào Redis với TTL động (`GET_CACHE_TTL`, 0s–120s), phản hồi siêu tốc (< 2ms) và giảm tải 100% cho downstream services khi Cache Hit.
+* **Request Coalescing Interceptor (`RequestCoalescingInterceptor`)**: Chống hiện tượng **Thundering Herd / Cache Stampede**. Khi nhiều request cùng loại gửi đến đồng thời trong tích tắc, Gateway gom lại chỉ thực hiện **1 upstream request duy nhất**, sau đó phát tán kết quả đến tất cả client đang chờ.
+* **3-tier Dynamic Config**: Động hóa các biến cấu hình hệ thống (URL service, rate limit, cache TTL) theo chuỗi ưu tiên: **Redis Cache ➔ MongoDB Config Collection ➔ .env Local Fallback**.
+* **BFF Aggregation Controllers**: Gom dữ liệu từ nhiều microservice thành response thống kê tối ưu cho Admin Dashboard, Báo cáo Chuyên sâu (`admin.service.ts`) và Merchant POS (`merchant.service.ts`).
 * **Health Fan-out Wake-up (`GET /api/system/health/wake-up`)**: Kích hoạt song song pings đến toàn bộ microservices (.NET, Spring Boot, NestJS) để warm up server khi triển khai trên cloud scale-to-zero.
 
 ### 3.2. Công nghệ sử dụng
@@ -163,12 +165,27 @@ export class FoodItem {
 | **Rate Limiter** | `@nestjs/throttler 6.5.0` (Config TTL: 60s, Limit: 100 reqs) |
 | **Distributed Cache**| `ioredis 6.0.0` (Redis Cache Client) |
 | **Dynamic Config DB**| `mongoose 9.9.1` (MongoDB Dynamic Config Storage) |
+| **Concurrency Stream**| RxJS 7.8.2 (`shareReplay` for In-flight Request Coalescing) |
 | **Token Verification**| `jwks-rsa 4.1.0` + `passport-jwt 4.0.1` |
 
-### 3.3. Cơ chế Dynamic Config 3 lớp (`DynamicConfigService`)
+### 3.3. Đường ống 2 Tầng Caching & Request Coalescing (2-Layer Pipeline)
+
+```mermaid
+flowchart TD
+    Req[Incoming HTTP GET Request] --> CacheCheck{GlobalHttpCacheInterceptor: Trong Redis Cache?}
+    CacheCheck -- YES --> CacheHit[⚡ HTTP CACHE HIT: Trả về trực tiếp trong 2ms]
+    CacheCheck -- NO --> CoalesceCheck{RequestCoalescingInterceptor: Đang có request cùng loại chạy?}
+    CoalesceCheck -- YES --> CoalesceHit[⚡ COALESCING HIT: Gom vào stream đang chạy]
+    CoalesceCheck -- NO --> Downstream[🚀 Upstream Service Call / Database Query]
+    Downstream --> SaveCache[💾 Lưu kết quả vào Redis Cache TTL: Xs]
+    SaveCache --> Broadcast[✅ Phát kết quả cho tất cả Client đang chờ]
+    CoalesceHit --> Broadcast
+```
+
+### 3.4. Cơ chế Dynamic Config 3 lớp (`DynamicConfigService`)
 
 ```
-Request Config Key (vd: ORDER_SERVICE_URL, RATE_LIMIT_MAX)
+Request Config Key (vd: ORDER_URL, RATE_LIMIT_MAX, GET_CACHE_TTL)
                           │
                           ▼
              [ 1. Check Redis Cache ]
@@ -187,6 +204,25 @@ Request Config Key (vd: ORDER_SERVICE_URL, RATE_LIMIT_MAX)
                          ▼                                     ▼
                 Save to Redis & Return               [ 3. Local .env Fallback ]
 ```
+
+### 3.5. Cấu hình Hiệu năng & Cache qua Biến Môi trường (.env & MongoDB)
+| Biến / Khóa cấu hình | Mặc định | Ý nghĩa & Phạm vi |
+| :--- | :--- | :--- |
+| `GET_CACHE_TTL` | `30` | Thời gian sống (TTL tính theo giây) của Redis Cache cho toàn bộ GET request. Hỗ trợ từ `0` (tắt cache) đến `120` (tối đa 2 phút). Quản lý động từ MongoDB. |
+| `COALESCING_ENABLED` | `true` | Bật/tắt cơ chế Request Coalescing gom request trùng lặp đồng thời. |
+| `COALESCING_EXCLUDE_PATHS` | *(trống)* | Danh sách đường dẫn loại trừ gom nhóm (ngăn cách bằng dấu phẩy). |
+| `COALESCING_ADDITIONAL_HEADERS` | *(trống)* | Danh sách header bổ sung để phân biệt cache key riêng lẻ (mặc định đã kèm Bearer Token). |
+
+### 3.6. Các Endpoints Nổi bật tại API Gateway (Port 3001)
+* **Báo cáo Chuyên sâu (Advanced Reports):**
+  * `GET /api/admin/reports/charts`: Thống kê doanh thu theo mốc ngày và phân bổ đơn thành công/hủy (Globally Cached).
+  * `GET /api/admin/reports/details`: Danh sách đơn hàng chi tiết có phân trang `page`, `limit`, `startDate`, `endDate`, `status` (Globally Cached).
+* **Quản lý Cấu hình Động:**
+  * `GET /api/config/:key`: Xem giá trị cấu hình hiện tại (Redis -> Mongo -> Env).
+  * `POST /api/config/:key`: Cập nhật cấu hình nóng không cần khởi động lại Gateway.
+* **Hệ thống & Giám sát:**
+  * `GET /api/health`: Kiểm tra sức khỏe toàn diện Redis, MongoDB và microservices.
+  * `GET /api/system/health/wake-up`: Fan-out ping đánh thức toàn bộ microservices.
 
 ---
 

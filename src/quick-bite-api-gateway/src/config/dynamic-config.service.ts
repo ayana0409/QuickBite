@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Inject, Optional, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Model } from 'mongoose';
 import Redis from 'ioredis';
@@ -63,6 +63,7 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
     const defaultConfigs: { [key: string]: string } = {
       RATE_LIMIT_TTL: '60000',
       RATE_LIMIT_MAX: '100',
+      GET_CACHE_TTL: '30',
       IDENTITY_URL: 'http://localhost:44391',
       ORDER_URL: 'https://localhost:44386/api/app',
       CATALOG_URL: 'http://localhost:3000',
@@ -188,6 +189,14 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
    * Helper to set/update a config in MongoDB and update Redis cache
    */
   async setConfig(key: string, value: string): Promise<void> {
+    // Validate GET_CACHE_TTL (must be integer between 0 and 120)
+    if (key === 'GET_CACHE_TTL') {
+      const num = parseInt(value, 10);
+      if (isNaN(num) || num < 0 || num > 120 || String(num) !== value.trim()) {
+        throw new BadRequestException('GET_CACHE_TTL must be an integer between 0 and 120 seconds.');
+      }
+    }
+
     if (this.isMongoConnected()) {
       await this.configModel!.findOneAndUpdate(
         { key },
