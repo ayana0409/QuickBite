@@ -19,7 +19,7 @@ export class AdminController {
     @Query('refresh') refresh?: string,
   ) {
     const user = (req as any).user;
-    this.adminService.validateAdminRole(user);
+    this.adminService.validateAdminPortalAccess(user);
 
     const authHeader = req.headers.authorization;
     const forceRefresh = refresh === 'true' || refresh === '1';
@@ -37,7 +37,7 @@ export class AdminController {
     @Query('refresh') refresh?: string,
   ) {
     const user = (req as any).user;
-    this.adminService.validateAdminRole(user);
+    this.adminService.validateAdminPortalAccess(user);
 
     const authHeader = req.headers.authorization;
     const forceRefresh = refresh === 'true' || refresh === '1';
@@ -71,7 +71,7 @@ export class AdminController {
     @Query('restaurantId') restaurantId?: string,
   ) {
     const user = (req as any).user;
-    this.adminService.validateAdminRole(user);
+    this.adminService.validateAdminPortalAccess(user);
 
     const authHeader = req.headers.authorization;
     return this.adminService.getReportsCharts(
@@ -96,7 +96,7 @@ export class AdminController {
     @Query('limit') limit?: string,
   ) {
     const user = (req as any).user;
-    this.adminService.validateAdminRole(user);
+    this.adminService.validateAdminPortalAccess(user);
 
     const authHeader = req.headers.authorization;
     return this.adminService.getReportsDetails(
@@ -125,7 +125,7 @@ export class AdminController {
     @Query('filter') filter?: string,
   ) {
     const user = (req as any).user;
-    this.adminService.validateAdminRole(user);
+    this.adminService.validateUserManagementAccess(user);
 
     const authHeader = req.headers.authorization;
     return this.adminService.getAdminUsers(

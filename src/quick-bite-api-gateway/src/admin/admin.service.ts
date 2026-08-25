@@ -3,6 +3,11 @@ import { HttpService } from '@nestjs/axios';
 import { firstValueFrom } from 'rxjs';
 import { DynamicConfigService } from '../config/dynamic-config.service';
 import { RedisCacheService } from '../cache/redis-cache.service';
+import {
+  ADMIN_PORTAL_ROLES,
+  USER_MANAGEMENT_ROLES,
+  ADMIN_ROLES,
+} from '../common/constants/roles';
 
 export interface AdminOverviewStatsDto {
   totalActiveRestaurants: number;
@@ -44,7 +49,78 @@ export class AdminService {
   ) {}
 
   /**
-   * Validates if the authenticated user has the Admin/Administrator role or permissions
+   * Helper to extract normalized lower-case roles and permissions from JWT user
+   */
+  private extractUserRoles(user: any): string[] {
+    const rawRoles =
+      user?.role ||
+      user?.roles ||
+      user?.['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+      user?.['role'] ||
+      user?.permissions ||
+      user?.permission ||
+      [];
+
+    let rolesList: string[] = [];
+    if (Array.isArray(rawRoles)) {
+      rolesList = rawRoles.map((r) => String(r).toLowerCase().trim());
+    } else if (typeof rawRoles === 'string') {
+      try {
+        const parsed = JSON.parse(rawRoles);
+        rolesList = Array.isArray(parsed)
+          ? parsed.map((r) => String(r).toLowerCase().trim())
+          : [rawRoles.toLowerCase().trim()];
+      } catch {
+        rolesList = rawRoles.split(/[,\s]+/).map((r) => r.toLowerCase().trim());
+      }
+    }
+    return rolesList;
+  }
+
+  /**
+   * Validates if the authenticated user has access to Admin Portal (admin, sub-admin, manager)
+   */
+  validateAdminPortalAccess(user: any): void {
+    if (process.env.BYPASS_AUTH === 'true') {
+      return;
+    }
+
+    if (!user) {
+      throw new ForbiddenException('Access denied: Authentication payload is missing.');
+    }
+
+    const rolesList = this.extractUserRoles(user);
+    const hasAccess = rolesList.some((r) => (ADMIN_PORTAL_ROLES as readonly string[]).includes(r));
+
+    if (!hasAccess) {
+      this.logger.warn(`⚠️ [ADMIN PORTAL GUARD] Access denied for user: ${JSON.stringify(user?.sub || user?.id)}. Roles: ${rolesList.join(', ')}`);
+      throw new ForbiddenException('Access denied: Admin Portal role (admin, sub-admin, manager) is required.');
+    }
+  }
+
+  /**
+   * Validates if the user has access to User Management (admin, sub-admin ONLY; blocks manager)
+   */
+  validateUserManagementAccess(user: any): void {
+    if (process.env.BYPASS_AUTH === 'true') {
+      return;
+    }
+
+    if (!user) {
+      throw new ForbiddenException('Access denied: Authentication payload is missing.');
+    }
+
+    const rolesList = this.extractUserRoles(user);
+    const hasAccess = rolesList.some((r) => (USER_MANAGEMENT_ROLES as readonly string[]).includes(r));
+
+    if (!hasAccess) {
+      this.logger.warn(`⚠️ [USER MANAGEMENT GUARD] Access denied for manager user: ${JSON.stringify(user?.sub || user?.id)}. Roles: ${rolesList.join(', ')}`);
+      throw new ForbiddenException('Access denied: User management is restricted to Admin and Sub-Admin roles.');
+    }
+  }
+
+  /**
+   * Validates if the authenticated user has the Admin/Administrator role (Admin ONLY)
    */
   validateAdminRole(user: any): void {
     if (process.env.BYPASS_AUTH === 'true') {
@@ -55,36 +131,12 @@ export class AdminService {
       throw new ForbiddenException('Access denied: Authentication payload is missing.');
     }
 
-    const rawRoles =
-      user.role ||
-      user.roles ||
-      user['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
-      user['role'] ||
-      user.permissions ||
-      user.permission ||
-      [];
-
-    let rolesList: string[] = [];
-    if (Array.isArray(rawRoles)) {
-      rolesList = rawRoles.map((r) => String(r).toLowerCase());
-    } else if (typeof rawRoles === 'string') {
-      try {
-        const parsed = JSON.parse(rawRoles);
-        rolesList = Array.isArray(parsed)
-          ? parsed.map((r) => String(r).toLowerCase())
-          : [rawRoles.toLowerCase()];
-      } catch {
-        rolesList = rawRoles.split(/[,\s]+/).map((r) => r.toLowerCase());
-      }
-    }
-
-    const isAdmin = rolesList.some((r) =>
-      ['admin', 'administrator', 'superadmin', 'system_admin', 'order.orders.adminview'].includes(r),
-    );
+    const rolesList = this.extractUserRoles(user);
+    const isAdmin = rolesList.some((r) => (ADMIN_ROLES as readonly string[]).includes(r));
 
     if (!isAdmin) {
       this.logger.warn(`⚠️ [ADMIN GUARD] Access denied for user: ${JSON.stringify(user?.sub || user?.id)}. Roles: ${rolesList.join(', ')}`);
-      throw new ForbiddenException('Access denied: Administrator role is required.');
+      throw new ForbiddenException('Access denied: Full Administrator role is required.');
     }
   }
 
