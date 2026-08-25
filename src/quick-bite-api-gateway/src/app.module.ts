@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { HealthModule } from './health/health.module';
 import { AppConfigModule } from './config/config.module';
 import { DynamicConfigService } from './config/dynamic-config.service';
@@ -8,6 +8,7 @@ import { ProxyModule } from './proxy/proxy.module';
 import { CacheModule } from './cache/cache.module';
 import { MerchantModule } from './merchant/merchant.module';
 import { AdminModule } from './admin/admin.module';
+import { RequestCoalescingInterceptor } from './common/interceptors/request-coalescing.interceptor';
 
 @Module({
   imports: [
@@ -32,6 +33,10 @@ import { AdminModule } from './admin/admin.module';
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestCoalescingInterceptor,
     },
   ],
 })
