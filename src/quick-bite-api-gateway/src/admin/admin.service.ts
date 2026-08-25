@@ -390,28 +390,50 @@ export class AdminService {
 
     const rawRevenueList: any[] = rawOrderStats?.revenue30Days || rawOrderStats?.revenueData || [];
 
-    // Filter by date range if provided
-    const startStr = params.startDate ? params.startDate.split('T')[0] : '';
-    const endStr = params.endDate ? params.endDate.split('T')[0] : '';
+    // Helper to parse dates in format dd/MM, dd/MM/yyyy or YYYY-MM-DD
+    const parseItemDate = (dateStr: string): Date | null => {
+      if (!dateStr) return null;
+      if (/^\d{1,2}\/\d{1,2}$/.test(dateStr)) {
+        const [d, m] = dateStr.split('/').map(Number);
+        const year = new Date().getFullYear();
+        return new Date(year, m - 1, d);
+      }
+      if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(dateStr)) {
+        const [d, m, y] = dateStr.split('/').map(Number);
+        return new Date(y, m - 1, d);
+      }
+      const parsed = new Date(dateStr);
+      return isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const startDateObj = params.startDate ? new Date(params.startDate) : null;
+    const endDateObj = params.endDate ? new Date(params.endDate) : null;
+    if (startDateObj) startDateObj.setHours(0, 0, 0, 0);
+    if (endDateObj) endDateObj.setHours(23, 59, 59, 999);
 
     let filtered = rawRevenueList.filter((item: any) => {
-      const itemDate = item.date ? item.date.split('T')[0] : '';
-      if (startStr && itemDate && itemDate < startStr) return false;
-      if (endStr && itemDate && itemDate > endStr) return false;
+      const itemDateObj = parseItemDate(item.date);
+      if (!itemDateObj) return true;
+      if (startDateObj && itemDateObj < startDateObj) return false;
+      if (endDateObj && itemDateObj > endDateObj) return false;
       return true;
     });
 
-    // If filtered list is empty but date range is specified, generate date buckets
-    if (filtered.length === 0 && startStr && endStr) {
-      const start = new Date(startStr);
-      const end = new Date(endStr);
+    // If filtered list is empty, fallback to raw list or generate date buckets
+    if (filtered.length === 0 && rawRevenueList.length > 0) {
+      filtered = rawRevenueList;
+    } else if (filtered.length === 0 && startDateObj && endDateObj) {
+      const start = startDateObj;
+      const end = endDateObj;
       const daysDiff = Math.min(60, Math.max(1, Math.round((end.getTime() - start.getTime()) / (1000 * 3600 * 24))));
 
       for (let i = 0; i <= daysDiff; i++) {
         const curDate = new Date(start.getTime() + i * 24 * 3600 * 1000);
         if (curDate > end) break;
-        const dateStr = curDate.toISOString().split('T')[0];
-        const dayNames = ['CN', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+        const dayStr = String(curDate.getDate()).padStart(2, '0');
+        const monthStr = String(curDate.getMonth() + 1).padStart(2, '0');
+        const dateStr = `${dayStr}/${monthStr}`;
+        const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
         filtered.push({
           date: dateStr,
           dayName: dayNames[curDate.getDay()],
