@@ -616,8 +616,8 @@ export class AdminService {
       username: string;
       email: string;
       fullName: string;
-      role: 'Admin' | 'Merchant' | 'Customer';
-      roles: Array<'Admin' | 'Merchant' | 'Customer'>;
+      role: string;
+      roles: string[];
       isActive: boolean;
       permissions: string[];
     }>;
@@ -660,7 +660,7 @@ export class AdminService {
         // Fetch roles in parallel for the current page users
         const usersWithRoles = await Promise.all(
           rawItems.map(async (u: any) => {
-            let rolesList: Array<'Admin' | 'Merchant' | 'Customer'> = [];
+            let rolesList: string[] = [];
             try {
               const rolesRes = await firstValueFrom(
                 this.httpService.get(`${cleanIdentityUrl}/api/identity/users/${u.id}/roles`, {
@@ -681,7 +681,7 @@ export class AdminService {
                   const low = rn.toLowerCase();
                   if (low === 'admin' || low === 'administrator') return 'Admin';
                   if (low === 'merchant' || low === 'seller') return 'Merchant';
-                  return 'Customer';
+                  return rn;
                 });
               }
             } catch (roleErr: any) {
@@ -695,20 +695,12 @@ export class AdminService {
                   const low = String(r).toLowerCase();
                   if (low === 'admin' || low === 'administrator') rolesList.push('Admin');
                   else if (low === 'merchant' || low === 'seller') rolesList.push('Merchant');
-                  else if (low === 'customer' || low === 'user') rolesList.push('Customer');
+                  else if (r) rolesList.push(r);
                 });
               }
             }
 
-            if (rolesList.length === 0) {
-              rolesList = ['Customer'];
-            }
-
-            const primaryRole: 'Admin' | 'Merchant' | 'Customer' = rolesList.includes('Admin')
-              ? 'Admin'
-              : rolesList.includes('Merchant')
-              ? 'Merchant'
-              : 'Customer';
+            const primaryRole: string = rolesList[0] || '';
 
             return {
               id: u.id,
