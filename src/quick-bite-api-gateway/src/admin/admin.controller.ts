@@ -56,4 +56,61 @@ export class AdminController {
     const authHeader = req.headers.authorization;
     return this.adminService.resetAndRefreshStatsCache(authHeader);
   }
+
+  /**
+   * GET /api/admin/reports/charts
+   * Returns filtered revenue and stacked order volume charts
+   */
+  @Get('reports/charts')
+  async getReportsCharts(
+    @Req() req: Request,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
+    @Query('merchantId') merchantId?: string,
+    @Query('restaurantId') restaurantId?: string,
+  ) {
+    const user = (req as any).user;
+    this.adminService.validateAdminRole(user);
+
+    const authHeader = req.headers.authorization;
+    return this.adminService.getReportsCharts(
+      { startDate, endDate, status, merchantId, restaurantId },
+      authHeader,
+    );
+  }
+
+  /**
+   * GET /api/admin/reports/details
+   * Returns paginated order details table data matching filter criteria
+   */
+  @Get('reports/details')
+  async getReportsDetails(
+    @Req() req: Request,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: string,
+    @Query('merchantId') merchantId?: string,
+    @Query('restaurantId') restaurantId?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    const user = (req as any).user;
+    this.adminService.validateAdminRole(user);
+
+    const authHeader = req.headers.authorization;
+    return this.adminService.getReportsDetails(
+      {
+        startDate,
+        endDate,
+        status,
+        merchantId,
+        restaurantId,
+        page: page ? parseInt(page, 10) : 1,
+        limit: limit ? parseInt(limit, 10) : 20,
+      },
+      authHeader,
+    );
+  }
 }
+
