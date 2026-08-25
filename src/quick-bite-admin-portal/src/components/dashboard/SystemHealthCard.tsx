@@ -78,14 +78,14 @@ export const SystemHealthCard: React.FC = () => {
 
   const formatServiceName = (key: string) => {
     const map: Record<string, string> = {
-      identity_service: 'Identity Service (ABP / .NET 8)',
-      order_service: 'Order Service (ABP / .NET 8)',
-      catalog_service: 'Catalog Service (NestJS / MongoDB)',
-      inventory_service: 'Inventory Service (Spring Boot / MySQL)',
-      payment_service: 'Payment Service (Spring Boot / VNPay)',
-      system_resources: 'Gateway Memory & Node.js',
+      identity_service: 'Identity Service (.NET 10 / ABP / PostgreSQL)',
+      order_service: 'Order Service (.NET 10 / ABP / MySQL)',
+      catalog_service: 'Catalog Service (NestJS 11 / PostgreSQL)',
+      inventory_service: 'Inventory Service (Spring Boot 3.3 / PostgreSQL)',
+      payment_service: 'Payment Service (Spring Boot 3.3 / PostgreSQL)',
+      system_resources: 'Gateway Memory & Node.js (NestJS 11)',
       redis: 'Redis Distributed Cache',
-      mongodb: 'MongoDB Replica Set',
+      mongodb: 'MongoDB Dynamic Config',
     };
     return map[key] || key.replace(/_/g, ' ').toUpperCase();
   };

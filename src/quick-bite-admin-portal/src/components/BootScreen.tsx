@@ -67,17 +67,18 @@ const SERVICE_DETAILS: Record<string, ServiceDetail> = {
     id: 'gateway',
     apiKey: 'system_resources',
     name: 'NestJS API Gateway BFF',
-    tech: 'NestJS / TypeScript',
-    db: 'In-Memory / Redis',
+    tech: 'NestJS 11 (TypeScript)',
+    db: 'Redis + MongoDB',
     pattern: 'Backend-For-Frontend (BFF)',
     color: 'from-amber-400 via-orange-500 to-red-500',
     gradient: 'text-amber-400',
-    description: 'Cổng giao tiếp duy nhất cho Admin & Merchant Portal. Chịu trách nhiệm định tuyến, JWT Auth Validation, Rate Limiting và tập hợp Health Status của toàn hệ thống.',
+    description: 'Cổng giao tiếp duy nhất cho Admin & Merchant Portal. Chịu trách nhiệm định tuyến, JWT Auth Validation (JWKS), Rate Limiting, Redis Caching, Dynamic Config 3 lớp và tập hợp Health Status của toàn hệ thống.',
     architecture: [
-      'NestJS Axios Interceptors proxy request tới downstream services',
-      'Terminus Health Check Aggregator kiểm tra sức khỏe 6 node backend',
-      'Xác thực Bearer JWT Token & chuyển hướng phân quyền RBAC',
-      'Bảo vệ hạ tầng với Rate Limiter & Security Helmet'
+      'NestJS Reverse Proxy chuyển tiếp request tới các microservices',
+      'Xác thực Bearer RS256 JWT Token qua JWKS từ Identity Service',
+      'Cấu hình động 3 lớp Dynamic Config (Redis -> MongoDB -> .env)',
+      'Distributed Caching với Redis Cache & Health Check Aggregator',
+      'Bảo vệ hạ tầng với Rate Limiter (@nestjs/throttler) & Helmet'
     ]
   },
   redis: {
@@ -85,99 +86,100 @@ const SERVICE_DETAILS: Record<string, ServiceDetail> = {
     apiKey: 'redis',
     name: 'Redis Distributed Cache',
     tech: 'Redis 7.x In-Memory',
-    db: 'Key-Value Store',
+    db: 'Key-Value Store / Cache',
     pattern: 'Cache-Aside & Rate Limiter',
     color: 'from-pink-500 via-rose-500 to-red-500',
     gradient: 'text-pink-400',
-    description: 'Hệ thống bộ nhớ đệm phân tán hỗ trợ truy xuất thực đơn nhanh cấp độ ms và lưu trữ tạm thời các session/rate-limit token.',
+    description: 'Hệ thống bộ nhớ đệm phân tán hỗ trợ truy xuất thực đơn nhanh cấp độ ms, lưu trữ session/token và quản lý rate limit tracking.',
     architecture: [
-      'Cache thực đơn nhà hàng & danh mục món ăn hot',
-      'Session storage & Token blacklist kiểm tra tức thì',
-      'Giảm tải truy vấn trực tiếp xuống PostgreSQL & MongoDB'
+      'Cache thực đơn nhà hàng & danh mục món ăn giảm tải database',
+      'Cấu hình động Dynamic Config Layer 1 (TTL 60s)',
+      'Rate limit tracking & Token blacklist kiểm tra tức thì'
     ]
   },
   identity: {
     id: 'identity',
     apiKey: 'identity_service',
     name: 'Identity Service',
-    tech: '.NET 8 Clean Architecture',
-    db: 'SQL Server (AbpUsers)',
-    pattern: 'OAuth2 / OpenIddict / Outbox',
+    tech: '.NET 10 (ABP Framework 10)',
+    db: 'PostgreSQL (AbpUsers, OpenIddict)',
+    pattern: 'OAuth2 / OpenIddict 7.2 / RBAC / Outbox',
     color: 'from-purple-500 via-indigo-500 to-blue-500',
     gradient: 'text-purple-400',
-    description: 'Dịch vụ xác thực và phân quyền người dùng tập trung. Đảm bảo an toàn tài khoản cho Admin, Merchant và Customer với JWT Tokens.',
+    description: 'Dịch vụ định danh (IAM) & phân quyền người dùng tập trung. Cấp phát token OAuth2/OIDC (OpenIddict 7.2), endpoint JWKS cho Gateway và quản lý đa vai trò (Admin, Merchant, Customer).',
     architecture: [
-      'Bảng AbpUsers, AbpRoles, AbpPermissionGrants (Customer, Merchant, Admin)',
-      'OpenIddict cấp phát & refresh Access/Refresh Tokens',
-      'Transactional Outbox Pattern đẩy sự kiện `user.registered` qua Kafka',
-      'Khóa tài khoản tự động (Lockout) khi đăng nhập sai quá số lần'
+      'Phát hành RS256 JWT Access Token & Refresh Token qua OpenIddict 7.2',
+      'Endpoint công khai JWKS (/.well-known/jwks.json) phục vụ Edge Auth',
+      'Phân quyền chi tiết RBAC (AbpUsers, AbpRoles, AbpPermissionGrants)',
+      'Transactional Outbox Pattern phát sự kiện user.registered qua Kafka'
     ]
   },
   catalog: {
     id: 'catalog',
     apiKey: 'catalog_service',
     name: 'Catalog Service',
-    tech: 'NestJS / Go',
-    db: 'MongoDB (UUID unified)',
-    pattern: 'CQRS Read Model / Document Store',
+    tech: 'NestJS 11 (TypeScript)',
+    db: 'PostgreSQL (TypeORM, JSONB)',
+    pattern: 'CRUD / Generic Request Center / JSONB Schema',
     color: 'from-cyan-400 via-teal-500 to-emerald-500',
     gradient: 'text-cyan-400',
-    description: 'Quản lý thông tin Nhà hàng (Restaurants), Danh mục món (Categories) và Thực đơn (FoodItems). Đồng bộ UUID nhất quán toàn hệ thống.',
+    description: 'Quản lý thông tin Nhà hàng (Restaurants), Danh mục món (Categories), Thực đơn (FoodItems với JSONB toppings/variants), Đánh giá (Reviews) và Trung tâm xử lý yêu cầu (Generic Request Center).',
     architecture: [
-      'Cấu trúc NoSQL MongoDB phản ánh Nhà hàng -> Category -> FoodItem',
-      'Thuộc tính ownerId xác định chủ sở hữu nhà hàng cho Merchant',
-      'Phát sự kiện Kafka đồng bộ danh mục món ăn sang Order Service',
-      'Hỗ trợ cập nhật trạng thái món ăn (isAvailable) theo thời gian thực'
+      'Lưu trữ Toppings & Biến thể món linh hoạt với kiểu dữ liệu JSONB',
+      'Generic Request Center (catalog_requests) xử lý đăng ký mở quán với ACID Transaction',
+      'Hệ thống đánh giá Reviews kèm Compound Unique Index chống spam',
+      'Phát Kafka event (catalog-events) đồng bộ bản sao thực đơn sang Order Service'
     ]
   },
   order: {
     id: 'order',
     apiKey: 'order_service',
     name: 'Order Service',
-    tech: '.NET 8 MassTransit',
-    db: 'PostgreSQL (orders, saga_states)',
-    pattern: 'Saga State Machine Orchestration',
+    tech: '.NET 10 (ABP Framework 10)',
+    db: 'MySQL (AppOrders, AppOrderItems, Saga)',
+    pattern: 'Saga Orchestration / State Machine / Outbox & Inbox',
     color: 'from-amber-400 via-orange-500 to-yellow-500',
     gradient: 'text-amber-400',
-    description: 'Trái tim điều phối đơn hàng QuickBite với Saga Pattern. Xử lý luồng đặt hàng, xác nhận nhà hàng, timeout 15 phút & hoàn tiền tự động.',
+    description: 'Trái tim điều phối đơn hàng QuickBite đóng vai trò Saga Orchestrator State Machine (MassTransit). Xử lý toàn bộ vòng đời đặt hàng, giữ kho, thanh toán và bù trừ tự động (Compensation) khi có lỗi.',
     architecture: [
-      'Saga Orchestration: Initial -> StockReserved -> PaymentAuthorized -> Confirmed',
-      'Timeout 15 phút AwaitingRestaurantAcceptance: Tự hủy & Nhả kho/Hoàn tiền nếu nhà hàng không xác nhận',
-      'Transactional Outbox & Inbox Messages đảm bảo Eventual Consistency',
-      'Lưu trữ lịch sử đổi trạng thái đơn hàng (order_status_history)'
+      'MassTransit Saga State Machine điều phối phân tán (Stock -> Payment -> Confirm)',
+      'Tự động kích hoạt bù trừ (Compensation: Void Payment, Release Stock) khi gặp lỗi',
+      'Transactional Outbox & Idempotent Inbox Messages đảm bảo Eventual Consistency',
+      'Duy trì bản sao thực đơn (FoodItem Replica) phục vụ tính giá đơn hàng tức thì'
     ]
   },
   payment: {
     id: 'payment',
     apiKey: 'payment_service',
     name: 'Payment Service',
-    tech: 'Java 21 Spring Boot',
+    tech: 'Spring Boot 3.3 (Java 21)',
     db: 'PostgreSQL (payments)',
-    pattern: 'Saga Participant & Idempotency',
+    pattern: 'Hexagonal Architecture / Saga Participant / Outbox',
     color: 'from-emerald-400 via-teal-500 to-green-500',
     gradient: 'text-emerald-400',
-    description: 'Xử lý thanh toán đa kênh (VNPay, MoMo, Banking QR, COD). Tích hợp cơ chế Idempotency chống trùng lặp giao dịch.',
+    description: 'Xử lý thanh toán giao dịch với kiến trúc Hexagonal (Ports & Adapters). Triển khai Mock Payment Gateway (Sandbox UI) phục vụ mô phỏng kịch bản thanh toán thành công/thất bại và cơ chế Idempotency.',
     architecture: [
-      'Tích hợp VNPay / MoMo API & QR Banking Gateway',
-      'Idempotency Key validation đảm bảo không trừ tiền 2 lần',
-      'Saga Participant: Thực thi lệnh Hold Money (Authorize) & Refund khi đơn hủy',
-      'Ghi log giao dịch thanh toán chi tiết (payment_transactions)'
+      'Kiến trúc Hexagonal (Clean Architecture - Ports & Adapters)',
+      'Mock Payment Gateway (Sandbox Simulation) phục vụ kiểm thử kịch bản',
+      'Saga Participant: Thực thi Authorize, Capture & Refund khi có sự kiện bù trừ',
+      'Idempotency Key & Inbox Pattern đảm bảo không trùng lặp thanh toán'
     ]
   },
   inventory: {
     id: 'inventory',
     apiKey: 'inventory_service',
     name: 'Inventory Service',
-    tech: 'Java 21 Spring Boot',
+    tech: 'Spring Boot 3.3 (Java 21)',
     db: 'PostgreSQL (inventories)',
-    pattern: 'Pessimistic Locking & Reservation',
+    pattern: 'Optimistic Locking (@Version) & Stock Reservation',
     color: 'from-blue-400 via-indigo-500 to-violet-500',
     gradient: 'text-blue-400',
-    description: 'Quản lý tồn kho nguyên liệu & số lượng món ăn. Đảm bảo không xảy ra Over-selling khi có lượng truy cập lớn.',
+    description: 'Quản lý tồn kho nguyên liệu & món ăn với cơ chế Optimistic Locking (@Version). Thực hiện giữ chỗ tồn kho (Stock Reservation) trong luồng Saga và giải phóng tồn kho khi đơn bị hủy.',
     architecture: [
-      'Quản lý số lượng tồn kho on_hand và số lượng giữ chỗ reserved',
-      'Pessimistic Lock ngăn chặn Race Condition khi hàng nghìn khách đặt cùng món',
-      'Reservation Timeout: Tự động giải phóng kho khi khách không hoàn tất thanh toán'
+      'Quản lý 3 chỉ số tồn: Tổng tồn (quantity), Giữ chỗ (reserved), Khả dụng (available)',
+      'Optimistic Locking (@Version) chống race condition khi lượng đặt hàng tăng đột biến',
+      'Xử lý sự kiện Kafka giữ kho (stock.reserved) và nhả kho bù trừ (stock.released)',
+      'Transactional Outbox & Idempotent Inbox Ledger bảo vệ tính toàn vẹn dữ liệu'
     ]
   }
 };
@@ -264,14 +266,14 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     ].filter(Boolean),
   };
 
-  // Danh sách các Microservices trong Polyglot Architecture
+  // Danh sách các Microservices trong Polyglot Architecture (tọa độ an toàn trong khung)
   const services: ServiceNode[] = [
-    { id: 'redis', apiKey: 'redis', name: 'Redis Cache', tech: 'Cache', color: 'from-pink-500 to-rose-600', gradient: 'pink', icon: HardDrive, x: 20, y: 15 },
-    { id: 'identity', apiKey: 'identity_service', name: 'Identity', tech: '.NET 8', color: 'from-purple-500 to-indigo-600', gradient: 'purple', icon: Shield, x: 80, y: 15 },
-    { id: 'catalog', apiKey: 'catalog_service', name: 'Catalog', tech: 'NestJS', color: 'from-cyan-400 to-emerald-500', gradient: 'cyan', icon: Database, x: 14, y: 52 },
-    { id: 'inventory', apiKey: 'inventory_service', name: 'Inventory', tech: 'Java', color: 'from-blue-400 to-indigo-500', gradient: 'blue', icon: Boxes, x: 86, y: 52 },
-    { id: 'order', apiKey: 'order_service', name: 'Order', tech: '.NET 8', color: 'from-amber-400 to-orange-500', gradient: 'amber', icon: ShoppingBag, x: 26, y: 86 },
-    { id: 'payment', apiKey: 'payment_service', name: 'Payment', tech: 'Java', color: 'from-emerald-400 to-teal-500', gradient: 'emerald', icon: CreditCard, x: 74, y: 86 },
+    { id: 'redis', apiKey: 'redis', name: 'Redis Cache', tech: 'Redis 7', color: 'from-pink-500 to-rose-600', gradient: 'pink', icon: HardDrive, x: 24, y: 18 },
+    { id: 'identity', apiKey: 'identity_service', name: 'Identity', tech: '.NET 10', color: 'from-purple-500 to-indigo-600', gradient: 'purple', icon: Shield, x: 76, y: 18 },
+    { id: 'catalog', apiKey: 'catalog_service', name: 'Catalog', tech: 'NestJS 11', color: 'from-cyan-400 to-emerald-500', gradient: 'cyan', icon: Database, x: 22, y: 50 },
+    { id: 'inventory', apiKey: 'inventory_service', name: 'Inventory', tech: 'Spring 3.3', color: 'from-blue-400 to-indigo-500', gradient: 'blue', icon: Boxes, x: 78, y: 50 },
+    { id: 'order', apiKey: 'order_service', name: 'Order', tech: '.NET 10', color: 'from-amber-400 to-orange-500', gradient: 'amber', icon: ShoppingBag, x: 28, y: 80 },
+    { id: 'payment', apiKey: 'payment_service', name: 'Payment', tech: 'Spring 3.3', color: 'from-emerald-400 to-teal-500', gradient: 'emerald', icon: CreditCard, x: 72, y: 80 },
   ];
 
   // Selected Service Detail object
@@ -285,32 +287,29 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
       .then((animeModule: any) => {
         if (!isSubscribed) return;
 
-        // Animation 1: Center Gateway Node neon pulse & float
+        // Animation 1: Center Gateway Node subtle neon glow pulse (không thu phóng)
         animationRef.current = safeAnimate(animeModule, {
           targets: '#gateway-node',
-          scale: [0.95, 1.08],
-          rotate: [-1, 1],
           boxShadow: [
-            '0 0 25px rgba(245, 158, 11, 0.5), 0 0 50px rgba(236, 72, 153, 0.3)',
-            '0 0 55px rgba(245, 158, 11, 0.9), 0 0 90px rgba(6, 182, 212, 0.5)'
+            '0 0 15px rgba(245, 158, 11, 0.4), 0 0 25px rgba(236, 72, 153, 0.2)',
+            '0 0 25px rgba(245, 158, 11, 0.6), 0 0 40px rgba(6, 182, 212, 0.3)'
           ],
           direction: 'alternate',
           loop: true,
           easing: 'easeInOutSine',
-          duration: 1200,
+          duration: 1800,
         });
 
-        // Animation 2: Cyber Floating Orbs lơ lửng nhiều màu sắc
+        // Animation 2: Cyber Floating Orbs lơ lửng nhẹ nhàng
         safeAnimate(animeModule, {
           targets: '.cyber-orb',
-          translateY: 20,
-          translateX: 15,
-          scale: [0.8, 1.3],
-          opacity: [0.3, 0.8],
+          translateY: 10,
+          translateX: 10,
+          opacity: [0.25, 0.5],
           direction: 'alternate',
           loop: true,
           easing: 'easeInOutQuad',
-          duration: 3000,
+          duration: 4000,
         });
 
         // Animation 3: SVG Lines Laser Flow
@@ -325,16 +324,16 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
         // Animation 4: Stagger Ripple Wave cho các Card
         safeAnimate(animeModule, {
           targets: '.panel-card',
-          translateY: [40, 0],
+          translateY: [20, 0],
           opacity: [0, 1],
           easing: 'easeOutExpo',
-          duration: 1000,
+          duration: 800,
         });
 
         // Animation 5: Glowing Neon Badges Pulse
         safeAnimate(animeModule, {
           targets: '.tech-badge-glow',
-          scale: [0.95, 1.05],
+          opacity: [0.8, 1],
           direction: 'alternate',
           loop: true,
           easing: 'easeInOutQuad',
@@ -362,16 +361,15 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     };
   }, []);
 
-  // Trigger Anime.js hiệu ứng nổ nhẹ khi chọn Service Node
+  // Trigger Anime.js mượt mà khi chọn Service Node
   useEffect(() => {
     import('animejs')
       .then((animeModule: any) => {
         safeAnimate(animeModule, {
           targets: '#service-detail-card',
-          scale: [0.95, 1],
-          opacity: [0.2, 1],
+          opacity: [0.4, 1],
           easing: 'easeOutQuad',
-          duration: 500,
+          duration: 300,
         });
       })
       .catch(() => {});
@@ -385,16 +383,15 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   useEffect(() => {
     let isCancelled = false;
 
-    // 0s: Kích nổ Gateway ở giữa
+    // 0s: Kích hoạt Gateway ở giữa
     import('animejs')
       .then((animeModule: any) => {
         if (isCancelled) return;
         safeAnimate(animeModule, {
           targets: '#gateway-node',
-          scale: [0.1, 1.25, 1],
           opacity: [0, 1],
           easing: 'easeOutQuad',
-          duration: 800,
+          duration: 600,
         });
       })
       .catch(() => {});
@@ -436,7 +433,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
     };
   }, []);
 
-  // Kích nổ animation mỗi khi cặp node mới gia nhập litNodes
+  // Hiệu ứng mượt khi cặp node mới gia nhập litNodes
   useEffect(() => {
     if (litNodes.length <= 1) return;
     const last1 = litNodes[litNodes.length - 1];
@@ -446,10 +443,9 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
       .then((animeModule: any) => {
         safeAnimate(animeModule, {
           targets: `#node-${last1}, #node-${last2}, .line-${last1}, .line-${last2}`,
-          scale: [0.5, 1.25, 1],
-          opacity: [0.1, 1],
+          opacity: [0.2, 1],
           easing: 'easeOutQuad',
-          duration: 800,
+          duration: 500,
         });
       })
       .catch(() => {});
@@ -856,13 +852,13 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                 })}
               </svg>
 
-              {/* Gateway Node với hiệu ứng Hào Quang Neon Rực Rỡ */}
+              {/* Gateway Node */}
               <div
                 id="gateway-node"
                 onClick={() => setSelectedServiceId('gateway')}
-                className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-2xl flex flex-col items-center justify-center p-2 shadow-2xl z-20 cursor-pointer border transition-all duration-500 ${selectedServiceId === 'gateway'
-                  ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 border-white scale-110 shadow-amber-500/80 ring-4 ring-amber-400/40'
-                  : 'bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 border-amber-300/40 opacity-95 hover:scale-105'
+                className={`absolute top-[45%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-28 h-28 rounded-2xl flex flex-col items-center justify-center p-2 shadow-xl z-20 cursor-pointer border transition-colors duration-300 ${selectedServiceId === 'gateway'
+                  ? 'bg-gradient-to-br from-amber-400 via-orange-500 to-pink-500 border-white shadow-amber-500/50 ring-2 ring-amber-400'
+                  : 'bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 border-amber-300/40 opacity-95 hover:border-amber-300'
                   }`}
               >
                 <Server className="w-7 h-7 text-slate-950 mb-0.5 drop-shadow-md" />
@@ -892,16 +888,16 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                     key={s.id}
                     id={`node-${s.id}`}
                     onClick={() => isLit && setSelectedServiceId(s.id)}
-                    className={`microservice-node node-${s.id} absolute -translate-x-1/2 -translate-y-1/2 border rounded-xl p-2 flex items-center gap-2 shadow-2xl z-10 cursor-pointer transition-all duration-700 hover:scale-110 ${
+                    className={`microservice-node node-${s.id} absolute -translate-x-1/2 -translate-y-1/2 border rounded-xl p-2 flex items-center gap-2 shadow-lg z-10 cursor-pointer transition-colors duration-300 ${
                       !isLit
-                        ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-15 grayscale scale-90 shadow-none pointer-events-none'
+                        ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-15 grayscale shadow-none pointer-events-none'
                         : isSelected
-                        ? `ring-4 ring-cyan-400/50 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/50 scale-105 opacity-100`
+                        ? 'ring-2 ring-cyan-400 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/40 opacity-100'
                         : isHealthy
-                        ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40 opacity-100'
+                        ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40 opacity-100 hover:border-emerald-400'
                         : isDegraded
-                        ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40 opacity-100'
-                        : 'bg-slate-900/95 border-red-500/50 text-red-400 shadow-red-950/40 opacity-100'
+                        ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40 opacity-100 hover:border-amber-400'
+                        : 'bg-slate-900/95 border-red-500/50 text-red-400 shadow-red-950/40 opacity-100 hover:border-red-400'
                     }`}
                     style={{ left: `${s.x}%`, top: `${s.y}%` }}
                   >
@@ -996,32 +992,32 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                 <div className="tech-badge-glow bg-slate-950/70 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-md shadow-rose-500/50" />
                   <div>
-                    <p className="text-[11px] font-extrabold text-slate-100">NestJS BFF</p>
-                    <p className="text-[9px] text-slate-400">Gateway BFF</p>
+                    <p className="text-[11px] font-extrabold text-slate-100">NestJS 11 BFF</p>
+                    <p className="text-[9px] text-slate-400">Gateway (Redis+Mongo)</p>
                   </div>
                 </div>
 
                 <div className="tech-badge-glow bg-slate-950/70 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-md shadow-cyan-400/50" />
                   <div>
-                    <p className="text-[11px] font-extrabold text-slate-100">NestJS</p>
-                    <p className="text-[9px] text-slate-400">Catalog API</p>
+                    <p className="text-[11px] font-extrabold text-slate-100">NestJS 11</p>
+                    <p className="text-[9px] text-slate-400">Catalog (PostgreSQL)</p>
                   </div>
                 </div>
 
                 <div className="tech-badge-glow bg-slate-950/70 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-purple-400 shadow-md shadow-purple-400/50" />
                   <div>
-                    <p className="text-[11px] font-extrabold text-slate-100">.NET 8 Clean</p>
-                    <p className="text-[9px] text-slate-400">Identity & Order</p>
+                    <p className="text-[11px] font-extrabold text-slate-100">.NET 10 / ABP</p>
+                    <p className="text-[9px] text-slate-400">Identity(PG) & Order(MySQL)</p>
                   </div>
                 </div>
 
                 <div className="tech-badge-glow bg-slate-950/70 border border-slate-800 rounded-xl p-2 flex items-center gap-2">
                   <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-md shadow-emerald-400/50" />
                   <div>
-                    <p className="text-[11px] font-extrabold text-slate-100">Java Spring</p>
-                    <p className="text-[9px] text-slate-400">Payment & Inventory</p>
+                    <p className="text-[11px] font-extrabold text-slate-100">Spring Boot 3.3</p>
+                    <p className="text-[9px] text-slate-400">Payment & Inv (PG)</p>
                   </div>
                 </div>
               </div>
@@ -1034,11 +1030,11 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
               <ul className="space-y-1.5 text-xs text-slate-300">
                 <li className="flex items-start gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 shrink-0 shadow-sm shadow-amber-400" />
-                  <span><strong>Role Admin (`/admin`):</strong> Quản lý nhà hàng, onboarding đối tác, chỉ định `ownerId`.</span>
+                  <span><strong>Role Admin (`/admin`):</strong> Quản lý người dùng, duyệt nhà hàng & đơn mở quán (ACID Transaction), kiểm duyệt danh mục, giám sát đơn hàng.</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-orange-400 mt-1.5 shrink-0 shadow-sm shadow-orange-400" />
-                  <span><strong>Role Merchant (`/merchant`):</strong> Kênh người bán, quản lý thực đơn & duyệt đơn hàng real-time.</span>
+                  <span><strong>Role Merchant (`/merchant`):</strong> Kênh POS đối tác, thiết kế menu (Variants/Toppings JSONB), quản lý 3 chỉ số tồn kho, xử lý đơn live.</span>
                 </li>
               </ul>
             </div>
@@ -1086,9 +1082,9 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
               return (
                 <div
                   key={s.id}
-                  className={`border rounded-xl p-2.5 flex items-center gap-2 shadow-lg transition-all duration-700 ${
+                  className={`border rounded-xl p-2.5 flex items-center gap-2 shadow-lg transition-colors duration-300 ${
                     !isLit
-                      ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-20 grayscale scale-95 shadow-none'
+                      ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-20 grayscale shadow-none'
                       : isHealthy
                       ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30 opacity-100'
                       : isNodePresent
@@ -1148,7 +1144,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
 
       {/* Footer Cyber Disclaimer */}
       <footer className="w-full max-w-7xl mx-auto text-center text-[10px] text-slate-500 border-t border-slate-900 pt-2 z-10">
-        QuickBite Platform &copy; 2026. Built with React 18, Vite & Tailwind CSS. Powered by Polyglot Microservices.
+        QuickBite Platform &copy; 2026. Built with React 19, Vite 8 & Tailwind CSS v4. Powered by Polyglot Microservices.
       </footer>
     </div>
   );
