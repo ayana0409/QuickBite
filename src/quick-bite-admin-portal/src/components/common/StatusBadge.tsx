@@ -1,4 +1,11 @@
 import React from 'react';
+import {
+  ADMIN_ROLES,
+  SUB_ADMIN_ROLES,
+  MANAGER_ROLES,
+  MERCHANT_ROLES,
+  hasRoleMatch,
+} from '../../constants/roles';
 
 interface StatusBadgeProps {
   status: string;
@@ -25,16 +32,35 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
     );
   }
 
-  // 2. Roles: Admin / Merchant / Customer
-  if (type === 'role' || normalized === 'admin' || normalized === 'merchant' || normalized === 'customer') {
-    if (normalized === 'admin') {
+  // 2. Roles: Admin / Sub-Admin / Manager / Merchant / Customer
+  const isRoleAdmin = hasRoleMatch([normalized], ADMIN_ROLES);
+  const isRoleSubAdmin = hasRoleMatch([normalized], SUB_ADMIN_ROLES);
+  const isRoleManager = hasRoleMatch([normalized], MANAGER_ROLES);
+  const isRoleMerchant = hasRoleMatch([normalized], MERCHANT_ROLES);
+
+  if (type === 'role' || isRoleAdmin || isRoleSubAdmin || isRoleManager || isRoleMerchant || normalized === 'customer') {
+    if (isRoleAdmin) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/30">
           🛡️ Admin
         </span>
       );
     }
-    if (normalized === 'merchant') {
+    if (isRoleSubAdmin) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-indigo-500/10 text-indigo-300 border border-indigo-500/30">
+          🔹 Sub-Admin
+        </span>
+      );
+    }
+    if (isRoleManager) {
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-sky-500/10 text-sky-300 border border-sky-500/30">
+          👔 Manager
+        </span>
+      );
+    }
+    if (isRoleMerchant) {
       return (
         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
           🏪 Merchant
@@ -43,7 +69,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
     }
     return (
       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase bg-slate-800 text-slate-300 border border-slate-700">
-        👤 Customer
+        👤 {status}
       </span>
     );
   }

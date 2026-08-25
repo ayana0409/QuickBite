@@ -3,6 +3,7 @@ import { useGoogleLogin } from '@react-oauth/google';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { loginWithGoogle } from '../../services/authService';
+import { canAccessAdminPortal, isMerchant } from '../../constants/roles';
 
 interface GoogleLoginButtonProps {
   onError?: (errorMessage: string) => void;
@@ -27,9 +28,9 @@ export const GoogleLoginButton: React.FC<GoogleLoginButtonProps> = ({
       // 2. Smart role-based redirection
       if (from) {
         navigate(from, { replace: true });
-      } else if (user.role === 'Admin') {
+      } else if (canAccessAdminPortal(user)) {
         navigate('/admin/dashboard', { replace: true });
-      } else if (user.role === 'Merchant') {
+      } else if (isMerchant(user)) {
         navigate('/merchant/dashboard', { replace: true });
       } else {
         navigate('/merchant/dashboard', { replace: true });

@@ -1,9 +1,10 @@
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
+import { getUserRoles, hasRoleMatch } from '../constants/roles';
 import type { Role } from '../types';
 
 interface AuthGuardProps {
-  allowedRoles?: Role[];
+  allowedRoles?: readonly (Role | string)[];
 }
 
 export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
@@ -17,8 +18,9 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
 
   // 2. Nếu đã đăng nhập nhưng không có Role hợp lệ trong danh sách phân quyền -> Redirect tới /unauthorized
   if (allowedRoles && allowedRoles.length > 0) {
-    const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
-    const hasPermission = allowedRoles.some((allowedRole) => userRoles.includes(allowedRole));
+    const userRoles = getUserRoles(user);
+    const hasPermission = hasRoleMatch(userRoles, allowedRoles);
+
     if (!hasPermission) {
       return <Navigate to="/unauthorized" replace />;
     }
@@ -27,3 +29,4 @@ export default function AuthGuard({ allowedRoles }: AuthGuardProps) {
   // 3. Đúng phân quyền -> Render các Route con bên trong
   return <Outlet />;
 }
+

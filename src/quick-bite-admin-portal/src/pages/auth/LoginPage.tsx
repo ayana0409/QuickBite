@@ -14,6 +14,8 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
+import { canAccessAdminPortal, isMerchant } from '../../constants/roles';
+
 export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -48,9 +50,9 @@ export default function LoginPage() {
       // Điều hướng thông minh dựa trên role
       if (from) {
         navigate(from, { replace: true });
-      } else if (user.role === 'Admin') {
+      } else if (canAccessAdminPortal(user)) {
         navigate('/admin/dashboard', { replace: true });
-      } else if (user.role === 'Merchant') {
+      } else if (isMerchant(user)) {
         navigate('/merchant/dashboard', { replace: true });
       } else {
         navigate('/unauthorized', { replace: true });

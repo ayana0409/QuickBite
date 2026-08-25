@@ -33,6 +33,15 @@ import MerchantRevenuePage from './pages/merchant/MerchantRevenuePage';
 import MerchantReviewsPage from './pages/merchant/MerchantReviewsPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 
+import {
+  ADMIN_PORTAL_ROLES,
+  USER_MANAGEMENT_ROLES,
+  SYSTEM_CONFIG_ROLES,
+  MERCHANT_ROLES,
+  canAccessAdminPortal,
+  isMerchant,
+} from './constants/roles';
+
 /**
  * Smart Redirect based on authentication state and user role
  */
@@ -43,13 +52,11 @@ function SmartRootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  const userRoles = user.roles && user.roles.length > 0 ? user.roles : [user.role];
-
-  if (userRoles.includes('Admin')) {
+  if (canAccessAdminPortal(user)) {
     return <Navigate to="/admin/dashboard" replace />;
   }
 
-  if (userRoles.includes('Merchant')) {
+  if (isMerchant(user)) {
     return <Navigate to="/merchant/dashboard" replace />;
   }
 
@@ -76,23 +83,31 @@ export default function App() {
           <Route path="/login" element={<LoginPage />} />
         </Route>
 
-        {/* Protected Admin Routes */}
-        <Route element={<AuthGuard allowedRoles={['Admin']} />}>
+        {/* Protected Admin Routes: Cho phép Admin, Sub-Admin, Manager */}
+        <Route element={<AuthGuard allowedRoles={ADMIN_PORTAL_ROLES} />}>
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<Navigate to="/admin/dashboard" replace />} />
             <Route path="dashboard" element={<AdminDashboardPage />} />
             <Route path="restaurants" element={<RestaurantsPage />} />
-            <Route path="users" element={<UsersPage />} />
             <Route path="orders" element={<OrdersPage />} />
             <Route path="categories" element={<CategoryModerationPage />} />
             <Route path="requests" element={<RequestsPage />} />
             <Route path="analytics" element={<AdvancedReports />} />
-            <Route path="settings" element={<SystemConfig />} />
+
+            {/* Quản lý Người dùng: Cho phép Admin & Sub-Admin (Chặn Manager) */}
+            <Route element={<AuthGuard allowedRoles={USER_MANAGEMENT_ROLES} />}>
+              <Route path="users" element={<UsersPage />} />
+            </Route>
+
+            {/* Cấu hình Hệ thống: Chỉ DUY NHẤT Admin được vào */}
+            <Route element={<AuthGuard allowedRoles={SYSTEM_CONFIG_ROLES} />}>
+              <Route path="settings" element={<SystemConfig />} />
+            </Route>
           </Route>
         </Route>
 
         {/* Protected Merchant Routes */}
-        <Route element={<AuthGuard allowedRoles={['Merchant']} />}>
+        <Route element={<AuthGuard allowedRoles={MERCHANT_ROLES} />}>
           <Route element={<RestaurantGuard />}>
             <Route path="/merchant/setup" element={<CreateRestaurantPage />} />
             <Route path="/merchant" element={<MerchantLayout />}>

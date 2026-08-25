@@ -1,15 +1,16 @@
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, LogOut, Home } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import { canAccessAdminPortal, isMerchant } from '../constants/roles';
 
 export default function UnauthorizedPage() {
   const { user, logout } = useAuthStore();
   const navigate = useNavigate();
 
   const handleGoHome = () => {
-    if (user?.role === 'Admin') {
+    if (canAccessAdminPortal(user)) {
       navigate('/admin/dashboard', { replace: true });
-    } else if (user?.role === 'Merchant') {
+    } else if (isMerchant(user)) {
       navigate('/merchant/dashboard', { replace: true });
     } else {
       navigate('/login', { replace: true });

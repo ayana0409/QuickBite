@@ -17,6 +17,12 @@ import {
   Inbox,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
+import {
+  canManageUsers,
+  canAccessSystemConfig,
+  isMerchant,
+  getRoleBadgeLabel,
+} from '../constants/roles';
 
 export default function AdminLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -28,16 +34,20 @@ export default function AdminLayout() {
     navigate('/login');
   };
 
-  const navItems = [
-    { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/admin/restaurants', label: 'Quản lý Nhà hàng', icon: Store },
-    { to: '/admin/users', label: 'Quản lý Người dùng', icon: Users },
-    { to: '/admin/orders', label: 'Đơn hàng Hệ thống', icon: ShoppingBag },
-    { to: '/admin/categories', label: 'Kiểm duyệt Danh mục', icon: Tag },
-    { to: '/admin/requests', label: 'Xử lý Yêu cầu', icon: Inbox },
-    { to: '/admin/analytics', label: 'Thống kê & Báo cáo', icon: BarChart3 },
-    { to: '/admin/settings', label: 'Cấu hình Hệ thống', icon: Settings },
+  const roleLabel = getRoleBadgeLabel(user);
+
+  const allNavItems = [
+    { to: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, visible: true },
+    { to: '/admin/restaurants', label: 'Quản lý Nhà hàng', icon: Store, visible: true },
+    { to: '/admin/users', label: 'Quản lý Người dùng', icon: Users, visible: canManageUsers(user) },
+    { to: '/admin/orders', label: 'Đơn hàng Hệ thống', icon: ShoppingBag, visible: true },
+    { to: '/admin/categories', label: 'Kiểm duyệt Danh mục', icon: Tag, visible: true },
+    { to: '/admin/requests', label: 'Xử lý Yêu cầu', icon: Inbox, visible: true },
+    { to: '/admin/analytics', label: 'Thống kê & Báo cáo', icon: BarChart3, visible: true },
+    { to: '/admin/settings', label: 'Cấu hình Hệ thống', icon: Settings, visible: canAccessSystemConfig(user) },
   ];
+
+  const navItems = allNavItems.filter((item) => item.visible);
 
   return (
     <div className="h-screen w-full overflow-hidden bg-slate-950 text-slate-100 flex font-sans">
@@ -108,7 +118,7 @@ export default function AdminLayout() {
         {/* Sidebar Footer User Info (Always stays pinned at bottom of sidebar) */}
         <div className="p-4 border-t border-slate-800 space-y-3 shrink-0 bg-slate-900">
           {/* Switch to Merchant Portal if user has Merchant role */}
-          {(user?.roles?.includes('Merchant') || user?.role === 'Merchant') && (
+          {isMerchant(user) && (
             <NavLink
               to="/merchant/dashboard"
               className="flex items-center justify-between p-2.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-xl text-xs font-bold transition-all group"
@@ -164,7 +174,7 @@ export default function AdminLayout() {
             </button>
             <div className="hidden sm:flex items-center gap-2 px-3 py-1 bg-amber-500/10 border border-amber-500/30 rounded-full text-amber-300 text-xs font-extrabold">
               <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-              ADMIN
+              {roleLabel}
             </div>
 
             {/* Nút Đăng xuất trên Header */}

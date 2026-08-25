@@ -1,6 +1,6 @@
 import axios from 'axios';
 import { useAuthStore } from '../stores/authStore';
-import type { DecodedJwtClaims, LoginRequest, OpenIdTokenResponse, Role, User } from '../types';
+import type { DecodedJwtClaims, LoginRequest, OpenIdTokenResponse, User } from '../types';
 
 // Direct SSO Identity Server endpoint
 const identityBaseUrl = import.meta.env.VITE_IDENTITY_SERVICE_URL || 'http://localhost:44391';
@@ -40,30 +40,27 @@ export function parseJwt<T = DecodedJwtClaims>(token: string): T | null {
  * Extract User domain model from decoded JWT Claims
  */
 export function extractUserFromClaims(claims: DecodedJwtClaims): User {
-  // Normalize Roles from claims (handle array or string, case insensitive)
-  const rolesList: Role[] = [];
+  // Normalize Roles from claims (handle array, string, or Microsoft role claim)
+  const rawRole =
+    claims.role ||
+    claims.roles ||
+    claims['http://schemas.microsoft.com/ws/2008/06/identity/claims/role'] ||
+    claims['role'] ||
+    [];
 
-  const rawRole = claims.role;
-  if (rawRole) {
-    const rolesArray = Array.isArray(rawRole) ? rawRole : [rawRole];
-    const rolesLower = rolesArray.map((r) => r.toLowerCase());
-
-    if (rolesLower.includes('admin') || rolesLower.includes('administrator')) {
-      rolesList.push('Admin');
-    }
-    if (rolesLower.includes('merchant') || rolesLower.includes('seller') || rolesLower.includes('restaurant')) {
-      rolesList.push('Merchant');
-    }
-    if (rolesLower.includes('customer') || rolesLower.includes('user')) {
-      rolesList.push('Customer');
+  let rolesList: string[] = [];
+  if (Array.isArray(rawRole)) {
+    rolesList = rawRole.map((r) => String(r).trim()).filter(Boolean);
+  } else if (typeof rawRole === 'string' && rawRole.trim()) {
+    try {
+      const parsed = JSON.parse(rawRole);
+      rolesList = Array.isArray(parsed) ? parsed.map((r) => String(r).trim()) : [rawRole.trim()];
+    } catch {
+      rolesList = rawRole.split(/[,\s]+/).map((r) => r.trim()).filter(Boolean);
     }
   }
 
-  if (rolesList.length === 0) {
-    rolesList.push('Customer');
-  }
-
-  const primaryRole: Role = rolesList.includes('Admin') ? 'Admin' : rolesList.includes('Merchant') ? 'Merchant' : 'Customer';
+  const primaryRole = rolesList[0];
 
   // Parse permissions claim (could be JSON string or Array)
   let permissions: string[] = [];
