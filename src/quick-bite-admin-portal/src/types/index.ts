@@ -1,12 +1,12 @@
-export type Role = 'Admin' | 'Merchant' | 'Customer';
+export type Role = 'Admin' | 'Merchant' | string;
 
 export interface User {
   id: string;
   email: string;
   fullName: string;
   username: string;
-  role: Role;
-  roles: Role[];
+  role?: Role;
+  roles?: Role[];
   isActive: boolean;
   permissions: string[];
   provider?: string;

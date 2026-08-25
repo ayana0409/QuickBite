@@ -25,7 +25,7 @@ interface UserModalProps {
     email: string;
     fullName: string;
     password?: string;
-    role: Role;
+    role?: Role;
     roles: Role[];
     isActive?: boolean;
   }) => Promise<void>;
@@ -64,9 +64,9 @@ export const UserModal: React.FC<UserModalProps> = ({
     if (initialData) {
       const userRoles: Role[] = initialData.roles && initialData.roles.length > 0
         ? initialData.roles
-        : [initialData.role];
+        : initialData.role ? [initialData.role] : [];
 
-      const hasMerchant = userRoles.includes('Merchant');
+      const hasMerchant = userRoles.some((r) => r.toLowerCase() === 'merchant');
 
       reset({
         username: initialData.username,
@@ -89,36 +89,24 @@ export const UserModal: React.FC<UserModalProps> = ({
   }, [initialData, reset, isOpen]);
 
   const handleFormSubmit = async (data: UserFormValues) => {
-    // Lấy danh sách role hiện có của user (nếu sửa) hoặc mặc định ['Customer'] (nếu tạo mới)
     const existingRoles: Role[] = initialData?.roles && initialData.roles.length > 0
       ? initialData.roles
-      : ['Customer'];
+      : initialData?.role ? [initialData.role] : [];
 
     let nextRoles: Role[] = [];
     if (data.isMerchant) {
-      // Tích chọn: Thêm role Merchant (giữ nguyên các role khác như Admin)
-      nextRoles = Array.from(new Set([...existingRoles, 'Merchant'])) as Role[];
+      const nonMerchantRoles = existingRoles.filter((r) => r.toLowerCase() !== 'merchant');
+      nextRoles = Array.from(new Set([...nonMerchantRoles, 'Merchant'])) as Role[];
     } else {
-      // Bỏ tích: Chỉ gỡ bỏ role Merchant, bảo toàn các role khác
-      nextRoles = existingRoles.filter((r) => r !== 'Merchant');
+      nextRoles = existingRoles.filter((r) => r.toLowerCase() !== 'merchant');
     }
-
-    if (nextRoles.length === 0) {
-      nextRoles = ['Customer'];
-    }
-
-    const primaryRole: Role = nextRoles.includes('Admin')
-      ? 'Admin'
-      : nextRoles.includes('Merchant')
-      ? 'Merchant'
-      : 'Customer';
 
     await onSubmit({
       username: data.username,
       email: data.email,
       fullName: data.fullName,
       password: data.password,
-      role: primaryRole,
+      role: nextRoles[0],
       roles: nextRoles,
       isActive: data.isActive,
     });

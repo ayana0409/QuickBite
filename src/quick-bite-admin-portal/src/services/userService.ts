@@ -22,108 +22,99 @@ export interface UpdateUserDto {
   isActive?: boolean;
 }
 
+// Helper to map UI roles (Admin, Merchant, Customer) to valid ABP Identity DB role names
+const mapRolesToDbRoleNames = (roles: Role[]): string[] => {
+  const dbRoles: string[] = [];
+  roles.forEach((r) => {
+    const low = r.toLowerCase();
+    if (low === 'admin' || low === 'administrator') dbRoles.push('admin');
+    else if (low === 'merchant' || low === 'seller') dbRoles.push('merchant');
+    // Customer means standard user (no privileged role in Identity DB)
+  });
+  return Array.from(new Set(dbRoles));
+};
+
 export const userService = {
-  // Lấy danh sách người dùng hệ thống kèm đúng danh sách Roles từ Identity Service
-  async getUsers(): Promise<User[]> {
+  // Lấy danh sách người dùng hệ thống tối ưu hóa qua BFF Aggregator (1 HTTP Request duy nhất thay vì 1+N)
+  async getUsers(params?: { skipCount?: number; maxResultCount?: number; filter?: string; refresh?: boolean }): Promise<User[]> {
     try {
-      const res: any = await axiosClient.get('/identity/api/identity/users');
-      const list = unwrapArray(res);
+      const queryParams: any = {};
+      if (params?.skipCount !== undefined) queryParams.skipCount = params.skipCount;
+      if (params?.maxResultCount !== undefined) queryParams.maxResultCount = params.maxResultCount;
+      if (params?.filter) queryParams.filter = params.filter;
+      if (params?.refresh) queryParams.refresh = 'true';
 
-      // Tải roles song song cho tất cả users để đảm bảo 100% chính xác từ Identity DB
-      const usersWithRoles = await Promise.all(
-        list.map(async (u: any) => {
-          let rolesList: Role[] = [];
-          try {
-            const rolesRes: any = await axiosClient.get(`/identity/api/identity/users/${u.id}/roles`);
-            const roleItems = rolesRes?.items || rolesRes?.data?.items || (Array.isArray(rolesRes) ? rolesRes : []);
-            const fetchedRoleNames: string[] = roleItems.map((r: any) => (typeof r === 'string' ? r : r.name)).filter(Boolean);
-            
-            rolesList = fetchedRoleNames.map((rn) => {
-              const low = rn.toLowerCase();
-              if (low === 'admin' || low === 'administrator') return 'Admin';
-              if (low === 'merchant' || low === 'seller') return 'Merchant';
-              return 'Customer';
-            }) as Role[];
-          } catch {
-            // Fallback nếu không gọi được roles endpoint
-            const rawRoles = u.roles || u.roleNames || u.role;
-            if (Array.isArray(rawRoles)) {
-              rawRoles.forEach((r: string) => {
-                const low = r?.toLowerCase();
-                if (low === 'admin' || low === 'administrator') rolesList.push('Admin');
-                else if (low === 'merchant' || low === 'seller') rolesList.push('Merchant');
-                else if (low === 'customer' || low === 'user') rolesList.push('Customer');
-              });
-            }
-          }
+      const res: any = await axiosClient.get('/admin/users', { params: queryParams });
+      const payload = res?.data ?? res;
+      const list = Array.isArray(payload?.items) ? payload.items : unwrapArray(payload);
 
-          if (rolesList.length === 0) {
-            rolesList = ['Customer'];
-          }
+      return list.map((u: any) => {
+        const rawRoles: Role[] = Array.isArray(u.roles)
+          ? u.roles.filter(Boolean)
+          : u.role
+          ? [u.role]
+          : [];
 
-          const primaryRole: Role = rolesList.includes('Admin') ? 'Admin' : rolesList.includes('Merchant') ? 'Merchant' : 'Customer';
-
-          return {
-            id: u.id,
-            username: u.userName || u.username,
-            email: u.email,
-            fullName: u.name ? `${u.surname || ''} ${u.name}`.trim() : u.userName || u.username,
-            role: primaryRole,
-            roles: rolesList,
-            isActive: u.isActive ?? !u.isLockedOut,
-            permissions: u.permissions || [],
-          };
-        })
-      );
-
-      return usersWithRoles;
-    } catch {
+        return {
+          id: u.id,
+          username: u.userName || u.username,
+          email: u.email,
+          fullName: u.fullName || (u.name ? `${u.surname || ''} ${u.name}`.trim() : u.userName || u.username),
+          role: rawRoles[0],
+          roles: rawRoles,
+          isActive: u.isActive ?? !u.isLockedOut,
+          permissions: u.permissions || [],
+        };
+      });
+    } catch (error) {
+      console.error('Failed to fetch admin users from BFF:', error);
       return [];
     }
   },
 
-  // Bật/tắt riêng vai trò Merchant cho người dùng (Giữ nguyên 100% các vai trò khác như Admin, Customer)
-  async toggleMerchantRole(userId: string, currentRoles: Role[], enableMerchant: boolean): Promise<Role[]> {
+  // Bật/tắt riêng vai trò Merchant cho người dùng (Giữ nguyên 100% các vai trò khác như Admin)
+  async toggleMerchantRole(userId: string, currentRoles: Role[] = [], enableMerchant: boolean): Promise<Role[]> {
     let currentRoleNames: string[] = [];
     try {
       const res: any = await axiosClient.get(`/identity/api/identity/users/${userId}/roles`);
       const items = res?.items || res?.data?.items || (Array.isArray(res) ? res : []);
       currentRoleNames = items.map((r: any) => (typeof r === 'string' ? r : r.name)).filter(Boolean);
     } catch {
-      currentRoleNames = currentRoles;
+      currentRoleNames = currentRoles.map((r) => r.toLowerCase());
     }
 
-    let nextRoles: string[] = [];
+    let nextRoleNames: string[] = [];
     if (enableMerchant) {
-      nextRoles = Array.from(new Set([...currentRoleNames, 'Merchant']));
+      const otherRoles = currentRoleNames.filter((r) => r.toLowerCase() !== 'merchant');
+      nextRoleNames = Array.from(new Set([...otherRoles, 'merchant']));
     } else {
-      nextRoles = currentRoleNames.filter((r) => r.toLowerCase() !== 'merchant');
+      nextRoleNames = currentRoleNames.filter((r) => r.toLowerCase() !== 'merchant');
     }
 
-    if (nextRoles.length === 0) {
-      nextRoles = ['Customer'];
-    }
+    // Send valid role names to ABP Identity (e.g. ['admin'], ['merchant'], or [] for standard user)
+    await axiosClient.put(`/identity/api/identity/users/${userId}/roles`, { roleNames: nextRoleNames });
 
-    await axiosClient.put(`/identity/api/identity/users/${userId}/roles`, { roleNames: nextRoles });
-
-    return nextRoles.map((r) => {
+    const uiRoles = nextRoleNames.map((r) => {
       const low = r.toLowerCase();
       if (low === 'admin' || low === 'administrator') return 'Admin';
       if (low === 'merchant' || low === 'seller') return 'Merchant';
-      return 'Customer';
+      return r;
     }) as Role[];
+
+    return uiRoles;
   },
 
   // Tạo người dùng mới
   async createUser(dto: CreateUserDto): Promise<User> {
-    const rolesList: Role[] = dto.roles && dto.roles.length > 0 ? dto.roles : dto.role ? [dto.role] : ['Customer'];
+    const rolesList: Role[] = dto.roles && dto.roles.length > 0 ? dto.roles : dto.role ? [dto.role] : [];
+    const dbRoleNames = mapRolesToDbRoleNames(rolesList);
     const payload = {
       userName: dto.username,
       email: dto.email,
       name: dto.fullName,
       password: dto.password || 'Passw0rd@123',
       isActive: dto.isActive ?? true,
-      roleNames: rolesList,
+      roleNames: dbRoleNames,
     };
     const res: any = await axiosClient.post('/identity/api/identity/users', payload);
     const created = res?.data || res;
@@ -132,7 +123,7 @@ export const userService = {
       username: created.userName || dto.username,
       email: created.email || dto.email,
       fullName: dto.fullName,
-      role: rolesList[0] || 'Customer',
+      role: rolesList[0],
       roles: rolesList,
       isActive: true,
       permissions: [],
@@ -144,8 +135,9 @@ export const userService = {
     const rolesList: Role[] | undefined = dto.roles && dto.roles.length > 0 ? dto.roles : dto.role ? [dto.role] : undefined;
 
     // 1. Cập nhật Role qua /roles endpoint nếu có
-    if (rolesList && rolesList.length > 0) {
-      await axiosClient.put(`/identity/api/identity/users/${id}/roles`, { roleNames: rolesList });
+    if (rolesList) {
+      const dbRoleNames = mapRolesToDbRoleNames(rolesList);
+      await axiosClient.put(`/identity/api/identity/users/${id}/roles`, { roleNames: dbRoleNames });
     }
 
     // 2. Cập nhật thông tin chi tiết / mật khẩu qua PUT /api/identity/users/{id}
@@ -154,7 +146,7 @@ export const userService = {
       email: dto.email,
       name: dto.fullName,
       isActive: dto.isActive ?? true,
-      roleNames: rolesList,
+      ...(rolesList ? { roleNames: mapRolesToDbRoleNames(rolesList) } : {}),
     };
 
     if (dto.password && dto.password.trim()) {
@@ -163,14 +155,14 @@ export const userService = {
 
     const res: any = await axiosClient.put(`/identity/api/identity/users/${id}`, updatePayload);
     const updated = res?.data || res;
-    const finalRoles: Role[] = rolesList || (dto.role ? [dto.role] : ['Customer']);
+    const finalRoles: Role[] = rolesList || [];
 
     return {
       id: updated.id || id,
       username: updated.userName || dto.username || 'user',
       email: updated.email || dto.email || '',
       fullName: updated.name || dto.fullName || '',
-      role: finalRoles[0] || 'Customer',
+      role: finalRoles[0],
       roles: finalRoles,
       isActive: updated.isActive ?? dto.isActive ?? true,
       permissions: [],
@@ -179,7 +171,8 @@ export const userService = {
 
   // Đổi Role người dùng (RoleNames format chuẩn ABP)
   async updateUserRole(id: string, newRole: Role): Promise<void> {
-    await axiosClient.put(`/identity/api/identity/users/${id}/roles`, { roleNames: [newRole] });
+    const dbRoleNames = mapRolesToDbRoleNames([newRole]);
+    await axiosClient.put(`/identity/api/identity/users/${id}/roles`, { roleNames: dbRoleNames });
   },
 
   // Khóa / Mở khóa tài khoản người dùng
@@ -187,3 +180,4 @@ export const userService = {
     await axiosClient.post(`/identity/users/${id}/toggle-status`);
   },
 };
+

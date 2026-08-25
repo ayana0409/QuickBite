@@ -14,10 +14,10 @@ export const UsersPage = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (forceRefresh = false) => {
     setIsLoading(true);
     try {
-      const data = await userService.getUsers();
+      const data = await userService.getUsers({ maxResultCount: 100, refresh: forceRefresh });
       setUsers(data);
     } finally {
       setIsLoading(false);
@@ -36,32 +36,32 @@ export const UsersPage = () => {
       await userService.createUser(values);
       toast.success('Tạo tài khoản mới thành công!', 'Thành công');
     }
-    await fetchUsers();
+    await fetchUsers(true);
   };
 
   const handleToggleStatus = async (id: string) => {
     await userService.toggleUserStatus(id);
-    await fetchUsers();
+    await fetchUsers(true);
   };
 
   const handleToggleMerchant = async (user: User) => {
-    const isCurrentlyMerchant = user.roles ? user.roles.includes('Merchant') : user.role === 'Merchant';
+    const isCurrentlyMerchant = user.roles ? user.roles.some((r) => r.toLowerCase() === 'merchant') : user.role?.toLowerCase() === 'merchant';
     try {
-      await userService.toggleMerchantRole(user.id, user.roles || [user.role], !isCurrentlyMerchant);
+      await userService.toggleMerchantRole(user.id, user.roles || (user.role ? [user.role] : []), !isCurrentlyMerchant);
       toast.success(
         !isCurrentlyMerchant
           ? `Đã cấp quyền Merchant cho ${user.fullName}!`
           : `Đã thu hồi quyền Merchant của ${user.fullName}!`,
         'Phân quyền thành công'
       );
-      await fetchUsers();
+      await fetchUsers(true);
     } catch {
       toast.error('Không thể cập nhật quyền Merchant', 'Lỗi phân quyền');
     }
   };
 
-  const adminCount = users.filter((u) => (u.roles && u.roles.length > 0 ? u.roles.includes('Admin') : u.role === 'Admin')).length;
-  const merchantCount = users.filter((u) => (u.roles && u.roles.length > 0 ? u.roles.includes('Merchant') : u.role === 'Merchant')).length;
+  const adminCount = users.filter((u) => (u.roles ? u.roles.some((r) => r.toLowerCase() === 'admin') : u.role?.toLowerCase() === 'admin')).length;
+  const merchantCount = users.filter((u) => (u.roles ? u.roles.some((r) => r.toLowerCase() === 'merchant') : u.role?.toLowerCase() === 'merchant')).length;
 
   const columns: Column<User>[] = [
     {
@@ -85,20 +85,24 @@ export const UsersPage = () => {
     },
     {
       header: 'Vai Trò (Role)',
-      cell: (row) => (
-        <div className="flex flex-wrap gap-1.5 items-center">
-          {row.roles && row.roles.length > 0 ? (
-            row.roles.map((r) => <StatusBadge key={r} status={r} type="role" />)
-          ) : (
-            <StatusBadge status={row.role} type="role" />
-          )}
-        </div>
-      ),
+      cell: (row) => {
+        const rowRoles = row.roles && row.roles.length > 0 ? row.roles : row.role ? [row.role] : [];
+        if (rowRoles.length === 0) {
+          return <span className="text-[11px] text-slate-500 italic font-mono">Chưa có vai trò</span>;
+        }
+        return (
+          <div className="flex flex-wrap gap-1.5 items-center">
+            {rowRoles.map((r) => (
+              <StatusBadge key={r} status={r} type="role" />
+            ))}
+          </div>
+        );
+      },
     },
     {
       header: 'Quyền Merchant',
       cell: (row) => {
-        const isMerchant = row.roles ? row.roles.includes('Merchant') : row.role === 'Merchant';
+        const isMerchant = row.roles ? row.roles.some((r) => r.toLowerCase() === 'merchant') : row.role?.toLowerCase() === 'merchant';
         return (
           <button
             onClick={() => handleToggleMerchant(row)}
