@@ -102,6 +102,74 @@ const parsePrice = (val: any): number => {
   return 0;
 };
 
+// Helper parse mảng chuỗi an toàn (tags, images) từ Array, chuỗi JSON hoặc chuỗi comma-separated
+const parseStringArray = (raw: any): string[] => {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.map(String).map((s) => s.trim()).filter(Boolean);
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return [];
+    if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) return parsed.map(String).map((s) => s.trim()).filter(Boolean);
+      } catch {
+        // Fallback to comma split if JSON parsing fails
+      }
+    }
+    return trimmed.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  return [];
+};
+
+// Helper parse mảng variants / toppings linh hoạt và an toàn từ mọi định dạng API/PostgreSQL JSONB
+const parseCustomizationArray = (rawList: any, isVariant: boolean = true): any[] => {
+  if (!rawList) return [];
+  let list = rawList;
+
+  // Trường hợp dữ liệu là chuỗi JSON
+  if (typeof list === 'string') {
+    const trimmed = list.trim();
+    if (!trimmed || trimmed === '[]' || trimmed === '{}') return [];
+    try {
+      list = JSON.parse(trimmed);
+    } catch {
+      return [];
+    }
+  }
+
+  // Trường hợp dữ liệu là Object Dictionary { "0": {...}, "1": {...} }
+  if (list && typeof list === 'object' && !Array.isArray(list)) {
+    list = Object.values(list);
+  }
+
+  if (!Array.isArray(list)) return [];
+
+  return list
+    .map((item: any) => {
+      if (!item) return null;
+      // Nếu item là chuỗi đơn giản
+      if (typeof item === 'string') {
+        const name = item.trim();
+        if (!name) return null;
+        return isVariant ? { name, priceDelta: 0 } : { name, price: 0 };
+      }
+
+      // Nếu item là Object
+      const name = String(item.name || item.variantName || item.toppingName || item.title || item.label || '').trim();
+      if (!name) return null;
+
+      if (isVariant) {
+        const delta = parsePrice(item.priceDelta ?? item.price_delta ?? item.price ?? item.delta ?? 0);
+        return { name, priceDelta: delta };
+      } else {
+        const price = parsePrice(item.price ?? item.priceDelta ?? item.cost ?? item.price_delta ?? 0);
+        return { name, price };
+      }
+    })
+    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+};
+
 // Chuẩn hóa Category object nhận từ backend API
 const normalizeCategory = (raw: any): Category => ({
   id: raw.id || raw._id || `cat-${Date.now()}`,
@@ -115,7 +183,12 @@ const normalizeCategory = (raw: any): Category => ({
 // Chuẩn hóa FoodItem object nhận từ backend API (hỗ trợ đầy đủ currency, price decimal string, images, preparationTime, tags, totalSold, variants, toppings)
 const normalizeFoodItem = (raw: any): FoodItem => {
   const itemPrice = parsePrice(raw.price ?? raw.basePrice);
-  const rawImages = Array.isArray(raw.images) && raw.images.length > 0 ? raw.images : (raw.imageUrl ? [raw.imageUrl] : []);
+  const parsedImages = parseStringArray(raw.images);
+  const rawImages = parsedImages.length > 0 ? parsedImages : (raw.imageUrl ? [raw.imageUrl] : []);
+  const parsedTags = parseStringArray(raw.tags);
+  const parsedVariants: FoodVariant[] = parseCustomizationArray(raw.variants, true);
+  const parsedToppings: FoodTopping[] = parseCustomizationArray(raw.toppings, false);
+
   return {
     id: raw.id || raw._id || `food-${Date.now()}`,
     restaurantId: raw.restaurantId || '',
@@ -129,13 +202,13 @@ const normalizeFoodItem = (raw: any): FoodItem => {
     images: rawImages,
     isAvailable: raw.isAvailable ?? true,
     sku: raw.sku || `SKU-${Date.now()}`,
-    preparationTime: typeof raw.preparationTime === 'number' ? raw.preparationTime : 15,
-    tags: Array.isArray(raw.tags) ? raw.tags : [],
-    totalSold: typeof raw.totalSold === 'number' ? raw.totalSold : 0,
+    preparationTime: typeof raw.preparationTime === 'number' ? raw.preparationTime : (parseInt(raw.preparationTime) || 15),
+    tags: parsedTags,
+    totalSold: typeof raw.totalSold === 'number' ? raw.totalSold : (Number(raw.totalSold) || 0),
     rating: typeof raw.rating === 'number' ? raw.rating : (Number(raw.rating) || 0),
     reviewCount: typeof raw.reviewCount === 'number' ? raw.reviewCount : (Number(raw.reviewCount) || 0),
-    variants: Array.isArray(raw.variants) ? raw.variants.map((v: any) => ({ name: v.name, priceDelta: parsePrice(v.priceDelta) })) : [],
-    toppings: Array.isArray(raw.toppings) ? raw.toppings.map((t: any) => ({ name: t.name, price: parsePrice(t.price) })) : [],
+    variants: parsedVariants,
+    toppings: parsedToppings,
   };
 };
 
@@ -386,6 +459,10 @@ export const menuService = {
     if (typeof dto.isAvailable === 'boolean') payload.isAvailable = dto.isAvailable;
     if (dto.currency) payload.currency = dto.currency;
     if (typeof dto.preparationTime === 'number') payload.preparationTime = dto.preparationTime;
+    if (dto.sku) payload.sku = dto.sku;
+    if (Array.isArray(dto.tags)) payload.tags = dto.tags;
+    if (Array.isArray(dto.variants)) payload.variants = dto.variants;
+    if (Array.isArray(dto.toppings)) payload.toppings = dto.toppings;
 
     try {
       const res: any = await axiosClient.patch(`/catalog/food-items/${id}`, payload);

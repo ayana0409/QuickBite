@@ -31,6 +31,7 @@ export default function MerchantMenuPage() {
 
   // Food Item Modal Full State
   const [isFoodModalOpen, setIsFoodModalOpen] = useState(false);
+  const [isFoodDetailLoading, setIsFoodDetailLoading] = useState<boolean>(false);
   const [editingFood, setEditingFood] = useState<FoodItem | null>(null);
   const [foodName, setFoodName] = useState('');
   const [foodCategoryId, setFoodCategoryId] = useState('');
@@ -233,36 +234,43 @@ export default function MerchantMenuPage() {
   const handleOpenFoodModal = async (food?: FoodItem) => {
     if (food) {
       setEditingFood(food);
-      setFoodName(food.name);
-      setFoodCategoryId(food.categoryId);
+      setFoodName(food.name || '');
+      setFoodCategoryId(food.categoryId || '');
       setFoodPrice((food.price ?? food.basePrice ?? 0).toString());
       setFoodCurrency(food.currency || 'VND');
       setFoodPrepTime((food.preparationTime ?? 15).toString());
       setFoodSku(food.sku || '');
       setFoodDesc(food.description || '');
       setFoodImageUrl(food.imageUrl || (food.images && food.images[0]) || '');
-      setFoodTags(food.tags ? food.tags.join(', ') : '');
-      setFoodVariants(food.variants || []);
-      setFoodToppings(food.toppings || []);
+      setFoodTags(Array.isArray(food.tags) ? food.tags.join(', ') : '');
+      setFoodVariants(Array.isArray(food.variants) ? food.variants : []);
+      setFoodToppings(Array.isArray(food.toppings) ? food.toppings : []);
       setFoodIsAvailable(food.isAvailable !== undefined ? food.isAvailable : true);
 
       setIsFoodModalOpen(true);
+      setIsFoodDetailLoading(true);
 
-      // Tải chi tiết đầy đủ của món ăn (chứa đầy đủ variants, toppings, tags, preparationTime)
-      const detail = await menuService.getFoodItemById(food.id);
-      if (detail) {
-        setFoodName(detail.name);
-        if (detail.categoryId) setFoodCategoryId(detail.categoryId);
-        setFoodPrice(detail.price.toString());
-        setFoodCurrency(detail.currency || 'VND');
-        setFoodPrepTime((detail.preparationTime ?? 15).toString());
-        setFoodSku(detail.sku || '');
-        setFoodDesc(detail.description || '');
-        setFoodImageUrl(detail.imageUrl || (detail.images && detail.images[0]) || '');
-        setFoodTags(detail.tags ? detail.tags.join(', ') : '');
-        setFoodVariants(detail.variants || []);
-        setFoodToppings(detail.toppings || []);
-        if (detail.isAvailable !== undefined) setFoodIsAvailable(detail.isAvailable);
+      try {
+        // Tải chi tiết đầy đủ của món ăn từ Backend API (chứa đầy đủ variants, toppings, tags, preparationTime)
+        const detail = await menuService.getFoodItemById(food.id);
+        if (detail) {
+          setFoodName(detail.name || '');
+          if (detail.categoryId) setFoodCategoryId(detail.categoryId);
+          setFoodPrice((detail.price ?? detail.basePrice ?? 0).toString());
+          setFoodCurrency(detail.currency || 'VND');
+          setFoodPrepTime((detail.preparationTime ?? 15).toString());
+          setFoodSku(detail.sku || '');
+          setFoodDesc(detail.description || '');
+          setFoodImageUrl(detail.imageUrl || (detail.images && detail.images[0]) || '');
+          setFoodTags(Array.isArray(detail.tags) ? detail.tags.join(', ') : '');
+          setFoodVariants(Array.isArray(detail.variants) ? detail.variants : []);
+          setFoodToppings(Array.isArray(detail.toppings) ? detail.toppings : []);
+          if (detail.isAvailable !== undefined) setFoodIsAvailable(detail.isAvailable);
+        }
+      } catch (err) {
+        console.error('Failed to fetch food item detail:', err);
+      } finally {
+        setIsFoodDetailLoading(false);
       }
     } else {
       setEditingFood(null);
@@ -278,18 +286,28 @@ export default function MerchantMenuPage() {
       setFoodVariants([]);
       setFoodToppings([]);
       setFoodIsAvailable(true);
+      setIsFoodDetailLoading(false);
       setIsFoodModalOpen(true);
     }
   };
 
   // Sub-resource handlers for Variants & Toppings
-  const handleAddVariant = () => {
-    setFoodVariants([...foodVariants, { name: '', priceDelta: 0 }]);
+  const handleAddVariant = (preset?: { name: string; priceDelta: number }) => {
+    if (preset) {
+      setFoodVariants([...foodVariants, { name: preset.name, priceDelta: preset.priceDelta }]);
+    } else {
+      setFoodVariants([...foodVariants, { name: '', priceDelta: 0 }]);
+    }
   };
 
   const handleUpdateVariant = (index: number, field: 'name' | 'priceDelta', value: any) => {
     const next = [...foodVariants];
-    next[index] = { ...next[index], [field]: field === 'priceDelta' ? (parseFloat(value) || 0) : value };
+    if (field === 'priceDelta') {
+      const num = value === '' ? 0 : parseFloat(value);
+      next[index] = { ...next[index], priceDelta: isNaN(num) ? 0 : num };
+    } else {
+      next[index] = { ...next[index], name: value };
+    }
     setFoodVariants(next);
   };
 
@@ -297,13 +315,22 @@ export default function MerchantMenuPage() {
     setFoodVariants(foodVariants.filter((_, i) => i !== index));
   };
 
-  const handleAddTopping = () => {
-    setFoodToppings([...foodToppings, { name: '', price: 0 }]);
+  const handleAddTopping = (preset?: { name: string; price: number }) => {
+    if (preset) {
+      setFoodToppings([...foodToppings, { name: preset.name, price: preset.price }]);
+    } else {
+      setFoodToppings([...foodToppings, { name: '', price: 0 }]);
+    }
   };
 
   const handleUpdateTopping = (index: number, field: 'name' | 'price', value: any) => {
     const next = [...foodToppings];
-    next[index] = { ...next[index], [field]: field === 'price' ? (parseFloat(value) || 0) : value };
+    if (field === 'price') {
+      const num = value === '' ? 0 : parseFloat(value);
+      next[index] = { ...next[index], price: isNaN(num) ? 0 : num };
+    } else {
+      next[index] = { ...next[index], name: value };
+    }
     setFoodToppings(next);
   };
 
@@ -654,6 +681,7 @@ export default function MerchantMenuPage() {
       {/* --- MODAL: CREATE / EDIT FOOD ITEM --- */}
       <FoodItemModal
         isOpen={isFoodModalOpen}
+        isLoadingDetail={isFoodDetailLoading}
         editingFood={editingFood}
         categories={categories}
         foodName={foodName}
