@@ -5,15 +5,13 @@ import {
   Store,
   UtensilsCrossed,
   ShoppingBag,
-  Clock,
-  Layers,
-  Settings,
+  Boxes,
+  Star,
   LogOut,
   Menu,
   X,
   ShieldCheck,
   Bell,
-  BarChart2,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -29,13 +27,11 @@ export default function MerchantLayout() {
 
   const navItems = [
     { to: '/merchant/dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-    { to: '/merchant/orders', label: 'Quản lý Đơn hàng', icon: ShoppingBag },
-    { to: '/merchant/live-orders', label: 'Đơn hàng Realtime', icon: Clock },
-    { to: '/merchant/menu', label: 'Quản lý Thực đơn', icon: UtensilsCrossed },
-    { to: '/merchant/combos', label: 'Quản lý Combo', icon: Layers },
-    { to: '/merchant/analytics', label: 'Doanh thu & Báo cáo', icon: BarChart2 },
-    { to: '/merchant/profile', label: 'Hồ sơ Quán ăn', icon: Store },
-    { to: '/merchant/settings', label: 'Cài đặt Nhà hàng', icon: Settings },
+    { to: '/merchant/orders', label: 'Quản lý đơn', icon: ShoppingBag },
+    { to: '/merchant/menu', label: 'Thực đơn', icon: UtensilsCrossed },
+    { to: '/merchant/inventory', label: 'Kho hàng', icon: Boxes },
+    { to: '/merchant/reviews', label: 'Đánh giá', icon: Star },
+    { to: '/merchant/profile', label: 'Hồ sơ quán', icon: Store },
   ];
 
   return (
