@@ -32,6 +32,7 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
   return (
     <Link
       href={`/restaurant/${id}`}
+      prefetch={false}
       className="group flex flex-col bg-white rounded-3xl overflow-hidden border border-orange-100/70 shadow-xs hover:shadow-xl hover:border-orange-200/90 hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
     >
       {/* Thumbnail Container */}

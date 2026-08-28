@@ -32,7 +32,7 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
   return (
     <div className="group flex flex-col bg-white rounded-3xl overflow-hidden border border-orange-100/70 shadow-xs hover:shadow-xl hover:border-orange-200/90 hover:-translate-y-1 transition-all duration-300">
       {/* Clickable Food Image & Details via Link */}
-      <Link href={`/food/${id}`} className="block focus:outline-none">
+      <Link href={`/food/${id}`} prefetch={false} className="block focus:outline-none">
         {/* Food Image */}
         <div className="relative w-full aspect-4/3 overflow-hidden bg-slate-100">
           <img
@@ -80,7 +80,7 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
 
       {/* Price & Action Row */}
       <div className="p-4 pt-3 mt-auto border-t border-slate-100 flex items-center justify-between gap-2">
-        <Link href={`/food/${id}`} className="block">
+        <Link href={`/food/${id}`} prefetch={false} className="block">
           <div className="flex items-center gap-1.5">
             <span className="text-xs text-slate-500 block -mb-0.5">Giá chỉ</span>
             {reviewCount > 0 && (

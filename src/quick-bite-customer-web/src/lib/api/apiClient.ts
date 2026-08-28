@@ -4,17 +4,24 @@ export interface ApiClientOptions extends Omit<RequestInit, 'method' | 'body'> {
   method?: HttpMethod | `${HttpMethod}`;
   body?: any;
   params?: Record<string, string | number | boolean | undefined | null>;
+  next?: {
+    revalidate?: number | false;
+    tags?: string[];
+  };
 }
 
 /**
- * Lightweight, unified HTTP client for client-side API requests.
- * Automatically injects standard JSON headers, handles cache settings, and unwraps ABP/ApiResponse envelopes.
+ * Lightweight, unified HTTP client for client-side and server-side API requests.
+ * Automatically injects standard JSON headers, handles Next.js cache settings, and unwraps ABP/ApiResponse envelopes.
  */
 export async function apiClient<T = any>(
   url: string,
   options: ApiClientOptions = {}
 ): Promise<T> {
-  const { method = HttpMethod.GET, body, params, headers, cache = 'no-store', ...rest } = options;
+  const { method = HttpMethod.GET, body, params, headers, cache, ...rest } = options;
+
+  // Do not force 'no-store' if 'next' revalidation options are present, allowing Next.js Data Cache/ISR
+  const resolvedCache = cache !== undefined ? cache : (rest as any).next ? undefined : 'no-store';
 
   let requestUrl = url;
   if (params) {
@@ -39,13 +46,18 @@ export async function apiClient<T = any>(
     ...(headers as Record<string, string>),
   };
 
-  const response = await fetch(requestUrl, {
+  const fetchOptions: RequestInit = {
     method,
     headers: requestHeaders,
-    cache,
     body: isJsonBody ? JSON.stringify(body) : body,
     ...rest,
-  });
+  };
+
+  if (resolvedCache) {
+    fetchOptions.cache = resolvedCache;
+  }
+
+  const response = await fetch(requestUrl, fetchOptions);
 
   if (!response.ok) {
     let errorMessage = `Yêu cầu thất bại với mã lỗi HTTP ${response.status}`;

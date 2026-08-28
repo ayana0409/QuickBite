@@ -20,12 +20,22 @@ import { RedisCacheService } from '../../cache/redis-cache.service';
 export class GlobalHttpCacheInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HttpCache');
 
-  // Endpoints that should bypass global caching (health checks, config management, metrics)
+  // Endpoints that bypass global caching (health checks, metrics, and downstream routes managed by ProxyController)
   private readonly defaultExcludedPatterns = [
     '/health',
     '/config',
     '/metrics',
     '/system/health',
+    '/restaurants',
+    '/food-items',
+    '/categories',
+    '/reviews',
+    '/requests',
+    '/catalog',
+    '/identity',
+    '/order',
+    '/inventory',
+    '/payments',
   ];
 
   constructor(
