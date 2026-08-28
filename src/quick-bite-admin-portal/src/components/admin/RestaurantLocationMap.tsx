@@ -40,9 +40,10 @@ export const RestaurantLocationMap: React.FC<RestaurantLocationMapProps> = ({
         attributionControl: false,
       });
 
-      // Tile Layer: OpenStreetMap
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
+      // Tile Layer: CartoDB Voyager (CDN fast, no DNS blocking)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        subdomains: 'abcd',
+        maxZoom: 20,
       }).addTo(map);
 
       // Custom Pin Marker Icon
