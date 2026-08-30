@@ -40,11 +40,15 @@ export default function MerchantMenuPage() {
   const [foodPrepTime, setFoodPrepTime] = useState('15');
   const [foodSku, setFoodSku] = useState('');
   const [foodDesc, setFoodDesc] = useState('');
-  const [foodImageUrl, setFoodImageUrl] = useState('');
+  const [existingImages, setExistingImages] = useState<string[]>([]);
+  const [markedForDeletion, setMarkedForDeletion] = useState<Set<string>>(new Set());
+  const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
+  const [isSaving, setIsSaving] = useState<boolean>(false);
   const [foodTags, setFoodTags] = useState('');
   const [foodVariants, setFoodVariants] = useState<FoodVariant[]>([]);
   const [foodToppings, setFoodToppings] = useState<FoodTopping[]>([]);
   const [foodIsAvailable, setFoodIsAvailable] = useState<boolean>(true);
+
 
   // Food Pagination state
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -241,7 +245,14 @@ export default function MerchantMenuPage() {
       setFoodPrepTime((food.preparationTime ?? 15).toString());
       setFoodSku(food.sku || '');
       setFoodDesc(food.description || '');
-      setFoodImageUrl(food.imageUrl || (food.images && food.images[0]) || '');
+      
+      const initialImages = Array.isArray(food.images) && food.images.length > 0
+        ? food.images
+        : (food.imageUrl ? [food.imageUrl] : []);
+      setExistingImages(initialImages);
+      setMarkedForDeletion(new Set());
+      setNewImageFiles([]);
+
       setFoodTags(Array.isArray(food.tags) ? food.tags.join(', ') : '');
       setFoodVariants(Array.isArray(food.variants) ? food.variants : []);
       setFoodToppings(Array.isArray(food.toppings) ? food.toppings : []);
@@ -251,7 +262,7 @@ export default function MerchantMenuPage() {
       setIsFoodDetailLoading(true);
 
       try {
-        // Tải chi tiết đầy đủ của món ăn từ Backend API (chứa đầy đủ variants, toppings, tags, preparationTime)
+        // Tải chi tiết đầy đủ của món ăn từ Backend API (chứa đầy đủ variants, toppings, tags, preparationTime, images)
         const detail = await menuService.getFoodItemById(food.id);
         if (detail) {
           setFoodName(detail.name || '');
@@ -261,7 +272,12 @@ export default function MerchantMenuPage() {
           setFoodPrepTime((detail.preparationTime ?? 15).toString());
           setFoodSku(detail.sku || '');
           setFoodDesc(detail.description || '');
-          setFoodImageUrl(detail.imageUrl || (detail.images && detail.images[0]) || '');
+          
+          const loadedImages = Array.isArray(detail.images) && detail.images.length > 0
+            ? detail.images
+            : (detail.imageUrl ? [detail.imageUrl] : []);
+          setExistingImages(loadedImages);
+
           setFoodTags(Array.isArray(detail.tags) ? detail.tags.join(', ') : '');
           setFoodVariants(Array.isArray(detail.variants) ? detail.variants : []);
           setFoodToppings(Array.isArray(detail.toppings) ? detail.toppings : []);
@@ -281,7 +297,9 @@ export default function MerchantMenuPage() {
       setFoodPrepTime('15');
       setFoodSku('');
       setFoodDesc('');
-      setFoodImageUrl('');
+      setExistingImages([]);
+      setMarkedForDeletion(new Set());
+      setNewImageFiles([]);
       setFoodTags('');
       setFoodVariants([]);
       setFoodToppings([]);
@@ -289,6 +307,19 @@ export default function MerchantMenuPage() {
       setIsFoodDetailLoading(false);
       setIsFoodModalOpen(true);
     }
+  };
+
+  // Mark/unmark existing image for lazy deletion
+  const handleMarkDelete = (imageUrl: string) => {
+    setMarkedForDeletion((prev) => {
+      const next = new Set(prev);
+      if (next.has(imageUrl)) {
+        next.delete(imageUrl);
+      } else {
+        next.add(imageUrl);
+      }
+      return next;
+    });
   };
 
   // Sub-resource handlers for Variants & Toppings
@@ -344,7 +375,7 @@ export default function MerchantMenuPage() {
 
     const parsedPrice = parseFloat(foodPrice) || 0;
     const parsedPrepTime = parseInt(foodPrepTime) || 15;
-    const tagsArray = foodTags.split(',').map(t => t.trim()).filter(Boolean);
+    const tagsArray = foodTags.split(',').map((t) => t.trim()).filter(Boolean);
 
     const dto: CreateFoodItemDto = {
       restaurantId,
@@ -355,26 +386,69 @@ export default function MerchantMenuPage() {
       basePrice: parsedPrice,
       currency: foodCurrency || 'VND',
       description: foodDesc,
-      imageUrl: foodImageUrl || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80',
-      images: foodImageUrl ? [foodImageUrl] : [],
       isAvailable: foodIsAvailable,
       preparationTime: parsedPrepTime,
       tags: tagsArray,
-      variants: foodVariants.filter(v => v.name.trim() !== ''),
-      toppings: foodToppings.filter(t => t.name.trim() !== ''),
+      variants: foodVariants.filter((v) => v.name.trim() !== ''),
+      toppings: foodToppings.filter((t) => t.name.trim() !== ''),
     };
 
-    if (editingFood) {
-      await menuService.updateFoodItem(editingFood.id, dto);
-      toast.success(`Đã cập nhật món "${foodName}" thành công!`);
-    } else {
-      await menuService.createFoodItem(dto);
-      toast.success(`Đã thêm món "${foodName}" vào thực đơn!`);
-    }
+    setIsSaving(true);
 
-    setIsFoodModalOpen(false);
-    await fetchData();
+    try {
+      if (editingFood) {
+        // 1. Cập nhật thông tin món ăn cơ bản
+        await menuService.updateFoodItem(editingFood.id, dto);
+
+        // 2. Thực hiện xóa các ảnh đã bị đánh dấu xóa (Pending Deletion)
+        if (markedForDeletion.size > 0) {
+          const deletePromises = Array.from(markedForDeletion).map((imgUrl) =>
+            menuService.deleteFoodImage(editingFood.id, imgUrl)
+          );
+          const results = await Promise.allSettled(deletePromises);
+          const failedCount = results.filter((r) => r.status === 'rejected').length;
+          if (failedCount > 0) {
+            console.warn(`Xóa ${failedCount} ảnh gặp lỗi.`);
+          }
+        }
+
+        // 3. Thực hiện tải lên các ảnh mới chọn (nếu có)
+        if (newImageFiles.length > 0) {
+          try {
+            await menuService.uploadFoodImages(editingFood.id, newImageFiles);
+          } catch (uploadErr) {
+            console.error('Lỗi khi tải ảnh mới:', uploadErr);
+            toast.warning('Cập nhật thông tin thành công nhưng upload ảnh mới gặp sự cố.');
+          }
+        }
+
+        toast.success(`Đã cập nhật món "${foodName}" thành công!`);
+      } else {
+        // 1. Tạo món ăn mới trước (chưa có ảnh)
+        const created = await menuService.createFoodItem(dto);
+
+        // 2. Tải lên danh sách ảnh mới chọn lên server cho món ăn vừa tạo
+        if (newImageFiles.length > 0 && created && created.id) {
+          try {
+            await menuService.uploadFoodImages(created.id, newImageFiles);
+          } catch (uploadErr) {
+            console.error('Lỗi khi tải ảnh món mới:', uploadErr);
+            toast.warning('Đã tạo món ăn nhưng upload ảnh gặp sự cố. Bạn có thể chỉnh sửa lại ảnh!');
+          }
+        }
+
+        toast.success(`Đã thêm món "${foodName}" vào thực đơn!`);
+      }
+
+      setIsFoodModalOpen(false);
+      await fetchData();
+    } catch (err) {
+      console.error('Lỗi khi lưu món ăn:', err);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
 
   const handleToggleAvailability = async (id: string, currentAvailable?: boolean) => {
     await menuService.toggleAvailability(id, currentAvailable);
@@ -698,8 +772,12 @@ export default function MerchantMenuPage() {
         setFoodSku={setFoodSku}
         foodDesc={foodDesc}
         setFoodDesc={setFoodDesc}
-        foodImageUrl={foodImageUrl}
-        setFoodImageUrl={setFoodImageUrl}
+        existingImages={existingImages}
+        markedForDeletion={markedForDeletion}
+        onMarkDelete={handleMarkDelete}
+        newFiles={newImageFiles}
+        onNewFilesChange={setNewImageFiles}
+        isSaving={isSaving}
         foodTags={foodTags}
         setFoodTags={setFoodTags}
         foodIsAvailable={foodIsAvailable}
@@ -715,6 +793,7 @@ export default function MerchantMenuPage() {
         onClose={() => setIsFoodModalOpen(false)}
         onSave={handleSaveFoodItem}
       />
+
 
       {/* --- MODAL: CREATE / EDIT CATEGORY --- */}
       <CategoryModal

@@ -495,4 +495,48 @@ export const menuService = {
       console.error(`API DELETE /catalog/food-items/${id} failed:`, err);
     }
   },
+
+  // Helper to extract image filename from a full URL or path
+  extractImageName(imageUrl: string): string {
+    if (!imageUrl) return '';
+    const cleanUrl = imageUrl.split('?')[0].split('#')[0];
+    const segments = cleanUrl.split('/');
+    return decodeURIComponent(segments[segments.length - 1] || '');
+  },
+
+  // POST /catalog/food-items/:id/images (Upload multiple images via multipart/form-data)
+  async uploadFoodImages(id: string, files: File[]): Promise<FoodItem | null> {
+    if (!files || files.length === 0) return null;
+    const formData = new FormData();
+    files.forEach((file) => {
+      formData.append('images', file);
+    });
+
+    try {
+      const res: any = await axiosClient.post(`/catalog/food-items/${id}/images`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const updated = unwrapData(res) || res;
+      return normalizeFoodItem(updated);
+    } catch (err) {
+      console.error(`API POST /catalog/food-items/${id}/images failed:`, err);
+      throw err;
+    }
+  },
+
+  // DELETE /catalog/food-items/:id/images/:imageName (Delete specific image by filename)
+  async deleteFoodImage(id: string, imageName: string): Promise<void> {
+    const filename = this.extractImageName(imageName);
+    if (!filename) return;
+
+    try {
+      await axiosClient.delete(`/catalog/food-items/${id}/images/${encodeURIComponent(filename)}`);
+    } catch (err) {
+      console.error(`API DELETE /catalog/food-items/${id}/images/${filename} failed:`, err);
+      throw err;
+    }
+  },
 };
+

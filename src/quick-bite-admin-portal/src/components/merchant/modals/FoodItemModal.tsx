@@ -16,10 +16,12 @@ import type { Category, FoodItem, FoodVariant, FoodTopping } from '../../../serv
 import Input from '../../common/Form/Input';
 import Textarea from '../../common/Form/Textarea';
 import Select from '../../common/Form/Select';
+import ImageUploadPanel from '../ImageUploadPanel';
 
 export interface FoodItemModalProps {
   isOpen: boolean;
   isLoadingDetail?: boolean;
+  isSaving?: boolean;
   editingFood: FoodItem | null;
   categories: Category[];
   foodName: string;
@@ -36,8 +38,11 @@ export interface FoodItemModalProps {
   setFoodSku: (val: string) => void;
   foodDesc: string;
   setFoodDesc: (val: string) => void;
-  foodImageUrl: string;
-  setFoodImageUrl: (val: string) => void;
+  existingImages: string[];
+  markedForDeletion: Set<string>;
+  onMarkDelete: (imageUrl: string) => void;
+  newFiles: File[];
+  onNewFilesChange: (files: File[]) => void;
   foodTags: string;
   setFoodTags: (val: string) => void;
   foodIsAvailable: boolean;
@@ -79,6 +84,7 @@ const TOPPING_PRESETS: { label: string; name: string; price: number }[] = [
 export const FoodItemModal: React.FC<FoodItemModalProps> = ({
   isOpen,
   isLoadingDetail = false,
+  isSaving = false,
   editingFood,
   categories,
   foodName,
@@ -95,8 +101,11 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
   setFoodSku,
   foodDesc,
   setFoodDesc,
-  foodImageUrl,
-  setFoodImageUrl,
+  existingImages,
+  markedForDeletion,
+  onMarkDelete,
+  newFiles,
+  onNewFilesChange,
   foodTags,
   setFoodTags,
   foodIsAvailable,
@@ -112,6 +121,7 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
   onClose,
   onSave,
 }) => {
+
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   if (!isOpen) return null;
@@ -291,26 +301,28 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
             />
           </div>
 
-          {/* URL Hình ảnh & Tags */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-            <Input
-              label="URL Hình Ảnh Món Ăn"
-              type="url"
-              value={foodImageUrl}
-              onChange={(e) => setFoodImageUrl(e.target.value)}
-              placeholder="https://images.unsplash.com/..."
-              accentColor="emerald"
-            />
+          {/* Thẻ phân loại Tags */}
+          <Input
 
-            <Input
-              label="Thẻ Phân Loại / Tags (cách nhau bởi dấu phẩy)"
-              icon={<Tag className="w-3.5 h-3.5 text-amber-400" />}
-              value={foodTags}
-              onChange={(e) => setFoodTags(e.target.value)}
-              placeholder="best-seller, milk-tea, sweet, hot"
-              accentColor="emerald"
-            />
-          </div>
+            label="Thẻ Phân Loại / Tags (cách nhau bởi dấu phẩy)"
+            icon={<Tag className="w-3.5 h-3.5 text-amber-400" />}
+            value={foodTags}
+            onChange={(e) => setFoodTags(e.target.value)}
+            placeholder="best-seller, milk-tea, sweet, hot"
+            accentColor="emerald"
+          />
+
+          {/* Image Upload Panel (Multi-image management) */}
+
+          <ImageUploadPanel
+            existingImages={existingImages}
+            markedForDeletion={markedForDeletion}
+            onMarkDelete={onMarkDelete}
+            newFiles={newFiles}
+            onNewFilesChange={onNewFilesChange}
+            maxImages={5}
+            isLoading={isLoadingDetail || isSaving}
+          />
 
           {/* Mô tả món */}
           <Textarea
@@ -321,6 +333,7 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
             placeholder="Thành phần nguyên liệu chính, hương vị đặc trưng, khuyến mại hấp dẫn đi kèm..."
             accentColor="emerald"
           />
+
 
           {/* ========================================================================= */}
           {/* SECTION: VARIANTS (Size, Độ ngọt, Mức đá...)                              */}
@@ -564,17 +577,23 @@ export const FoodItemModal: React.FC<FoodItemModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all cursor-pointer"
+              disabled={isSaving}
+              className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Hủy
             </button>
             <button
               type="submit"
-              className="px-6 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              disabled={isSaving}
+              className="flex items-center gap-2 px-6 py-2.5 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 font-black rounded-xl shadow-lg shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              {editingFood ? 'Cập Nhật Món Ăn' : 'Lưu Món Vào Thực Đơn'}
+              {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {isSaving
+                ? (editingFood ? 'Đang Cập Nhật...' : 'Đang Tạo Món...')
+                : (editingFood ? 'Cập Nhật Món Ăn' : 'Lưu Món Vào Thực Đơn')}
             </button>
           </div>
+
         </form>
       </div>
     </div>
