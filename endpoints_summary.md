@@ -1855,3 +1855,64 @@ scope=openid profile email roles offline_access Identity
 ```
 
 
+---
+
+## 5. Catalog Service - Search & Recommendations API (`quick-bite-catalog` / `quick-bite-api-gateway`)
+
+### 📁 Advanced Search API — `/search`
+
+#### `GET /catalog/search`
+*Full-Text Search kết hợp tính khoảng cách vị trí (PostGIS ST_Distance) và điểm Trending.*
+
+**Query Params:**
+- `q` (string, optional): Từ khóa tìm kiếm.
+- `lat` (float, optional): Vĩ độ của user.
+- `lng` (float, optional): Kinh độ của user.
+- `minPrice` (number, optional).
+- `maxPrice` (number, optional).
+- `minRating` (number, optional).
+- `page`, `limit` (number).
+
+**Response** `200`:
+Danh sách `FoodItem` kèm thuộc tính `score`.
+```json
+{
+  "success": true,
+  "statusCode": 200,
+  "data": [
+    {
+       "id": "...",
+       "name": "Cơm Sườn",
+       "score": 0.852
+    }
+  ],
+  "meta": { "total": 1, "page": 1, "limit": 24, "totalPages": 1 }
+}
+```
+
+### 📁 Recommendations API — `/recommendations`
+
+#### `GET /catalog/recommendations/trending`
+*Lấy danh sách các món ăn phổ biến nhất (dựa trên totalSold và rating).* (Hỗ trợ Cache 30 phút trên Gateway).
+
+**Query Params:** `limit` (default: 8).
+
+**Response** `200`: Danh sách `FoodItem`.
+
+#### `GET /catalog/recommendations/nearby`
+*Lấy danh sách nhà hàng gần vị trí của user nhất (sử dụng PostGIS ST_DWithin).*
+
+**Query Params:**
+- `lat`, `lng` (required): Tọa độ của user.
+- `radius` (number, optional): Bán kính (m), mặc định 10000.
+- `limit` (number, optional): Mặc định 10.
+
+**Response** `200`: Danh sách `Restaurant` kèm thuộc tính `distance_meters`.
+
+#### `GET /catalog/recommendations/similar-foods/:id`
+*Gợi ý món ăn tương tự món ăn hiện tại dựa trên mức độ trùng lặp Tags.*
+
+**Path Params:** `id` (FoodItem ID).
+**Query Params:** `limit` (mặc định 6).
+
+**Response** `200`: Danh sách `FoodItem`.

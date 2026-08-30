@@ -208,11 +208,13 @@ src/
 
 --- 
 
-### 5.3. Catalog Service (NestJS) 
+### 5.3. Catalog Service (NestJS) 
 
-**Trách nhiệm:** CRUD nhà hàng, danh mục, món ăn; quản lý đánh giá (reviews) món ăn & nhà hàng; cung cấp query cho Gateway. 
+**Trách nhiệm:** CRUD nhà hàng, danh mục, món ăn; quản lý đánh giá (reviews); cung cấp query cho Gateway; **Tìm kiếm Full-Text (FTS) & Gợi ý không gian (PostGIS)**.
 
-**Kiến trúc nội bộ (NestJS module-based):** 
+**Công nghệ lõi:** NestJS, TypeORM, **PostgreSQL (PostGIS & GIN Indexes)**.
+
+**Kiến trúc nội bộ (NestJS module-based):** 
 ``` 
 src/ 
 ├── restaurant/ 
@@ -222,6 +224,14 @@ src/
 │   └── entities/restaurant.entity.ts 
 ├── category/ 
 ├── food-item/ 
+├── search/
+│   ├── search.module.ts
+│   ├── search.controller.ts
+│   └── search.service.ts
+├── recommendation/
+│   ├── recommendation.module.ts
+│   ├── recommendation.controller.ts
+│   └── recommendation.service.ts
 ├── review/
 │   ├── dto/
 │   │   ├── create-review.dto.ts
