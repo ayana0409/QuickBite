@@ -14,14 +14,25 @@ export class CloudinaryStorageService implements IStorageService {
     // Read Cloudinary folder destination from environment variable CLOUDINARY_FOLDER (default: 'quick-bite/food-items')
     this.folder = this.configService.get<string>('CLOUDINARY_FOLDER') || 'quick-bite/food-items';
 
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME') || '';
+    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY') || '';
+    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET') || '';
+
     // Initialize Cloudinary SDK config with environment variables
     cloudinary.config({
-      cloud_name: this.configService.get<string>('CLOUDINARY_CLOUD_NAME') || '',
-      api_key: this.configService.get<string>('CLOUDINARY_API_KEY') || '',
-      api_secret: this.configService.get<string>('CLOUDINARY_API_SECRET') || '',
+      cloud_name: cloudName,
+      api_key: apiKey,
+      api_secret: apiSecret,
       secure: true,
     });
-    this.logger.log(`CloudinaryStorageService initialized with folder: '${this.folder}'`);
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      this.logger.warn(
+        `⚠️ Cloudinary credentials missing! cloud_name: '${cloudName ? 'OK' : 'MISSING'}', api_key: '${apiKey ? 'OK' : 'MISSING'}', api_secret: '${apiSecret ? 'OK' : 'MISSING'}'`,
+      );
+    } else {
+      this.logger.log(`CloudinaryStorageService initialized with cloud: '${cloudName}', folder: '${this.folder}'`);
+    }
   }
 
   /**
@@ -42,8 +53,13 @@ export class CloudinaryStorageService implements IStorageService {
         },
         (error, result: UploadApiResponse | undefined) => {
           if (error || !result) {
-            this.logger.error(`Cloudinary upload failed for ${filename}: ${error?.message || 'Unknown error'}`);
-            return reject(error || new Error('Cloudinary upload returned undefined result'));
+            const errorDetails = error ? JSON.stringify(error, Object.getOwnPropertyNames(error)) : 'No result';
+            this.logger.error(
+              `Cloudinary upload failed for ${filename}: ${error?.message || 'Unknown error'}. Details: ${errorDetails}`,
+            );
+            return reject(
+              new Error(`Cloudinary upload failed (HTTP ${error?.http_code || 403}): ${error?.message || 'Invalid credentials or permissions'}`),
+            );
           }
           this.logger.log(`Uploaded to Cloudinary: ${filename} (URL: ${result.secure_url})`);
           // Store only filename in DB as required
@@ -58,6 +74,7 @@ export class CloudinaryStorageService implements IStorageService {
       readableStream.pipe(uploadStream);
     });
   }
+
 
   /**
    * Batch upload files to Cloudinary. Cleans up partial uploads if any file fails.
