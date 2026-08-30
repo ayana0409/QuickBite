@@ -140,7 +140,31 @@ export class ProxyController {
       return { key: `catalog:requests:list:${cleanPath}`, ttl: 60 };
     }
 
+    // 6. Search endpoint - short TTL because query params vary widely
+    if (pathname === '/search' || pathname === '/search/') {
+      return { key: `catalog:search:${cleanPath}`, ttl: 30 };
+    }
+
+    // 7. Recommendations endpoints
+    // - trending: cached longer (result is stable, backed by in-memory cache in service)
+    // - nearby: no cache (depends on user coordinates)
+    // - similar-foods: cached per foodId
+    if (pathname === '/recommendations/trending' || pathname === '/recommendations/trending/') {
+      return { key: `catalog:recommendations:trending:${cleanPath}`, ttl: 1800 };
+    }
+
+    const similarFoodsMatch = pathname.match(/^\/recommendations\/similar-foods\/([^/]+)$/);
+    if (similarFoodsMatch) {
+      return { key: `catalog:recommendations:similar:${similarFoodsMatch[1]}`, ttl: 300 };
+    }
+
+    // nearby is NOT cached (user coordinates are unique per request)
+    if (pathname === '/recommendations/nearby' || pathname === '/recommendations/nearby/') {
+      return null;
+    }
+
     return null;
+
   }
 
   private async invalidateCatalogCache(req: Request): Promise<void> {

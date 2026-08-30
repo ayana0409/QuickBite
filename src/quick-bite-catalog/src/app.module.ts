@@ -13,6 +13,8 @@ import { FoodItemModule } from './food-item/food-item.module';
 import { HealthModule } from './health/health.module';
 import { ReviewModule } from './review/review.module';
 import { RequestModule } from './request/request.module';
+import { SearchModule } from './search/search.module';
+import { RecommendationModule } from './recommendation/recommendation.module';
 
 @Module({
   imports: [
@@ -74,6 +76,8 @@ import { RequestModule } from './request/request.module';
     HealthModule,
     ReviewModule,
     RequestModule,
+    SearchModule,
+    RecommendationModule,
   ],
   controllers: [AppController],
   providers: [AppService],
