@@ -55,6 +55,16 @@ export class ProxyController {
     await this.forwardRequest('CATALOG_URL', req, res);
   }
 
+  @All('recommendations{*path}')
+  async proxyRecommendations(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('CATALOG_URL', req, res);
+  }
+
+  @All('search{*path}')
+  async proxySearch(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('CATALOG_URL', req, res);
+  }
+
   @All('inventory{*path}')
   async proxyInventory(@Req() req: Request, @Res() res: Response) {
     await this.forwardRequest('INVENTORY_URL', req, res);
