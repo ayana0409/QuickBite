@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import {
   Utensils,
@@ -13,6 +14,7 @@ import {
   ChevronDown,
   Sparkles,
   Store,
+  MapPin,
 } from "lucide-react";
 import { useCartStore } from "@/src/store/cart.store";
 import { useUiStore } from "@/src/store/ui.store";
@@ -20,6 +22,7 @@ import { useBecomePartner } from "@/src/hooks/useBecomePartner";
 import AuthModal from "./AuthModal";
 
 export default function Header() {
+  const router = useRouter();
   const { data: session, status } = useSession();
   const [dropdownOpen, setDropdownOpen] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -37,6 +40,15 @@ export default function Header() {
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    } else {
+      router.push('/search');
+    }
+  };
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -79,23 +91,52 @@ export default function Header() {
             </div>
           </Link>
 
-          {/* Center: Search Bar Mockup */}
-          <div className="flex-1 max-w-lg mx-2 hidden md:block">
+          {/* Center: Search Bar */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="flex-1 max-w-lg mx-2 hidden md:block"
+          >
             <div className="relative flex items-center w-full">
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Tìm món ngon, quán ăn, trà sữa gần bạn..."
-                className="w-full pl-10 pr-4 py-2 text-sm bg-orange-50/50 hover:bg-orange-50/80 focus:bg-white text-slate-800 placeholder-slate-400 rounded-full border border-orange-200/70 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
+                placeholder="Tìm món ngon, bún bò, pizza, trà sữa..."
+                className="w-full pl-10 pr-10 py-2 text-sm bg-orange-50/50 hover:bg-orange-50/80 focus:bg-white text-slate-800 placeholder-slate-400 rounded-full border border-orange-200/70 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20 outline-none transition-all"
               />
-              <Search className="w-4 h-4 text-orange-400 absolute left-3.5 pointer-events-none" />
+              <button
+                type="submit"
+                className="absolute left-3 text-orange-400 hover:text-orange-600 transition-colors cursor-pointer"
+                title="Tìm kiếm"
+                aria-label="Tìm kiếm"
+              >
+                <Search className="w-4 h-4" />
+              </button>
             </div>
-          </div>
+          </form>
 
           {/* Right: Actions & User Navigation */}
-          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             
+            {/* Nearby Restaurants Button */}
+            <Link
+              href="/nearby"
+              className="inline-flex items-center gap-1.5 px-3 py-2 text-xs sm:text-sm font-bold text-orange-700 bg-orange-50 hover:bg-orange-100 rounded-full border border-orange-200/80 transition-all hover:scale-105 active:scale-95 cursor-pointer shrink-0"
+              title="Quán gần bạn"
+            >
+              <MapPin className="w-4 h-4 text-orange-600 animate-bounce" />
+              <span className="hidden sm:inline">Gần bạn</span>
+            </Link>
+
+            {/* Mobile Search Button */}
+            <Link
+              href="/search"
+              className="p-2.5 md:hidden text-slate-700 hover:text-orange-500 bg-slate-50 hover:bg-orange-50 rounded-full border border-slate-200/80 transition-colors"
+              title="Tìm kiếm"
+            >
+              <Search className="w-4 h-4" />
+            </Link>
+
             {/* Cart Button */}
             <button
               type="button"

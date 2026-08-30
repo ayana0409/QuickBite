@@ -120,3 +120,28 @@ export interface Review {
   createdAt: string;
   updatedAt?: string;
 }
+
+export interface SearchFoodParams {
+  q?: string;
+  lat?: number;
+  lng?: number;
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  page?: number;
+  limit?: number;
+}
+
+export interface NearbyRestaurantParams {
+  lat: number;
+  lng: number;
+  radius?: number;
+  limit?: number;
+}
+
+export interface NearbyRestaurant extends Restaurant {
+  distance_meters: number;
+  categories?: { id: string; name: string }[];
+  available_food_count?: number;
+}
+

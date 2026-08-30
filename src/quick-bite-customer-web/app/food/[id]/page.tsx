@@ -19,6 +19,7 @@ import { getFoodById, getRestaurantById } from '@/src/lib/api/catalog';
 import FoodCustomizer from '@/src/components/shared/FoodCustomizer';
 import ReviewListSection from '@/src/components/shared/ReviewListSection';
 import FoodImageGallery from '@/src/components/food/FoodImageGallery';
+import SimilarFoodsSection from '@/src/components/food/SimilarFoodsSection';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -207,6 +208,9 @@ export default async function FoodDetailPage({ params }: PageProps) {
           }}
           className="mt-8"
         />
+
+        {/* ─── Similar Foods Recommendation (PostgreSQL Category/Tag Overlap) ─── */}
+        <SimilarFoodsSection foodId={food.id} foodName={food.name} />
 
       </div>
     </div>

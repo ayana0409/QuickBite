@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Search, Sparkles, Zap, ShieldCheck, Gift, ArrowRight } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { Search, Sparkles, Zap, ShieldCheck, Gift, ArrowRight, MapPin } from 'lucide-react';
 
 const QUICK_CATEGORIES = [
   { name: 'Phở & Bún', emoji: '🍜' },
@@ -14,13 +16,21 @@ const QUICK_CATEGORIES = [
 ];
 
 export default function HeroBanner() {
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchTerm.trim()) return;
-    // Will navigate to search page when implemented
-    console.log('Searching for:', searchTerm);
+    if (!searchTerm.trim()) {
+      router.push('/search');
+      return;
+    }
+    router.push(`/search?q=${encodeURIComponent(searchTerm.trim())}`);
+  };
+
+  const handleCategoryClick = (categoryName: string) => {
+    setSearchTerm(categoryName);
+    router.push(`/search?q=${encodeURIComponent(categoryName)}`);
   };
 
   return (
@@ -32,9 +42,19 @@ export default function HeroBanner() {
       <div className="relative max-w-5xl mx-auto px-6 sm:px-12 py-12 sm:py-16 flex flex-col items-center text-center">
         
         {/* Top Floating Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-xs sm:text-sm font-semibold mb-6 shadow-xs animate-in fade-in slide-in-from-top-4 duration-500">
-          <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
-          <span>Freeship cho đơn hàng đầu tiên • Mã: <b>QUICKBITE2026</b></span>
+        <div className="flex flex-wrap items-center justify-center gap-2 mb-6">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-xs sm:text-sm font-semibold shadow-xs animate-in fade-in slide-in-from-top-4 duration-500">
+            <Sparkles className="w-4 h-4 text-amber-300 animate-pulse" />
+            <span>Freeship cho đơn hàng đầu tiên • Mã: <b>QUICKBITE2026</b></span>
+          </div>
+
+          <Link
+            href="/nearby"
+            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-400/90 hover:bg-amber-300 text-slate-900 text-xs sm:text-sm font-bold shadow-md transition-all hover:scale-105 active:scale-95"
+          >
+            <MapPin className="w-3.5 h-3.5 text-red-600" />
+            <span>Tìm quán gần bạn nhất 📍</span>
+          </Link>
         </div>
 
         {/* Main Slogan Heading */}
@@ -46,7 +66,7 @@ export default function HeroBanner() {
         </h1>
 
         <p className="mt-4 sm:mt-5 text-sm sm:text-base md:text-lg text-orange-100/90 max-w-2xl font-medium leading-relaxed">
-          Khám phá hàng ngàn món ngon từ các quán ăn và thương hiệu hàng đầu, giao tận nơi nhanh chóng chỉ từ 20-30 phút.
+          Tìm kiếm thông minh với thuật toán gợi ý món ăn chuẩn vị & quán ăn gần bạn nhất chỉ từ 20-30 phút.
         </p>
 
         {/* Big Interactive Search Form */}
@@ -81,7 +101,7 @@ export default function HeroBanner() {
             <button
               key={index}
               type="button"
-              onClick={() => setSearchTerm(cat.name)}
+              onClick={() => handleCategoryClick(cat.name)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/30 backdrop-blur-xs text-white border border-white/20 transition-all hover:scale-105 active:scale-95 cursor-pointer font-medium"
             >
               <span>{cat.emoji}</span>
@@ -89,6 +109,7 @@ export default function HeroBanner() {
             </button>
           ))}
         </div>
+
 
         {/* Key Highlight Badges */}
         <div className="mt-10 sm:mt-12 pt-6 border-t border-white/20 w-full grid grid-cols-1 sm:grid-cols-3 gap-4 text-left">

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Star, Clock, MapPin, Sparkles, Bike } from 'lucide-react';
@@ -41,6 +43,9 @@ export default function RestaurantCard({ restaurant }: RestaurantCardProps) {
           src={displayImage}
           alt={name}
           loading="lazy"
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = defaultImage;
+          }}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
         />
 

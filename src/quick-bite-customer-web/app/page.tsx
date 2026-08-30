@@ -1,8 +1,8 @@
 import React from 'react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { UtensilsCrossed, Flame, ArrowRight, Store, Sparkles, Award } from 'lucide-react';
-import { getRestaurants, getFeaturedFoods } from '@/src/lib/api/catalog';
+import { UtensilsCrossed, Flame, ArrowRight, Store, Sparkles, Award, MapPin } from 'lucide-react';
+import { getRestaurants, getTrendingFoods } from '@/src/lib/api/catalog';
 import HeroBanner from '@/src/components/home/HeroBanner';
 import RestaurantCard from '@/src/components/home/RestaurantCard';
 import FoodCard from '@/src/components/home/FoodCard';
@@ -32,20 +32,44 @@ export const metadata: Metadata = {
 };
 
 export default async function HomePage() {
-  // Fetch data in parallel on the server using ISR (revalidate 60s)
-  const [restaurants, featuredFoods] = await Promise.all([
+  // Fetch data in parallel on the server: Top rated restaurants & Smart Trending Foods (PostgreSQL Trending Score)
+  const [restaurants, trendingFoods] = await Promise.all([
     getRestaurants(1, 6),
-    getFeaturedFoods(1, 8),
+    getTrendingFoods(8),
   ]);
 
   return (
     <div className="min-h-screen bg-[#fdfbf7] pb-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* 1. Hero Banner Component */}
+        {/* 1. Hero Banner Component with Integrated Search */}
         <HeroBanner />
 
-        {/* 2. Featured Restaurants Section */}
+        {/* 2. Quick Nearby Feature Callout Banner */}
+        <section className="mt-8 bg-gradient-to-r from-amber-50 to-orange-50 rounded-3xl p-6 border border-orange-200/70 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-orange-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-orange-500/20">
+              <MapPin className="w-6 h-6 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="text-base sm:text-lg font-black text-slate-900">
+                Tìm Quán Ngon Gần Vị Trí Của Bạn
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600">
+                Sử dụng định vị PostGIS để khám phá các nhà hàng đang mở cửa gần nhất với bán kính tuỳ chọn.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/nearby"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-orange-600 hover:bg-orange-700 text-white text-xs sm:text-sm font-bold shadow-md shadow-orange-600/20 hover:scale-105 active:scale-95 transition-all shrink-0 cursor-pointer"
+          >
+            <span>Khám phá ngay</span>
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </section>
+
+        {/* 3. Featured Restaurants Section */}
         <section className="mt-12 sm:mt-16">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6 sm:mb-8">
             <div>
@@ -62,10 +86,10 @@ export default async function HomePage() {
             </div>
 
             <Link
-              href="/restaurants"
+              href="/nearby"
               className="inline-flex items-center gap-1.5 text-sm font-bold text-orange-600 hover:text-orange-700 group shrink-0 transition-colors"
             >
-              <span>Khám phá tất cả</span>
+              <span>Xem quán quanh bạn</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
@@ -86,35 +110,35 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* 3. Featured Foods Section */}
+        {/* 4. Trending Foods Section (PostgreSQL Trending Score + Cache) */}
         <section className="mt-14 sm:mt-20">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6 sm:mb-8">
             <div>
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold mb-2">
                 <Flame className="w-3.5 h-3.5 fill-red-600 text-red-600" />
-                <span>Ăn Gì Hôm Nay?</span>
+                <span>Xu Hướng Ẩm Thực</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Món Ngon Thử Ngay
+                Món Ngon Bán Chạy Hôm Nay
               </h2>
               <p className="text-sm text-slate-600 mt-1">
-                Tuyển chọn những món bán chạy nhất với ưu đãi cực hấp dẫn hôm nay
+                Thuật toán đề xuất những món ăn hot nhất dựa trên lượt đặt và đánh giá cao
               </p>
             </div>
 
             <Link
-              href="/foods"
+              href="/search"
               className="inline-flex items-center gap-1.5 text-sm font-bold text-orange-600 hover:text-orange-700 group shrink-0 transition-colors"
             >
-              <span>Xem toàn bộ menu</span>
+              <span>Tìm kiếm tất cả món</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>
 
           {/* Food Grid */}
-          {featuredFoods.length > 0 ? (
+          {trendingFoods.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              {featuredFoods.map((food) => (
+              {trendingFoods.map((food) => (
                 <FoodCard key={food.id} food={food} />
               ))}
             </div>
@@ -127,10 +151,11 @@ export default async function HomePage() {
           )}
         </section>
 
-        {/* 4. Bottom Promotional Banner */}
+        {/* 5. Bottom Promotional Banner */}
         <BecomePartnerBanner />
 
       </div>
     </div>
   );
 }
+

@@ -1,3 +1,5 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 import { Flame, Star, Images } from 'lucide-react';
@@ -39,6 +41,9 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
             src={displayImage}
             alt={name}
             loading="lazy"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = defaultImage;
+            }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           />
 

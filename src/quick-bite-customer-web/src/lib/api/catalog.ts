@@ -1,4 +1,13 @@
-import { Restaurant, RestaurantDetail, FoodItem, ApiResponse, PaginatedResult } from '@/src/types/catalog.type';
+import {
+  Restaurant,
+  RestaurantDetail,
+  FoodItem,
+  ApiResponse,
+  PaginatedResult,
+  SearchFoodParams,
+  NearbyRestaurantParams,
+  NearbyRestaurant,
+} from '@/src/types/catalog.type';
 import { apiClient } from './apiClient';
 
 const GATEWAY_URL =
@@ -60,6 +69,129 @@ export async function getFeaturedFoods(page = 1, limit = 8): Promise<FoodItem[]>
   } catch (error) {
     console.error(`[getFeaturedFoods] Failed to fetch from Gateway (${GATEWAY_URL}):`, error);
     return [];
+  }
+}
+
+/**
+ * Fetch trending food items via API Gateway
+ * Calculated by trending_score = totalSold * 0.7 + rating * 30, cached for 30 minutes
+ */
+export async function getTrendingFoods(limit = 8): Promise<FoodItem[]> {
+  try {
+    const url = `${GATEWAY_URL}/catalog/recommendations/trending`;
+    const json = await apiClient<ApiResponse<FoodItem[]> | FoodItem[]>(url, {
+      params: { limit },
+      next: { revalidate: 300 }, // Cache on Next.js edge for 5 minutes
+    });
+
+    if (Array.isArray(json)) return json;
+    if ((json as any)?.data && Array.isArray((json as any).data)) {
+      return (json as any).data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error(`[getTrendingFoods] Failed to fetch from Gateway (${GATEWAY_URL}):`, error);
+    // Fallback to getFeaturedFoods if recommendation endpoint fails
+    return getFeaturedFoods(1, limit);
+  }
+}
+
+/**
+ * Fetch similar food items by Category and Tag overlap
+ */
+export async function getSimilarFoods(foodId: string, limit = 8): Promise<FoodItem[]> {
+  try {
+    const url = `${GATEWAY_URL}/catalog/recommendations/similar-foods/${foodId}`;
+    const json = await apiClient<ApiResponse<FoodItem[]> | FoodItem[]>(url, {
+      params: { limit },
+      next: { revalidate: 300 },
+    });
+
+    if (Array.isArray(json)) return json;
+    if ((json as any)?.data && Array.isArray((json as any).data)) {
+      return (json as any).data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error(`[getSimilarFoods] Failed to fetch for ${foodId}:`, error);
+    return [];
+  }
+}
+
+/**
+ * Fetch nearby restaurants using PostGIS ST_DWithin
+ */
+export async function getNearbyRestaurants(
+  params: NearbyRestaurantParams,
+): Promise<NearbyRestaurant[]> {
+  try {
+    const url = `${GATEWAY_URL}/catalog/recommendations/nearby`;
+    const json = await apiClient<ApiResponse<NearbyRestaurant[]> | NearbyRestaurant[]>(url, {
+      params: {
+        lat: params.lat,
+        lng: params.lng,
+        radius: params.radius || 5000,
+        limit: params.limit || 12,
+      },
+      // Do not cache personalized geo-queries heavily
+      cache: 'no-store',
+    });
+
+    if (Array.isArray(json)) return json;
+    if ((json as any)?.data && Array.isArray((json as any).data)) {
+      return (json as any).data;
+    }
+
+    return [];
+  } catch (error) {
+    console.error(`[getNearbyRestaurants] Failed to fetch nearby restaurants:`, error);
+    return [];
+  }
+}
+
+/**
+ * Advanced Full-Text Search with filters and optional proximity scoring
+ */
+export async function searchFoods(
+  params: SearchFoodParams,
+): Promise<{ data: FoodItem[]; meta?: { page: number; limit: number; total: number; totalPages: number } }> {
+  try {
+    const url = `${GATEWAY_URL}/catalog/search`;
+    const cleanParams: Record<string, any> = {};
+    if (params.q) cleanParams.q = params.q;
+    if (params.lat != null) cleanParams.lat = params.lat;
+    if (params.lng != null) cleanParams.lng = params.lng;
+    if (params.minPrice != null) cleanParams.minPrice = params.minPrice;
+    if (params.maxPrice != null) cleanParams.maxPrice = params.maxPrice;
+    if (params.minRating != null) cleanParams.minRating = params.minRating;
+    if (params.page != null) cleanParams.page = params.page;
+    if (params.limit != null) cleanParams.limit = params.limit;
+
+    const json = await apiClient<ApiResponse<{ data: FoodItem[]; meta: any }> | { data: FoodItem[]; meta: any }>(url, {
+      params: cleanParams,
+      // Short cache or no cache for search queries
+      next: { revalidate: 30 },
+    });
+
+    if ((json as any)?.data?.data && Array.isArray((json as any).data.data)) {
+      return {
+        data: (json as any).data.data,
+        meta: (json as any).data.meta,
+      };
+    }
+    if ((json as any)?.data && Array.isArray((json as any).data)) {
+      return {
+        data: (json as any).data,
+        meta: (json as any).meta,
+      };
+    }
+
+    return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+  } catch (error) {
+    console.error(`[searchFoods] Failed to search:`, error);
+    return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
   }
 }
 
@@ -144,4 +276,5 @@ export async function getMyRestaurant(accessToken?: string): Promise<Restaurant 
     return null;
   }
 }
+
 
