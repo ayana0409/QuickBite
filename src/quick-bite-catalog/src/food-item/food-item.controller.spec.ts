@@ -20,6 +20,7 @@ describe('FoodItemController', () => {
     restaurantId: '123e4567-e89b-12d3-a456-426614174002',
     sku: 'SKU-001',
     name: 'Test Food Item',
+    images: ['http://localhost:3000/uploads/food-1.webp'],
   };
 
   const mockFoodItemService = {
@@ -30,6 +31,9 @@ describe('FoodItemController', () => {
     findByCategory: jest.fn(),
     update: jest.fn(),
     updateImages: jest.fn(),
+    addImages: jest.fn(),
+    replaceImages: jest.fn(),
+    removeImage: jest.fn(),
     updateVariants: jest.fn(),
     updateToppings: jest.fn(),
     remove: jest.fn(),
@@ -124,13 +128,48 @@ describe('FoodItemController', () => {
     });
   });
 
-  describe('updateImages', () => {
+  describe('updateImages (JSON body backward compatibility)', () => {
     it('should call service.updateImages', async () => {
       const dto = new UpdateFoodItemImagesDto();
       mockFoodItemService.updateImages.mockResolvedValue(undefined);
       const result = await controller.updateImages(mockFoodItem.id, dto);
       expect(service.updateImages).toHaveBeenCalledWith(mockFoodItem.id, dto);
       expect(result).toBeUndefined();
+    });
+  });
+
+  describe('uploadImages (POST /food-items/:id/images)', () => {
+    it('should call service.addImages with files and return updated food item', async () => {
+      const mockFiles = [{ originalname: 'image1.png' }] as Express.Multer.File[];
+      mockFoodItemService.addImages.mockResolvedValue(mockFoodItem as any);
+
+      const result = await controller.uploadImages(mockFoodItem.id, mockFiles);
+
+      expect(service.addImages).toHaveBeenCalledWith(mockFoodItem.id, mockFiles);
+      expect(result).toEqual(mockFoodItem);
+    });
+  });
+
+  describe('replaceImages (PUT /food-items/:id/images)', () => {
+    it('should call service.replaceImages with files and return updated food item', async () => {
+      const mockFiles = [{ originalname: 'image2.png' }] as Express.Multer.File[];
+      mockFoodItemService.replaceImages.mockResolvedValue(mockFoodItem as any);
+
+      const result = await controller.replaceImages(mockFoodItem.id, mockFiles);
+
+      expect(service.replaceImages).toHaveBeenCalledWith(mockFoodItem.id, mockFiles);
+      expect(result).toEqual(mockFoodItem);
+    });
+  });
+
+  describe('removeImage (DELETE /food-items/:id/images/:imageName)', () => {
+    it('should call service.removeImage and return updated food item', async () => {
+      mockFoodItemService.removeImage.mockResolvedValue(mockFoodItem as any);
+
+      const result = await controller.removeImage(mockFoodItem.id, 'food-1.webp');
+
+      expect(service.removeImage).toHaveBeenCalledWith(mockFoodItem.id, 'food-1.webp');
+      expect(result).toEqual(mockFoodItem);
     });
   });
 

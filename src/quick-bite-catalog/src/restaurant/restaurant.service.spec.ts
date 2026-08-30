@@ -166,9 +166,17 @@ describe('RestaurantService', () => {
       );
       expect(mockQueryBuilder.select).toHaveBeenCalledWith([
         'restaurant.id',
+        'restaurant.ownerId',
         'restaurant.name',
+        'restaurant.slug',
+        'restaurant.address',
+        'restaurant.status',
+        'restaurant.rating',
+        'restaurant.createdAt',
+        'restaurant.updatedAt',
         'category.id',
         'category.name',
+        'category.sortOrder',
       ]);
       expect(mockQueryBuilder.where).toHaveBeenCalledWith('restaurant.id = :id', {
         id: mockRestaurant.id,

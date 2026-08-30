@@ -1,8 +1,12 @@
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { MicroserviceOptions, Transport } from '@nestjs/microservices';
+import { join, isAbsolute } from 'path';
+import * as fs from 'fs';
+
+import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './common/exceptions/global-exception.filter';
 import { setupSwagger } from './common/swagger/swagger.config';
 import { ResponseInterceptor } from './common/interceptor/response-interceptor';
@@ -10,8 +14,20 @@ import { getKafkaConfig } from './common/helpers/kafka-config.helper';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
+
+  // Configure uploads folder from environment variable UPLOAD_DIR (default: 'uploads')
+  const customDir = configService.get<string>('UPLOAD_DIR') || 'uploads';
+  const uploadsDir = isAbsolute(customDir) ? customDir : join(process.cwd(), customDir);
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+
+  // Serve static files from /uploads
+  app.useStaticAssets(uploadsDir, {
+    prefix: '/uploads/',
+  });
 
   app.enableCors({
     origin: true,

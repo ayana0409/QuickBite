@@ -92,6 +92,8 @@ erDiagram
 | **Database & ORM** | `PostgreSQL 16` (`pg 8.22`), `TypeORM 1.1.0` | ORM supporting native JSONB & Arrays |
 | **Security & Auth** | `passport-jwt 4.0.1`, `jwks-rsa 4.1.0` | Asymmetric RS256 signature verification |
 | **Message Broker** | `KafkaJS 2.2.4` | High-performance Kafka client for Node.js |
+| **Image Processing** | `sharp 0.33.5` | High-performance image resizing & WebP compression |
+| **Cloud Storage** | `cloudinary 2.5.1` | Cloud image storage SDK with stream upload |
 | **API Documentation** | `@nestjs/swagger 11.0.3` | OpenAPI 3.0 specification & Swagger UI |
 
 ---
@@ -165,8 +167,11 @@ KAFKA_CLIENT_ID=quickbite-catalog-service
 * `GET /food-items`: List food items with filters (`restaurantId`, `categoryId`, `search`).
 * `GET /food-items/:id`: Get detailed food item (including `variants` and `toppings`).
 * `POST /food-items`: Create a new food item with variants/toppings (Merchant/Admin).
-* `PUT /food-items/:id`: Update food item details (Triggers Kafka `food.item.synced`).
-* `DELETE /food-items/:id`: Soft delete or remove food item.
+* `PATCH /food-items/:id`: Update food item details (Triggers Kafka `food.item.synced`).
+* `POST /food-items/:id/images`: Upload & append new images (Multipart form, max 5 total, <= 5MB, Sharp `.webp` compression).
+* `PUT /food-items/:id/images`: Replace all food item images with new files.
+* `DELETE /food-items/:id/images/:imageName`: Delete a specific image (DB updated first, file cleaned from storage).
+* `DELETE /food-items/:id`: Delete food item and clean up all associated images from storage.
 
 ### 3. Request & Onboarding Endpoints
 * `POST /requests`: Submit partner registration or report (`RESTAURANT_REGISTRATION`).

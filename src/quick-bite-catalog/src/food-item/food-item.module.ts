@@ -9,14 +9,25 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { FoodItem } from './entities/food-item.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClientsModule, Transport } from '@nestjs/microservices';
+import { MulterModule } from '@nestjs/platform-express';
 import { AbpKafkaSerializer } from '@/common/serializers/abp-kafka.serializer';
 import { getKafkaConfig } from '@/common/helpers/kafka-config.helper';
+
+import { STORAGE_SERVICE } from './storage/storage.interface';
+import { LocalStorageService } from './storage/local-storage.service';
+import { CloudinaryStorageService } from './storage/cloudinary-storage.service';
+import { ImageProcessorService } from './storage/image-processor.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Restaurant, Category, FoodItem]),
     PassportModule.register({
       defaultStrategy: 'jwt',
+    }),
+    MulterModule.register({
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB per file limit
+      },
     }),
     ClientsModule.registerAsync([
       {
@@ -53,6 +64,29 @@ import { getKafkaConfig } from '@/common/helpers/kafka-config.helper';
     ]),
   ],
   controllers: [FoodItemController],
-  providers: [FoodItemService, JwtStrategy],
+  providers: [
+    FoodItemService,
+    JwtStrategy,
+    ImageProcessorService,
+    LocalStorageService,
+    CloudinaryStorageService,
+    {
+      provide: STORAGE_SERVICE,
+      inject: [ConfigService, LocalStorageService, CloudinaryStorageService],
+      useFactory: (
+        config: ConfigService,
+        localStorageService: LocalStorageService,
+        cloudinaryStorageService: CloudinaryStorageService,
+      ) => {
+        // Default to cloudinary if STORAGE_PROVIDER is not explicitly specified
+        const provider = (config.get<string>('STORAGE_PROVIDER') || 'cloudinary').toLowerCase();
+        if (provider === 'local') {
+          return localStorageService;
+        }
+        return cloudinaryStorageService;
+      },
+    },
+  ],
+  exports: [FoodItemService],
 })
 export class FoodItemModule {}
