@@ -148,14 +148,16 @@ export class ProxyController {
     const pathname = cleanPath.split('?')[0];
     const method = req.method.toUpperCase();
 
-    // 1. Food Item sub-resource updates (PATCH /food-items/:id/images, variants, toppings)
-    const foodItemSubMatch = pathname.match(/^\/food-items\/([^\/]+)\/(images|variants|toppings)$/);
-    if (foodItemSubMatch && method === 'PATCH') {
+    // 1. Food Item sub-resource updates (POST, PUT, PATCH, DELETE /food-items/:id/images, variants, toppings)
+    const foodItemSubMatch = pathname.match(/^\/food-items\/([^\/]+)\/(images|variants|toppings)/);
+    if (foodItemSubMatch && (method === 'PATCH' || method === 'POST' || method === 'PUT' || method === 'DELETE')) {
       const foodId = foodItemSubMatch[1];
-      this.logger.log(`⚡ [CACHE INVALIDATION] Food Item Sub-resource update for ID [${foodId}]`);
+      this.logger.log(`⚡ [CACHE INVALIDATION] Food Item Sub-resource update for ID [${foodId}] (${method})`);
       await this.redisCacheService.del(`catalog:food-item:${foodId}`);
+      await this.redisCacheService.delByPattern('catalog:food-items:*');
       return;
     }
+
 
     // 2. Food Item single update or delete (PATCH or DELETE /food-items/:id)
     const foodItemSingleMatch = pathname.match(/^\/food-items\/([^\/]+)$/);
@@ -287,7 +289,10 @@ export class ProxyController {
       this.logger.log(`🔀 [PROXY FORWARD] ${req.method} ${req.originalUrl} -> ${targetUrl}`);
     }
 
-    const maxAttempts = 3;
+    const isMultipart = (req.headers['content-type'] || '').toLowerCase().includes('multipart');
+    const requestData = isMultipart ? req : req.body;
+
+    const maxAttempts = isMultipart ? 1 : 3; // Do not retry streamed multipart requests as the stream is consumed
     let lastResponse: any = null;
     let lastError: any = null;
 
@@ -297,16 +302,19 @@ export class ProxyController {
           this.httpService.request({
             method: req.method,
             url: targetUrl,
-            data: req.body,
+            data: requestData,
+            maxBodyLength: Infinity,
+            maxContentLength: Infinity,
             headers: {
               ...req.headers,
               host: undefined,
-              'content-length': undefined, // Bắt buộc xoá để Axios tự tính lại length, tránh lỗi 400 Bad Request JSON
+              ...(isMultipart ? {} : { 'content-length': undefined }),
             },
             validateStatus: () => true, // Accept all status codes to inspect Render 502/503 HTML
-            timeout: 15000,
+            timeout: isMultipart ? 60000 : 15000,
           }),
         );
+
 
         lastResponse = response;
         const isHtml502 =

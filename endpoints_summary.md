@@ -405,14 +405,64 @@
 
 ---
 
+#### `POST /food-items/:id/images`
+*Tải thêm ảnh mới cho món ăn (Multipart Form). Ảnh được tự động resize (max 1000px width), nén bằng Sharp sang định dạng `.webp` (quality 80) và upload lên Cloudinary / Local Storage.*
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** `id: UUID v4`
+**Content-Type:** `multipart/form-data`
+**Ràng buộc:**
+- Key form-data: `images` (kiểu file)
+- Số lượng ảnh tải lên + hiện có: Tối đa **5 ảnh / món**.
+- Dung lượng: Tối đa **5MB / file**.
+- Định dạng cho phép: `.jpg`, `.jpeg`, `.png`, `.webp`.
+
+**Response** `201/200`:
+```json
+{
+  "id": "uuid",
+  "name": "Pizza Margherita",
+  "price": 120000,
+  "images": [
+    "https://res.cloudinary.com/my-cloud/image/upload/quick-bite/food-items/food-uuid-1.webp",
+    "https://res.cloudinary.com/my-cloud/image/upload/quick-bite/food-items/food-uuid-2.webp"
+  ]
+}
+```
+
+---
+
+#### `PUT /food-items/:id/images`
+*Thay thế toàn bộ ảnh hiện tại của món ăn bằng danh sách ảnh mới (Multipart Form). Sau khi cập nhật thành công vào Database, các ảnh cũ trên Storage sẽ được tự động xóa sạch.*
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** `id: UUID v4`
+**Content-Type:** `multipart/form-data`
+**Ràng buộc:**
+- Key form-data: `images` (kiểu file, tối đa 5 file, <= 5MB/file).
+
+**Response** `200`: Object FoodItem sau khi đã thay thế ảnh (kèm full URLs).
+
+---
+
+#### `DELETE /food-items/:id/images/:imageName`
+*Xóa một ảnh cụ thể của món ăn. Xóa tên file trong Database trước, sau đó xóa file thực tế trên Cloudinary / Local Storage.*
+**Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
+**Params:** 
+- `id: UUID v4` (ID món ăn)
+- `imageName: string` (Tên file ảnh cần xóa, VD: `food-123e4567-1725000000000.webp`)
+
+**Response** `200`: Object FoodItem sau khi đã xóa ảnh.
+
+---
+
 #### `PATCH /food-items/:id/images`
+*(Legacy endpoint - JSON Body) Cập nhật danh sách URL/tên ảnh qua JSON array (giữ cho backward compatibility).*
 **Auth:** JWT + Permission `FOOD_ITEM_UPDATE`
 **Params:** `id: string`
 
 **Request Body:**
 ```json
 {
-  "images": ["https://url1.jpg", "https://url2.jpg"]
+  "images": ["food-1.webp", "food-2.webp"]
 }
 ```
 
