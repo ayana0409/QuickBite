@@ -18,6 +18,7 @@ import {
 import { getFoodById, getRestaurantById } from '@/src/lib/api/catalog';
 import FoodCustomizer from '@/src/components/shared/FoodCustomizer';
 import ReviewListSection from '@/src/components/shared/ReviewListSection';
+import FoodImageGallery from '@/src/components/food/FoodImageGallery';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -75,10 +76,6 @@ export default async function FoodDetailPage({ params }: PageProps) {
     ? await getRestaurantById(food.restaurantId)
     : null;
 
-  const defaultImage =
-    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80';
-  const displayImage = food.images && food.images.length > 0 ? food.images[0] : defaultImage;
-
   return (
     <div className="min-h-screen bg-[#fdfbf7] pb-16 sm:pb-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4 sm:pt-6">
@@ -117,36 +114,19 @@ export default async function FoodDetailPage({ params }: PageProps) {
         {/* 2. Main 2-Column Responsive Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* ─── Left Column (Image & Description Overview) ─── */}
+          {/* ─── Left Column (Image Gallery & Description Overview) ─── */}
           <div className="lg:col-span-6 flex flex-col gap-6">
             
-            {/* Main Cover Image Box */}
-            <div className="relative w-full aspect-4/3 sm:aspect-16/11 rounded-3xl overflow-hidden bg-slate-100 border border-orange-100 shadow-sm">
-              <img
-                src={displayImage}
-                alt={food.name}
-                className="w-full h-full object-cover"
-                loading="eager"
-              />
-
-              {/* Badges Overlays */}
-              <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                {food.totalSold !== undefined && food.totalSold > 300 && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-red-600 to-orange-500 text-white text-xs font-bold shadow-md shadow-red-500/25">
-                    <Flame className="w-3.5 h-3.5 fill-white" />
-                    <span>Đã bán {food.totalSold.toLocaleString('vi-VN')}</span>
-                  </span>
-                )}
-                {food.preparationTime && (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-xs font-semibold">
-                    <Clock className="w-3.5 h-3.5 text-amber-300" />
-                    <span>{food.preparationTime} phút</span>
-                  </span>
-                )}
-              </div>
-            </div>
+            {/* Interactive Food Image Gallery (Thumbnails, Fullscreen Lightbox, Navigation) */}
+            <FoodImageGallery
+              images={food.images}
+              foodName={food.name}
+              totalSold={food.totalSold}
+              preparationTime={food.preparationTime}
+            />
 
             {/* Food Title & Description Overview */}
+
             <div className="bg-white rounded-3xl p-6 sm:p-8 border border-orange-100/80 shadow-xs flex flex-col gap-4">
               {/* Tags */}
               {food.tags && food.tags.length > 0 && (

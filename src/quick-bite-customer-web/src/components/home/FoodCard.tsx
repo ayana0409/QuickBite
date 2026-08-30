@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { Flame, Star } from 'lucide-react';
+import { Flame, Star, Images } from 'lucide-react';
 import { FoodItem } from '@/src/types/catalog.type';
 import AddToCartButton from './AddToCartButton';
 
@@ -15,7 +15,7 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
     name,
     description,
     price,
-    images,
+    images = [],
     isAvailable = true,
     totalSold = 0,
     rating = 0,
@@ -50,7 +50,16 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
             </div>
           )}
 
+          {/* Multi-image Count Badge */}
+          {images && images.length > 1 && (
+            <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-mono font-bold shadow-md">
+              <Images className="w-3 h-3 text-orange-400" />
+              <span>+{images.length - 1}</span>
+            </div>
+          )}
+
           {/* Tags overlay */}
+
           {tags && tags.length > 0 && (
             <div className="absolute bottom-2.5 left-2.5 flex flex-wrap gap-1">
               {tags.slice(0, 2).map((tag, idx) => (

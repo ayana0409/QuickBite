@@ -9,8 +9,9 @@ import CategoryModal from '../../components/merchant/modals/CategoryModal';
 import FoodItemModal from '../../components/merchant/modals/FoodItemModal';
 import {
   Utensils, Plus, Edit3, Trash2, FolderPlus,
-  CheckCircle2, XCircle, Search
+  CheckCircle2, XCircle, Search, Images
 } from 'lucide-react';
+
 
 export default function MerchantMenuPage() {
   const { user } = useAuthStore();
@@ -601,11 +602,20 @@ export default function MerchantMenuPage() {
                             {food.isAvailable ? 'Đang Bán' : 'Tạm Hết'}
                           </button>
 
+                          {/* Top Left: Multi-image Count Badge */}
+                          {food.images && food.images.length > 1 && (
+                            <span className="absolute top-2.5 left-2.5 px-2 py-0.5 bg-slate-950/80 backdrop-blur-md border border-slate-700/80 rounded-full text-[10px] font-mono font-bold text-amber-300 flex items-center gap-1 shadow-md">
+                              <Images className="w-3 h-3 text-amber-400" />
+                              <span>{food.images.length} ảnh</span>
+                            </span>
+                          )}
+
                           {/* Category Tag */}
                           <span className="absolute bottom-2.5 left-2.5 px-2 py-0.5 bg-slate-950/80 backdrop-blur-md border border-slate-700 rounded-md text-[10px] font-bold text-cyan-300">
                             {catName}
                           </span>
                         </div>
+
 
                         {/* Info */}
                         <div>
