@@ -190,51 +190,34 @@ export class SearchService {
     const hasLocation = lat != null && lng != null;
     const hasQuery = q && q.trim().length > 0;
     const needsRestaurantJoin = hasLocation || minRating != null;
-
-    // Separate params for count vs data query
-    const sharedParams: any[] = [];
-    const addShared = (val: any): string => {
-      sharedParams.push(val);
-      return `$${sharedParams.length}`;
+    const countParams: any[] = [];
+    const addCount = (val: any): string => {
+      countParams.push(val);
+      return `$${countParams.length}`;
     };
 
     // FTS
     let ftsCondition = '1=1';
-    let rankExpr = '1.0::float';
+    let ftsRankExpr = '1.0::float';
 
     if (hasQuery) {
       // Sanitize query: replace special chars, use websearch_to_tsquery for natural language
       const sanitized = q.trim().replace(/[^a-zA-Z0-9\u00C0-\u024F\s]/g, ' ').trim();
-      const p = addShared(sanitized);
+      const pCount = addCount(sanitized);
       ftsCondition = `to_tsvector('simple', immutable_unaccent(fi.name) || ' ' || immutable_unaccent(COALESCE(fi.description, '')))
-        @@ websearch_to_tsquery('simple', immutable_unaccent(${p}))`;
-      rankExpr = `ts_rank(
+        @@ websearch_to_tsquery('simple', immutable_unaccent(${pCount}))`;
+      // rankExpr for data query uses a different param index
+      ftsRankExpr = `ts_rank(
         to_tsvector('simple', immutable_unaccent(fi.name) || ' ' || immutable_unaccent(COALESCE(fi.description, ''))),
-        websearch_to_tsquery('simple', immutable_unaccent(${p}))
+        websearch_to_tsquery('simple', immutable_unaccent($${countParams.length}))
       )`;
-
-    }
-
-    // Score expression with proximity
-    let scoreExpr: string;
-    if (hasLocation) {
-      const latP = addShared(lat);
-      const lngP = addShared(lng);
-      scoreExpr = `(${rankExpr} * 0.6) - (
-        COALESCE(ST_Distance(
-          r.location,
-          ST_SetSRID(ST_MakePoint(${lngP}, ${latP}), 4326)
-        ), 99999) / 10000.0 * 0.4
-      )`;
-    } else {
-      scoreExpr = rankExpr;
     }
 
     // Filters
     const conditions: string[] = ['fi."isAvailable" = true', ftsCondition];
-    if (minPrice != null) conditions.push(`fi.price >= ${addShared(minPrice)}`);
-    if (maxPrice != null) conditions.push(`fi.price <= ${addShared(maxPrice)}`);
-    if (minRating != null) conditions.push(`(r.rating->>'avg')::float >= ${addShared(minRating)}`);
+    if (minPrice != null) conditions.push(`fi.price >= ${addCount(minPrice)}`);
+    if (maxPrice != null) conditions.push(`fi.price <= ${addCount(maxPrice)}`);
+    if (minRating != null) conditions.push(`(r.rating->>'avg')::float >= ${addCount(minRating)}`);
 
     const joinClause = needsRestaurantJoin
       ? 'LEFT JOIN restaurants r ON r.id = fi."restaurantId"'
@@ -242,10 +225,31 @@ export class SearchService {
 
     const whereClause = conditions.join('\n        AND ');
 
+    // Data query parameters start with countParams
+    const dataParams = [...countParams];
+    const addData = (val: any): string => {
+      dataParams.push(val);
+      return `$${dataParams.length}`;
+    };
+
+    // Score expression with proximity (only used in dataSql)
+    let scoreExpr: string;
+    if (hasLocation) {
+      const latP = addData(lat);
+      const lngP = addData(lng);
+      scoreExpr = `(${ftsRankExpr} * 0.6) - (
+        COALESCE(ST_Distance(
+          r.location,
+          ST_SetSRID(ST_MakePoint(${lngP}, ${latP}), 4326)
+        ), 99999) / 10000.0 * 0.4
+      )`;
+    } else {
+      scoreExpr = ftsRankExpr;
+    }
+
     // Clone params for data query (add limit + offset)
-    const dataParams = [...sharedParams, limit, offset];
-    const limitIdx = dataParams.length - 1;
-    const offsetIdx = dataParams.length;
+    const limitP = addData(limit);
+    const offsetP = addData(offset);
 
     const dataSql = `
       SELECT
@@ -270,7 +274,7 @@ export class SearchService {
       ${joinClause}
       WHERE ${whereClause}
       ORDER BY score DESC, fi.rating DESC
-      LIMIT $${sharedParams.length + 1} OFFSET $${sharedParams.length + 2}
+      LIMIT ${limitP} OFFSET ${offsetP}
     `;
 
     const countSql = `
@@ -285,7 +289,7 @@ export class SearchService {
     try {
       const [rows, countRows] = await Promise.all([
         this.dataSource.query(dataSql, dataParams),
-        this.dataSource.query(countSql, sharedParams),
+        this.dataSource.query(countSql, countParams),
       ]);
 
       const total = parseInt(countRows[0]?.total ?? '0', 10);
