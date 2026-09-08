@@ -473,14 +473,13 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   useEffect(() => {
     let isCancelled = false;
 
-    // Ping Gateway một lần và đợi phản hồi; dừng hẳn khi đã Healthy
+    // Ping Gateway liên tục và đợi phản hồi; chỉ dừng khi đã Healthy thật sự
     const pollGateway = async () => {
       if (completedServicesRef.current.has('gateway')) return;
 
       let attempts = 0;
-      const maxAttempts = 6;
 
-      while (!completedServicesRef.current.has('gateway') && attempts < maxAttempts && !isCancelled) {
+      while (!completedServicesRef.current.has('gateway') && !isCancelled) {
         attempts++;
         try {
           const rawRes: any = await axiosClient.get('/health', {
@@ -491,13 +490,20 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           const parsed = parseHealthPayload(rawRes);
           if (parsed) {
             setHealthData(parsed);
-            if (parsed.status === 'Healthy' || (parsed as any).status === 'ok') {
+            const isGwHealthy = parsed.status === 'Healthy' || (parsed as any).status === 'ok';
+            const entries = parsed.entries || {};
+            const hasUnhealthyEntry = Object.values(entries).some((e: any) => {
+              const st = (e?.status || '').toString().toLowerCase();
+              return st === 'unhealthy' || st === 'degraded' || st === 'down';
+            });
+
+            if (isGwHealthy && !hasUnhealthyEntry) {
               completedServicesRef.current.add('gateway');
               if (parsed.entries?.['redis']?.status === 'Healthy') {
                 completedServicesRef.current.add('redis');
               }
-              setErrorMessage('API Gateway online. Đang theo dõi các microservices...');
-              return; // Dừng, không poll Gateway nữa
+              setErrorMessage('API Gateway và hạ tầng online. Đang theo dõi các microservices...');
+              return; // Dừng, Gateway đã Healthy
             }
           }
         } catch (err: any) {
@@ -510,13 +516,9 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           await new Promise((r) => setTimeout(r, 3000));
         }
       }
-
-      if (!isCancelled && !completedServicesRef.current.has('gateway')) {
-        completedServicesRef.current.add('gateway');
-      }
     };
 
-    // Direct ping to each service: hold 1 connection for 90s until Render container wakes up
+    // Direct ping to each service: hold connection until Render container wakes up and is 100% healthy
     const pingServiceDirectly = async (serviceKey: string, urls: string[]) => {
       if (completedServicesRef.current.has(serviceKey)) return;
 
@@ -529,9 +531,8 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
       setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Degraded' }));
       const targetUrl = urls[1] || urls[0]; // Primary /health endpoint
       let retries = 0;
-      const maxRetries = 6;
 
-      while (!completedServicesRef.current.has(serviceKey) && retries < maxRetries && !isCancelled) {
+      while (!completedServicesRef.current.has(serviceKey) && !isCancelled) {
         retries++;
         try {
           const controller = new AbortController();
@@ -547,34 +548,49 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
 
           if (isCancelled) return;
 
-          // If HTTP status is 200-299, container IS UP AND ALIVE!
-          if (res.ok || res.status === 200 || res.status === 204) {
-            let body: any = null;
-            try {
-              body = await res.json();
-            } catch {
-              body = { status: 'Healthy' };
-            }
+          let body: any = null;
+          try {
+            body = await res.json();
+          } catch {
+            body = res.ok ? { status: 'Healthy' } : { status: 'Unhealthy' };
+          }
 
-            if (isCancelled) return;
+          if (isCancelled) return;
 
+          const rawStatus = (body?.status || (res.ok ? 'Healthy' : 'Unhealthy')).toString().toLowerCase();
+          const entries = body?.entries || body?.data?.entries || {};
+          const hasUnhealthyEntry = Object.values(entries).some((e: any) => {
+            const st = (e?.status || '').toString().toLowerCase();
+            return st === 'unhealthy' || st === 'degraded' || st === 'faulted' || st === 'down';
+          });
+
+          const isServiceHealthy = (res.ok || res.status === 200) &&
+            (rawStatus === 'healthy' || rawStatus === 'ok' || rawStatus === 'up') &&
+            !hasUnhealthyEntry;
+
+          // Update healthData with detailed sub-entries for inspect cards
+          setHealthData((prev) => ({
+            ...(prev || { status: 'Degraded', total_duration_ms: 0, timestamp: new Date().toISOString() }),
+            entries: {
+              ...(prev?.entries || {}),
+              [serviceKey]: {
+                status: isServiceHealthy ? 'Healthy' : 'Degraded',
+                description: `${serviceKey} status: ${body?.status || (res.ok ? 'OK' : 'Unhealthy')}`,
+                data: body,
+                duration_ms: 0,
+                exception: null,
+              },
+            },
+          }));
+
+          if (isServiceHealthy) {
             completedServicesRef.current.add(serviceKey);
             setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
-            setHealthData((prev) => ({
-              ...(prev || { status: 'Degraded', total_duration_ms: 0, timestamp: new Date().toISOString() }),
-              entries: {
-                ...(prev?.entries || {}),
-                [serviceKey]: {
-                  status: 'Healthy',
-                  description: `${serviceKey} is healthy (direct ping)`,
-                  data: body,
-                  duration_ms: 0,
-                  exception: null,
-                },
-              },
-            }));
             setAttempts((prev) => prev + 1);
-            return; // Đã xong cho service này, tuyệt đối không gọi lại!
+            return; // Đã Healthy hoàn toàn, dừng ping
+          } else {
+            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Degraded' }));
+            setAttempts((prev) => prev + 1);
           }
         } catch {
           if (isCancelled) return;
@@ -587,12 +603,6 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
         if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
           await new Promise((r) => setTimeout(r, 3000));
         }
-      }
-
-      if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
-        completedServicesRef.current.add(serviceKey);
-        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: 'Healthy' }));
-        setAttempts((prev) => prev + 1);
       }
     };
 
@@ -613,18 +623,28 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReady]);
 
-  // Watch serviceStatuses & healthData — when ALL services (including Redis) are Healthy, trigger redirect
+  // Watch serviceStatuses & healthData — when ALL services AND their sub-components are Healthy, trigger redirect
   useEffect(() => {
+    const isGatewayHealthy = completedServicesRef.current.has('gateway');
     const isRedisHealthy = healthData?.entries?.['redis']?.status === 'Healthy';
+
     const areMicroservicesHealthy = services.every((s) => {
       if (s.id === 'redis') return isRedisHealthy;
       const direct = serviceStatuses[s.apiKey];
-      const gateway = healthData?.entries?.[s.apiKey]?.status;
-      return direct === 'Healthy' || gateway === 'Healthy';
+      const serviceData = healthData?.entries?.[s.apiKey]?.data;
+      const subEntries = serviceData?.entries || serviceData?.data?.entries || {};
+      const hasUnhealthySub = Object.values(subEntries).some((e: any) => {
+        const st = (e?.status || '').toString().toLowerCase();
+        return st === 'unhealthy' || st === 'degraded' || st === 'faulted' || st === 'down';
+      });
+
+      return direct === 'Healthy' && !hasUnhealthySub;
     });
 
-    if (areMicroservicesHealthy && redirectCountdown === null) {
-      setErrorMessage('Tất cả service đã sẵn sàng! Đang chuyển hướng...');
+    const isEverythingHealthy = isGatewayHealthy && isRedisHealthy && areMicroservicesHealthy;
+
+    if (isEverythingHealthy && redirectCountdown === null) {
+      setErrorMessage('Toàn bộ hệ thống microservices và thành phần con đã sẵn sàng 100%! Đang chuyển hướng...');
       setHealthData((prev) => ({ ...(prev as any), status: 'Healthy' }));
       setRedirectCountdown(1);
     }

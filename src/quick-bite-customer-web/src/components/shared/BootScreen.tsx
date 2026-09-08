@@ -466,9 +466,9 @@ export default function BootScreen({ onReady }: BootScreenProps) {
       });
 
       let attempts = 0;
-      const maxAttempts = 8;
 
-      while (!completedServicesRef.current.has(serviceKey) && attempts < maxAttempts && !isCancelled) {
+      // Continuously poll until service is fully healthy (never falsely mark healthy on timeout)
+      while (!completedServicesRef.current.has(serviceKey) && !isCancelled) {
         attempts++;
         try {
           const controller = new AbortController();
@@ -485,14 +485,36 @@ export default function BootScreen({ onReady }: BootScreenProps) {
 
           if (isCancelled) return;
 
-          if (res.ok || res.status === 200 || res.status === 204) {
-            const data = await res.json().catch(() => ({ status: "Healthy" }));
+          let data: any = null;
+          try {
+            data = await res.json();
+          } catch {
+            data = res.ok ? { status: "Healthy" } : { status: "Unhealthy" };
+          }
+
+          if (data) {
+            handleHealthEntries(serviceId, data);
+          }
+
+          const rawStatus = (data?.status || (res.ok ? "Healthy" : "Unhealthy")).toString().toLowerCase();
+          const rawEntries = data?.entries || data?.data?.entries || {};
+          const hasUnhealthyEntry = Object.values(rawEntries).some((e: any) => {
+            const st = (e?.status || "").toString().toLowerCase();
+            return st === "unhealthy" || st === "degraded" || st === "faulted" || st === "down";
+          });
+
+          const isFullyHealthy = (res.ok || res.status === 200) &&
+            (rawStatus === "healthy" || rawStatus === "ok" || rawStatus === "up") &&
+            !hasUnhealthyEntry;
+
+          if (isFullyHealthy) {
             completedServicesRef.current.add(serviceKey);
             setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
-
-            handleHealthEntries(serviceId, data);
             pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} [100% THRUST]`, "success");
             return;
+          } else {
+            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Priming" }));
+            pushLog(`TELEMETRY RECHECK (${attempts}): ${serviceId.toUpperCase()} status is ${data?.status || (res.ok ? "Incomplete" : "Unhealthy")}. Waiting for dependencies...`, "warn");
           }
         } catch {
           if (isCancelled) return;
@@ -506,12 +528,21 @@ export default function BootScreen({ onReady }: BootScreenProps) {
               });
               if (proxyRes.ok) {
                 const proxyData = await proxyRes.json().catch(() => null);
-                if (proxyData && (proxyData.status === "Healthy" || proxyData.status === "ok")) {
-                  completedServicesRef.current.add(serviceKey);
-                  setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
+                if (proxyData) {
                   handleHealthEntries(serviceId, proxyData);
-                  pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} via Gateway Proxy`, "success");
-                  return;
+                  const pStatus = (proxyData.status || "").toString().toLowerCase();
+                  const pEntries = proxyData?.entries || proxyData?.data?.entries || {};
+                  const pHasUnhealthy = Object.values(pEntries).some((e: any) => {
+                    const st = (e?.status || "").toString().toLowerCase();
+                    return st === "unhealthy" || st === "degraded" || st === "faulted" || st === "down";
+                  });
+
+                  if ((pStatus === "healthy" || pStatus === "ok" || pStatus === "up") && !pHasUnhealthy) {
+                    completedServicesRef.current.add(serviceKey);
+                    setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
+                    pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} via Gateway Proxy`, "success");
+                    return;
+                  }
                 }
               }
             } catch { }
@@ -525,22 +556,6 @@ export default function BootScreen({ onReady }: BootScreenProps) {
         if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
           await new Promise((r) => setTimeout(r, 2500));
         }
-      }
-
-      // Default to healthy if timeout
-      if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
-        completedServicesRef.current.add(serviceKey);
-        setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
-        setSubEntriesMap((prev) => {
-          const nextMap = { ...prev };
-          Object.values(nextMap).forEach((sub) => {
-            if (sub.parentId === serviceId) {
-              nextMap[sub.id].status = "Healthy";
-            }
-          });
-          return nextMap;
-        });
-        pushLog(`Service ${serviceId} timeout window completed. Flight profile locked.`, "warn");
       }
     };
 
@@ -575,7 +590,7 @@ export default function BootScreen({ onReady }: BootScreenProps) {
     };
   }, [catalogUrl, gatewayUrl, identityUrl, inventoryUrl, orderUrl, paymentUrl]);
 
-  // 5. Thrust Calculation (Gateway + 5 Services = 6 Main Engines)
+  // 5. Thrust Calculation (Gateway + 5 Services = 6 Main Engines, plus 16 Sub-nodes)
   const healthyEnginesCount = useMemo(() => {
     const mainKeys = ["gateway", "identity_service", "catalog_service", "order_service", "payment_service", "inventory_service"];
     return mainKeys.filter((k) => serviceStatuses[k] === "Healthy").length;
@@ -585,16 +600,19 @@ export default function BootScreen({ onReady }: BootScreenProps) {
     return Object.values(subEntriesMap).filter((s) => s.status === "Healthy").length;
   }, [subEntriesMap]);
 
-  const thrustPercentage = Math.round((healthyEnginesCount / 6) * 100);
+  const totalAllNodes = 6 + ALL_OUTER_ENTRIES.length;
+  const thrustPercentage = Math.round(((healthyEnginesCount + healthySubNodesCount) / totalAllNodes) * 100);
 
-  // 6. Watch All 6 Engines & Trigger Liftoff
+  // 6. Watch All 6 Engines AND All 16 Sub-Nodes — ONLY Trigger Liftoff when 100% of nodes are Healthy!
   useEffect(() => {
     const allSixHealthy = healthyEnginesCount === 6;
-    if (allSixHealthy && redirectCountdown === null) {
-      pushLog("ALL 3 RINGS NOMINAL: Super Heavy Raptor Cluster at 100% thrust. LIFTOFF!", "success");
+    const allSubNodesHealthy = healthySubNodesCount === ALL_OUTER_ENTRIES.length;
+
+    if (allSixHealthy && allSubNodesHealthy && redirectCountdown === null) {
+      pushLog("ALL 3 RINGS NOMINAL: 100% Microservices Cluster and Sub-system Entries Online. LIFTOFF!", "success");
       setRedirectCountdown(1);
     }
-  }, [healthyEnginesCount, redirectCountdown]);
+  }, [healthyEnginesCount, healthySubNodesCount, redirectCountdown]);
 
   // 7. Countdown Timer
   useEffect(() => {

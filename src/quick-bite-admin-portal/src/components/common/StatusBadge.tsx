@@ -20,11 +20,10 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
     const isActive = normalized === 'active' || normalized === 'true' || status === 'Active';
     return (
       <span
-        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-          isActive
+        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${isActive
             ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
             : 'bg-red-500/10 text-red-400 border-red-500/30'
-        }`}
+          }`}
       >
         <span className={`w-1.5 h-1.5 rounded-full ${isActive ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
         {isActive ? 'Hoạt động' : 'Tạm ngưng'}
@@ -78,11 +77,16 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({ status, type = 'defaul
   if (type === 'order') {
     switch (normalized) {
       case 'draft':
+        return (
+          <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            📝 Đơn nháp
+          </span>
+        );
       case 'waitinginventory':
       case 'waitingstock':
         return (
           <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-            📝 Chờ xác nhận (nháp)
+            ⏳ Chờ xác nhận
           </span>
         );
       case 'waitingpayment':

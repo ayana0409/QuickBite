@@ -52,7 +52,7 @@ export default function OrderDetailModal({
   const statusLower = (order.status || '').toLowerCase().trim();
 
   // Status conditions
-  const isDraftOrPending = ['draft', 'pending', 'waitinginventory', 'waitingstock'].includes(statusLower);
+  const isDraft = statusLower === 'draft';
   const isPreparing = statusLower === 'preparing';
   const canCancel = ['draft', 'pending', 'waitingpayment', 'waitingstock', 'waitinginventory', 'confirmed', 'preparing'].includes(statusLower);
 
@@ -192,7 +192,7 @@ export default function OrderDetailModal({
               ) : isError ? (
                 <div className="p-8 flex flex-col items-center justify-center space-y-2 text-red-500">
                   <AlertCircle className="w-6 h-6" />
-                  <span className="text-xs font-medium text-center">Không thể tải thông tin món ăn.<br/>Vui lòng thử lại sau.</span>
+                  <span className="text-xs font-medium text-center">Không thể tải thông tin món ăn.<br />Vui lòng thử lại sau.</span>
                 </div>
               ) : items.length === 0 ? (
                 <div className="p-8 flex flex-col items-center justify-center text-slate-400">
@@ -270,8 +270,8 @@ export default function OrderDetailModal({
           </button>
 
           <div className="flex items-center gap-2">
-            {/* 1. Submit Order Button (for Draft / Pending orders) */}
-            {isDraftOrPending && (
+            {/* 1. Submit Order Button (for Draft orders only) */}
+            {isDraft && (
               <button
                 type="button"
                 onClick={() => onSubmitOrder(order.id)}

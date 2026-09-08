@@ -294,7 +294,7 @@ export default function MerchantOrdersPage() {
               <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800 text-sm">
                 {orders.map((order) => {
                   const statusLower = (order.status || '').toLowerCase().trim();
-                  const isDraftOrPending = ['draft', 'pending', 'waitinginventory', 'waitingstock'].includes(statusLower);
+                  const isDraft = statusLower === 'draft';
                   const isPreparing = statusLower === 'preparing';
                   const canCancel = ['draft', 'pending', 'waitingpayment', 'waitingstock', 'waitinginventory', 'confirmed', 'preparing'].includes(statusLower);
 
@@ -344,8 +344,8 @@ export default function MerchantOrdersPage() {
                             <span>Chi tiết</span>
                           </button>
 
-                          {/* 2. Nút Submit đơn (nếu là Draft / Pending / Chờ xác nhận) */}
-                          {isDraftOrPending && (
+                          {/* 2. Nút Submit đơn (chỉ khi đơn là Draft) */}
+                          {isDraft && (
                             <button
                               type="button"
                               onClick={() => submitOrder(order.id)}

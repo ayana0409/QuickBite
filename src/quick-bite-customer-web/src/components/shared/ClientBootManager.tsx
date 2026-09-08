@@ -15,7 +15,7 @@ interface ClientBootManagerProps {
 const STORAGE_KEY = "quickbite_system_ready";
 
 export default function ClientBootManager({ children }: ClientBootManagerProps) {
-  const [isReady, setIsReady] = useState<boolean>(true);
+  const [isReady, setIsReady] = useState<boolean>(false);
   const [hasMounted, setHasMounted] = useState<boolean>(false);
 
   useEffect(() => {
@@ -34,7 +34,8 @@ export default function ClientBootManager({ children }: ClientBootManagerProps) 
   };
 
   if (!hasMounted) {
-    return <>{children}</>;
+    // Prevent flash of content before client-side check
+    return null;
   }
 
   if (!isReady) {

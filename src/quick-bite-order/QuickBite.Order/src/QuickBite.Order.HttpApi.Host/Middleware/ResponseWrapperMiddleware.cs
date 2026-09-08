@@ -86,6 +86,7 @@ namespace QuickBite.Order.Middleware
                     // Error response (e.g. 400, 401, 403, 404, 409, 500)
                     string message = GetDefaultMessageForStatusCode(context.Response.StatusCode);
                     object? errors = null;
+                    string? errorCode = null;
 
                     if (!string.IsNullOrWhiteSpace(responseBodyText) && isJsonOrText)
                     {
@@ -95,6 +96,10 @@ namespace QuickBite.Order.Middleware
                             var root = doc.RootElement;
                             if (root.TryGetProperty("error", out var errorProp))
                             {
+                                if (errorProp.TryGetProperty("code", out var codeProp))
+                                {
+                                    errorCode = codeProp.GetString();
+                                }
                                 if (errorProp.TryGetProperty("message", out var msgProp))
                                 {
                                     message = msgProp.GetString() ?? message;
@@ -116,6 +121,20 @@ namespace QuickBite.Order.Middleware
                         catch
                         {
                             message = responseBodyText;
+                        }
+                    }
+
+                    // Check if ABP default exception handling incorrectly assigned HTTP 403 Forbidden to a business exception
+                    if (context.Response.StatusCode == StatusCodes.Status403Forbidden)
+                    {
+                        bool isAuthorizationError = !string.IsNullOrWhiteSpace(errorCode) &&
+                            (errorCode.StartsWith("Volo.Abp.Authorization", StringComparison.OrdinalIgnoreCase) ||
+                             errorCode.StartsWith("Abp.Authorization", StringComparison.OrdinalIgnoreCase));
+
+                        // If not an authorization error code, normalize business logic violations to 400 Bad Request
+                        if (!isAuthorizationError)
+                        {
+                            context.Response.StatusCode = StatusCodes.Status400BadRequest;
                         }
                     }
 

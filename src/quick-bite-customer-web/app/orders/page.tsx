@@ -71,19 +71,27 @@ export default function OrdersPage() {
   const getStatusBadge = (status: OrderStatus | string) => {
     const s = status?.toLowerCase() || '';
 
-    if (s === 'draft' || s === 'waitinginventory' || s === 'waitingstock') {
+    if (s === 'draft') {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
           <Clock className="w-3.5 h-3.5 text-amber-600" />
-          Chờ xác nhận (nháp)
+          Đơn nháp
         </span>
       );
     }
-    if (s === 'confirmed' || s === 'awaitingrestaurantacceptance' || s === 'submitted' || s === 'pending') {
+    if (s === 'confirmed' || s === 'awaitingrestaurantacceptance' || s === 'submitted' || s === 'pending' || s === 'stockreserved') {
       return (
         <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
           <FileCheck className="w-3.5 h-3.5 text-blue-500" />
           Đã xác nhận
+        </span>
+      );
+    }
+    if (s === 'waitinginventory' || s === 'waitingstock') {
+      return (
+        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
+          <Clock className="w-3.5 h-3.5 text-amber-600" />
+          Chờ xác nhận
         </span>
       );
     }

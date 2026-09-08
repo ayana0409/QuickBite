@@ -29,8 +29,8 @@ interface StepItem {
 const STEPS: StepItem[] = [
   {
     id: 1,
-    label: 'Chờ xác nhận (nháp)',
-    shortLabel: 'Chờ xác nhận',
+    label: 'Đơn nháp',
+    shortLabel: 'Nháp',
     icon: Clock,
   },
   {
@@ -66,17 +66,17 @@ const STEPS: StepItem[] = [
 ];
 
 function getStepIndex(status?: string): number {
-  if (!status) return 1;
+  if (!status) return 2;
   const s = status.toLowerCase().trim();
 
   if (s === 'cancelled' || s === 'rejected') return -1;
   if (s === 'refunded') return -2;
 
-  // Step 1: Chờ xác nhận (nháp)
-  if (s === 'draft' || s === 'pending' || s === 'waitinginventory' || s === 'waitingstock') return 1;
+  // Step 1: Đơn nháp
+  if (s === 'draft') return 1;
 
-  // Step 2: Đã xác nhận
-  if (s === 'confirmed' || s === 'awaitingrestaurantacceptance' || s === 'submitted') return 2;
+  // Step 2: Đã xác nhận (Pending chính là trạng thái Đã xác nhận)
+  if (s === 'pending' || s === 'confirmed' || s === 'awaitingrestaurantacceptance' || s === 'submitted' || s === 'stockreserved' || s === 'waitinginventory' || s === 'waitingstock') return 2;
 
   // Step 3: Chờ thanh toán
   if (s === 'waitingpayment') return 3;
@@ -90,7 +90,7 @@ function getStepIndex(status?: string): number {
   // Step 6: Giao hàng thành công
   if (s === 'delivered' || s === 'completed') return 6;
 
-  return 1;
+  return 2;
 }
 
 export default function OrderStatusStepper({ currentStatus }: OrderStatusStepperProps) {
@@ -98,7 +98,7 @@ export default function OrderStatusStepper({ currentStatus }: OrderStatusStepper
   const isCancelled = currentStep === -1;
   const isRefunded = currentStep === -2;
   const s = (currentStatus || '').toLowerCase().trim();
-  const isDraftOrStockIssue = s === 'draft' || s === 'waitinginventory' || s === 'waitingstock';
+  const isDraftOrStockIssue = s === 'draft';
 
   // Render Special Refunded State
   if (isRefunded) {
@@ -171,10 +171,10 @@ export default function OrderStatusStepper({ currentStatus }: OrderStatusStepper
                   {/* Step Circle Icon */}
                   <div
                     className={`w-9 h-9 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center transition-all duration-300 ${isPassed
-                        ? 'bg-gradient-to-tr from-orange-500 to-red-500 text-white shadow-md shadow-orange-500/25'
-                        : isCurrent
-                          ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40 ring-4 ring-orange-200 animate-pulse'
-                          : 'bg-slate-100 text-slate-400'
+                      ? 'bg-gradient-to-tr from-orange-500 to-red-500 text-white shadow-md shadow-orange-500/25'
+                      : isCurrent
+                        ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/40 ring-4 ring-orange-200 animate-pulse'
+                        : 'bg-slate-100 text-slate-400'
                       }`}
                   >
                     <Icon
@@ -187,10 +187,10 @@ export default function OrderStatusStepper({ currentStatus }: OrderStatusStepper
                   <div className="mt-2 sm:mt-3">
                     <span
                       className={`text-[10px] sm:text-xs font-bold block transition-colors leading-tight ${isCurrent
-                          ? 'text-orange-600 font-black'
-                          : isPassed
-                            ? 'text-slate-800'
-                            : 'text-slate-400'
+                        ? 'text-orange-600 font-black'
+                        : isPassed
+                          ? 'text-slate-800'
+                          : 'text-slate-400'
                         }`}
                     >
                       <span className="hidden md:inline">{step.label}</span>
@@ -210,12 +210,12 @@ export default function OrderStatusStepper({ currentStatus }: OrderStatusStepper
         </div>
       </div>
 
-      {/* Info Note for Draft / Waiting Confirmation State */}
+      {/* Info Note for Draft State */}
       {isDraftOrStockIssue && (
         <div className="bg-amber-50/80 border border-amber-200/80 rounded-2xl p-4 text-xs text-amber-900 flex items-start gap-2.5 animate-in fade-in">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
           <p className="leading-relaxed font-medium">
-            <strong>Lưu ý:</strong> Đơn hàng đang ở trạng thái <strong>Chờ xác nhận</strong>. Đang chờ xác nhận đơn hàng từ nhà hàng.
+            <strong>Lưu ý:</strong> Đơn hàng đang ở trạng thái <strong>Đơn nháp</strong>. Vui lòng hoàn tất gửi đơn hàng để nhà hàng tiếp nhận xử lý.
           </p>
         </div>
       )}
