@@ -24,5 +24,5 @@ COPY --from=builder /app/target/*.jar app.jar
 # Expose default port
 EXPOSE 8084
 
-# Execute application with dynamic PORT support for Render
-ENTRYPOINT ["sh", "-c", "java -Dserver.port=${PORT:-8084} -jar app.jar"]
+# Execute application with dynamic PORT support and JAVA_OPTS
+ENTRYPOINT ["sh", "-c", "java ${JAVA_OPTS} -Dserver.port=${PORT:-8084} -jar app.jar"]
