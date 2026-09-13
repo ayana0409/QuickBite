@@ -442,153 +442,78 @@ export default function BootScreen({ onReady }: BootScreenProps) {
     });
   };
 
-  // 4. Parallel Single-Ping with 90s Long Connection Retention
+  // 4. Single-Flight Internal Status Polling (Zero requests to Render Backend)
   useEffect(() => {
     let isCancelled = false;
 
-    // Wake-up ping
-    fetch("/api/system/health/wake-up", { method: "GET", cache: "no-store" }).catch(() => { });
+    const pollInternalStatus = async () => {
+      try {
+        const res = await fetch("/api/system/health/status", {
+          method: "GET",
+          cache: "no-store",
+          headers: { Accept: "application/json" },
+        });
 
-    const pingService = async (serviceKey: string, serviceId: string, url: string, fallbackProxy?: string) => {
-      if (completedServicesRef.current.has(serviceKey)) return;
+        if (!res.ok) return;
 
-      setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Priming" }));
+        const data = await res.json();
+        const services: Record<string, any> = data?.services || {};
 
-      // Set entries to priming
-      setSubEntriesMap((prev) => {
-        const nextMap = { ...prev };
-        Object.values(nextMap).forEach((sub) => {
-          if (sub.parentId === serviceId && sub.status !== "Healthy") {
-            nextMap[sub.id].status = "Priming";
+        Object.values(services).forEach((record: any) => {
+          const serviceKey = record.key;
+          const serviceId = record.id;
+          const status = record.status;
+
+          if (status === "Healthy") {
+            if (!completedServicesRef.current.has(serviceKey)) {
+              completedServicesRef.current.add(serviceKey);
+              setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
+              pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} [100% THRUST]`, "success");
+            }
+            if (record.data) {
+              handleHealthEntries(serviceId, record.data);
+            }
+          } else if (status === "Priming") {
+            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Priming" }));
+            setSubEntriesMap((prev) => {
+              const nextMap = { ...prev };
+              Object.values(nextMap).forEach((sub) => {
+                if (sub.parentId === serviceId && sub.status !== "Healthy") {
+                  nextMap[sub.id].status = "Priming";
+                }
+              });
+              return nextMap;
+            });
+          } else if (status === "Failed") {
+            pushLog(`TELEMETRY ALERT: ${serviceId.toUpperCase()} connection error: ${record.error || "Priming"}`, "warn");
           }
         });
-        return nextMap;
-      });
-
-      let attempts = 0;
-
-      // Continuously poll until service is fully healthy (never falsely mark healthy on timeout)
-      while (!completedServicesRef.current.has(serviceKey) && !isCancelled) {
-        attempts++;
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 90000);
-
-          const res = await fetch(url, {
-            method: "GET",
-            headers: { Accept: "application/json, text/plain, */*" },
-            signal: controller.signal,
-            cache: "no-store",
-          });
-
-          clearTimeout(timeoutId);
-
-          if (isCancelled) return;
-
-          let data: any = null;
-          try {
-            data = await res.json();
-          } catch {
-            data = res.ok ? { status: "Healthy" } : { status: "Unhealthy" };
-          }
-
-          if (data) {
-            handleHealthEntries(serviceId, data);
-          }
-
-          const rawStatus = (data?.status || (res.ok ? "Healthy" : "Unhealthy")).toString().toLowerCase();
-          const rawEntries = data?.entries || data?.data?.entries || {};
-          const hasUnhealthyEntry = Object.values(rawEntries).some((e: any) => {
-            const st = (e?.status || "").toString().toLowerCase();
-            return st === "unhealthy" || st === "degraded" || st === "faulted" || st === "down";
-          });
-
-          const isFullyHealthy = (res.ok || res.status === 200) &&
-            (rawStatus === "healthy" || rawStatus === "ok" || rawStatus === "up") &&
-            !hasUnhealthyEntry;
-
-          if (isFullyHealthy) {
-            completedServicesRef.current.add(serviceKey);
-            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
-            pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} [100% THRUST]`, "success");
-            return;
-          } else {
-            setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Priming" }));
-            pushLog(`TELEMETRY RECHECK (${attempts}): ${serviceId.toUpperCase()} status is ${data?.status || (res.ok ? "Incomplete" : "Unhealthy")}. Waiting for dependencies...`, "warn");
-          }
-        } catch {
-          if (isCancelled) return;
-
-          if (fallbackProxy) {
-            try {
-              const proxyRes = await fetch(fallbackProxy, {
-                method: "GET",
-                cache: "no-store",
-                signal: AbortSignal.timeout(8000),
-              });
-              if (proxyRes.ok) {
-                const proxyData = await proxyRes.json().catch(() => null);
-                if (proxyData) {
-                  handleHealthEntries(serviceId, proxyData);
-                  const pStatus = (proxyData.status || "").toString().toLowerCase();
-                  const pEntries = proxyData?.entries || proxyData?.data?.entries || {};
-                  const pHasUnhealthy = Object.values(pEntries).some((e: any) => {
-                    const st = (e?.status || "").toString().toLowerCase();
-                    return st === "unhealthy" || st === "degraded" || st === "faulted" || st === "down";
-                  });
-
-                  if ((pStatus === "healthy" || pStatus === "ok" || pStatus === "up") && !pHasUnhealthy) {
-                    completedServicesRef.current.add(serviceKey);
-                    setServiceStatuses((prev) => ({ ...prev, [serviceKey]: "Healthy" }));
-                    pushLog(`COMBUSTION STABLE: ${serviceId.toUpperCase()} via Gateway Proxy`, "success");
-                    return;
-                  }
-                }
-              }
-            } catch { }
-          }
-
-          try {
-            fetch(url, { method: "GET", mode: "no-cors" }).catch(() => { });
-          } catch { }
-        }
-
-        if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
-          await new Promise((r) => setTimeout(r, 2500));
-        }
+      } catch {
+        // Internal route network hiccup
       }
     };
 
-    // Stagger worker launches
-    const launchTimer = setTimeout(() => {
+    // Initial check immediately
+    pollInternalStatus();
+
+    // Poll local server RAM every 1500ms (100% internal memory, ZERO requests to Render backend)
+    const interval = setInterval(() => {
       if (isCancelled) return;
-
-      // 1. Gateway Core
-      pingService("gateway", "gateway", `${gatewayUrl}/health`, "/api/gateway/health");
-
-      // 2. Microservices
-      const targets = [
-        { key: "identity_service", id: "identity", url: `${identityUrl}/health` },
-        { key: "catalog_service", id: "catalog", url: `${catalogUrl}/health` },
-        { key: "order_service", id: "order", url: `${orderUrl}/health` },
-        { key: "payment_service", id: "payment", url: `${paymentUrl}/health` },
-        { key: "inventory_service", id: "inventory", url: `${inventoryUrl}/health` },
-      ];
-
-      targets.forEach((t, index) => {
-        setTimeout(() => {
-          if (!isCancelled) {
-            pingService(t.key, t.id, t.url);
-          }
-        }, 220 * (index + 1));
-      });
-    }, 250);
+      const allCompleted = ["gateway", "identity_service", "catalog_service", "order_service", "payment_service", "inventory_service"].every(
+        (key) => completedServicesRef.current.has(key)
+      );
+      if (allCompleted) {
+        clearInterval(interval);
+        return;
+      }
+      pollInternalStatus();
+    }, 1500);
 
     return () => {
       isCancelled = true;
-      clearTimeout(launchTimer);
+      clearInterval(interval);
     };
-  }, [catalogUrl, gatewayUrl, identityUrl, inventoryUrl, orderUrl, paymentUrl]);
+  }, []);
 
   // 5. Thrust Calculation (Gateway + 5 Services = 6 Main Engines, plus 16 Sub-nodes)
   const healthyEnginesCount = useMemo(() => {
