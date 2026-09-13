@@ -19,6 +19,11 @@ public class HealthController {
     private final KafkaHealthIndicator kafkaHealthIndicator;
     private final SystemResourcesHealthIndicator sysHealthIndicator;
 
+    @GetMapping("/")
+    public ResponseEntity<Map<String, String>> rootPing() {
+        return ResponseEntity.ok(Map.of("status", "UP", "service", "payment-service"));
+    }
+
     @GetMapping({"/health", "/api/health", "/api/v1/health", "/v1/health"})
 
     public ResponseEntity<HealthResponse> getHealth() {
