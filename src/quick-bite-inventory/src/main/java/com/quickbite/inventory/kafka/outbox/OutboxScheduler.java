@@ -4,6 +4,7 @@ import com.quickbite.inventory.entity.OutboxMessage;
 import com.quickbite.inventory.repository.OutboxMessageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -13,6 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Component
+@Lazy(false)
 @RequiredArgsConstructor
 @Slf4j
 public class OutboxScheduler {

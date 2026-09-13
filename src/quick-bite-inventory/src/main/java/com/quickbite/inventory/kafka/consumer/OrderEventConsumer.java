@@ -13,8 +13,10 @@ import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
+import org.springframework.context.annotation.Lazy;
 
 @Component
+@Lazy(false)
 @RequiredArgsConstructor
 @Slf4j
 public class OrderEventConsumer {
