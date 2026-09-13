@@ -433,6 +433,19 @@ public class IdentityWebModule : AbpModule
         });
 
         app.UseCorrelationId();
+
+        // Fast root probe response for Render health checks and wake-up pings
+        app.Use(async (httpContext, next) =>
+        {
+            if (httpContext.Request.Path == "/" && (httpContext.Request.Headers.UserAgent.ToString().Contains("Render") || httpContext.Request.Query.ContainsKey("health") || httpContext.Request.Headers.Accept.ToString().Contains("application/json")))
+            {
+                httpContext.Response.StatusCode = 200;
+                httpContext.Response.ContentType = "application/json";
+                await httpContext.Response.WriteAsync("{\"status\":\"Healthy\",\"service\":\"identity-service\"}");
+                return;
+            }
+            await next();
+        });
         app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.MapAbpStaticAssets();
         app.UseStaticFiles();

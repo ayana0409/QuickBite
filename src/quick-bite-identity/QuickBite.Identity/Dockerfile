@@ -28,8 +28,14 @@ FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
 
 WORKDIR /app
 
-# Set default port
-ENV ASPNETCORE_URLS=http://+:8080
+# Set default port and runtime performance optimizations for Render Free Tier
+ENV ASPNETCORE_URLS=http://+:8080 \
+    DOTNET_gcServer=0 \
+    DOTNET_TieredCompilation=1 \
+    DOTNET_TC_QuickJit=1 \
+    DOTNET_TC_QuickJitForLoops=1 \
+    DOTNET_ReadyToRun=1
+
 EXPOSE 8080
 
 COPY --from=builder /app/publish .
