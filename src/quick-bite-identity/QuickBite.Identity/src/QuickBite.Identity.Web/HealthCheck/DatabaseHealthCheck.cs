@@ -1,20 +1,19 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using QuickBite.Identity.EntityFrameworkCore;
+using Npgsql;
 
 namespace QuickBite.Identity.Web.HealthCheck;
 
 public class DatabaseHealthCheck : IHealthCheck
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IConfiguration _configuration;
 
-    public DatabaseHealthCheck(IServiceProvider serviceProvider)
+    public DatabaseHealthCheck(IConfiguration configuration)
     {
-        _serviceProvider = serviceProvider;
+        _configuration = configuration;
     }
 
     public async Task<HealthCheckResult> CheckHealthAsync(
@@ -23,11 +22,17 @@ public class DatabaseHealthCheck : IHealthCheck
     {
         try
         {
-            using var scope = _serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<IdentityDbContext>();
+            var connStr = _configuration.GetConnectionString("Default");
+            if (string.IsNullOrEmpty(connStr))
+            {
+                return HealthCheckResult.Unhealthy("Connection string 'Default' is missing.");
+            }
 
-            // Execute SELECT 1 to check actual DB connectivity
-            await dbContext.Database.ExecuteSqlRawAsync("SELECT 1", cancellationToken);
+            await using var conn = new NpgsqlConnection(connStr);
+            await conn.OpenAsync(cancellationToken);
+            await using var cmd = conn.CreateCommand();
+            cmd.CommandText = "SELECT 1";
+            await cmd.ExecuteScalarAsync(cancellationToken);
 
             return HealthCheckResult.Healthy("PostgreSQL database connection is healthy.");
         }
