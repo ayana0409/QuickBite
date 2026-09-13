@@ -1,10 +1,6 @@
 // Next.js Server Lifecycle Hook
-// Executed exactly once when the Node.js server starts up in container or standalone mode.
+// Reserved for server monitoring and telemetry.
 
 export async function register() {
-  if (process.env.NEXT_RUNTIME === "nodejs") {
-    // Dynamically import to ensure server-side execution only
-    const { startSingleFlightWarmup } = await import("@/src/lib/server-warmup");
-    startSingleFlightWarmup();
-  }
+  // Server-to-server probing on Render free tier is handled on client side to avoid Cloudflare 429
 }

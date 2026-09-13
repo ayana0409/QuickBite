@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getBackendWarmupState, startSingleFlightWarmup } from "@/src/lib/server-warmup";
+import { getBackendWarmupState, ensureWarmupProgress } from "@/src/lib/server-warmup";
 
 export const dynamic = "force-dynamic";
 
@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
  * Does NOT generate new requests to Render backend, guaranteeing zero network hammering.
  */
 export async function GET() {
-  // Ensure warmup has started even if instrumentation did not fire in dev mode
-  startSingleFlightWarmup();
+  // Ensure warmup is progressing or retries failed services in background
+  ensureWarmupProgress();
 
   const state = getBackendWarmupState();
   return NextResponse.json({

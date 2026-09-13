@@ -1,5 +1,9 @@
-// Server-side Singleton Warmup Manager for QuickBite Backend Microservices
-// Guarantees EXACTLY ONE request per service with a 90s connection hold, avoiding request storming.
+// Resilient Server-side Warmup Manager for QuickBite Backend Microservices
+// Features:
+// 1. One in-flight request per service (zero request storming / hammering)
+// 2. Standard browser User-Agent to avoid Cloudflare 429 rate-limiting
+// 3. Staggered dispatch & graceful retry on 429 / 502 / 503 / timeouts during cold start
+// 4. Stops immediately once a service reports Healthy
 
 export type ServiceStatus = "Standby" | "Priming" | "Healthy" | "Failed";
 
@@ -14,6 +18,7 @@ export interface ServiceWarmupRecord {
   durationMs?: number;
   data?: any;
   error?: string;
+  attempts?: number;
 }
 
 export interface BackendWarmupState {
@@ -22,7 +27,6 @@ export interface BackendWarmupState {
   services: Record<string, ServiceWarmupRecord>;
 }
 
-// Global declaration for Node.js process singleton
 declare global {
   // eslint-disable-next-line no-var
   var __quickbite_backend_state: BackendWarmupState | undefined;
@@ -44,6 +48,9 @@ const TARGET_SERVICES: Array<{ id: string; key: string; name: string; url: strin
   { id: "inventory", key: "inventory_service", name: "Inventory Service", url: `${inventoryUrl}/health` },
 ];
 
+const BROWSER_USER_AGENT =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+
 function initializeState(): BackendWarmupState {
   if (globalThis.__quickbite_backend_state) {
     return globalThis.__quickbite_backend_state;
@@ -57,6 +64,7 @@ function initializeState(): BackendWarmupState {
       name: svc.name,
       url: svc.url,
       status: "Standby",
+      attempts: 0,
     };
   });
 
@@ -72,88 +80,144 @@ function initializeState(): BackendWarmupState {
 
 export function getBackendWarmupState(): BackendWarmupState {
   const state = initializeState();
-  const allHealthy = Object.values(state.services).every((s) => s.status === "Healthy");
-  state.isAllHealthy = allHealthy;
+  state.isAllHealthy = Object.values(state.services).every((s) => s.status === "Healthy");
   return state;
 }
 
 /**
- * Dispatches exactly ONE single-flight request to each backend service.
- * Holds the connection up to 90 seconds to allow Render free tier to spin up.
- * Never retries or hammers endpoints.
+ * Probes a single service with sequential retry if Cold-Start / 429 / 502 occurs.
+ * Strictly maintains at most ONE request in-flight for this service.
+ */
+async function probeServiceWithRetry(
+  target: { id: string; key: string; name: string; url: string },
+  state: BackendWarmupState
+): Promise<void> {
+  const record = state.services[target.key];
+  if (record.status === "Healthy") {
+    return; // Already healthy, do not touch
+  }
+
+  const maxAttempts = 15; // Up to 60s total wait window for Render cold start
+
+  record.startedAt = Date.now();
+  record.status = "Priming";
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    record.attempts = attempt;
+
+    try {
+      const res = await fetch(target.url, {
+        method: "GET",
+        headers: {
+          Accept: "application/json, text/plain, */*",
+          "User-Agent": BROWSER_USER_AGENT,
+        },
+        signal: AbortSignal.timeout(35000), // 35s per probe attempt
+        cache: "no-store",
+      });
+
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch {
+        data = res.ok ? { status: "Healthy" } : { status: "Unhealthy" };
+      }
+
+      record.data = data;
+
+      // Check success condition:
+      // 1. Gateway: HTTP 200 is Healthy (even if downstream services are still waking up)
+      // 2. Microservices: HTTP 200 with standard healthy/ok/up indicators
+      if (res.ok || res.status === 200) {
+        const rawStatus = (data?.status || data?.data?.status || (res.ok ? "Healthy" : "")).toString().toLowerCase();
+        const isUpOrHealthy =
+          rawStatus === "healthy" ||
+          rawStatus === "ok" ||
+          rawStatus === "up" ||
+          target.id === "gateway" || // Gateway process itself is running
+          data?.success === true;
+
+        if (isUpOrHealthy) {
+          record.status = "Healthy";
+          record.completedAt = Date.now();
+          record.durationMs = record.completedAt - (record.startedAt || record.completedAt);
+          record.error = undefined;
+          console.log(
+            `[Warmup] Service ${target.name} is HEALTHY in attempt #${attempt} (${record.durationMs}ms)`
+          );
+          return; // STOP IMMEDIATELY: Service is ready!
+        }
+      }
+
+      // If HTTP 429 (Cloudflare rate limit) or 502/503 (Render booting container)
+      console.warn(
+        `[Warmup] Service ${target.name} responded HTTP ${res.status} (attempt ${attempt}/${maxAttempts}). Waiting to retry...`
+      );
+      record.error = `HTTP ${res.status}`;
+    } catch (err: any) {
+      record.error = err.message || "Connection timeout";
+      console.warn(
+        `[Warmup] Service ${target.name} probe error: ${record.error} (attempt ${attempt}/${maxAttempts})`
+      );
+    }
+
+    // Wait 3.5 seconds before the next sequential probe
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 3500));
+    }
+  }
+
+  // If all attempts exhausted
+  if (record.status !== "Healthy") {
+    record.status = "Failed";
+    record.completedAt = Date.now();
+    console.error(`[Warmup] Service ${target.name} failed after ${maxAttempts} attempts: ${record.error}`);
+  }
+}
+
+/**
+ * Dispatches warmup workers with staggered initial delay to prevent Cloudflare burst 429s.
  */
 export function startSingleFlightWarmup(): void {
   const state = initializeState();
 
   if (state.isInitiated) {
-    // Already running or completed, strictly enforce single execution
     return;
   }
 
   state.isInitiated = true;
-  const startTime = Date.now();
-  console.log(`[SingleFlightWarmup] Initializing single-request backend warmup for ${TARGET_SERVICES.length} services...`);
+  console.log(`[Warmup] Launching resilient backend warmup for ${TARGET_SERVICES.length} services...`);
 
-  TARGET_SERVICES.forEach((target) => {
-    const record = state.services[target.key];
-    record.status = "Priming";
-    record.startedAt = Date.now();
-
-    // Fire single request with long 90s connection retention
-    fetch(target.url, {
-      method: "GET",
-      headers: {
-        Accept: "application/json, text/plain, */*",
-        "User-Agent": "QuickBite-SingleFlight-Warmup/1.0",
-      },
-      signal: AbortSignal.timeout(90000), // Hold connection open for Render cold start
-      cache: "no-store",
-    })
-      .then(async (res) => {
-        const completedAt = Date.now();
-        record.completedAt = completedAt;
-        record.durationMs = completedAt - (record.startedAt || startTime);
-
-        let data: any = null;
-        try {
-          data = await res.json();
-        } catch {
-          data = res.ok ? { status: "Healthy" } : { status: "Unhealthy" };
-        }
-
-        record.data = data;
-
-        const rawStatus = (data?.status || (res.ok ? "Healthy" : "Unhealthy")).toString().toLowerCase();
-        const rawEntries = data?.entries || data?.data?.entries || {};
-        const hasUnhealthyEntry = Object.values(rawEntries).some((e: any) => {
-          const st = (e?.status || "").toString().toLowerCase();
-          return st === "unhealthy" || st === "degraded" || st === "faulted" || st === "down";
-        });
-
-        const isHealthy =
-          (res.ok || res.status === 200) &&
-          (rawStatus === "healthy" || rawStatus === "ok" || rawStatus === "up") &&
-          !hasUnhealthyEntry;
-
-        if (isHealthy) {
-          record.status = "Healthy";
-          console.log(`[SingleFlightWarmup] Service ${target.name} [${target.key}] is HEALTHY in ${record.durationMs}ms`);
-        } else {
-          record.status = "Failed";
-          record.error = `HTTP ${res.status}: ${rawStatus}`;
-          console.warn(`[SingleFlightWarmup] Service ${target.name} returned non-healthy status: ${rawStatus}`);
-        }
-      })
-      .catch((err) => {
-        const completedAt = Date.now();
-        record.completedAt = completedAt;
-        record.durationMs = completedAt - (record.startedAt || startTime);
-        record.status = "Failed";
-        record.error = err.message || "Connection failed or timed out";
-        console.error(`[SingleFlightWarmup] Service ${target.name} connection error: ${record.error}`);
-      })
-      .finally(() => {
+  // Stagger launch by 400ms between services to avoid simultaneous burst
+  TARGET_SERVICES.forEach((target, index) => {
+    setTimeout(() => {
+      probeServiceWithRetry(target, state).finally(() => {
         state.isAllHealthy = Object.values(state.services).every((s) => s.status === "Healthy");
       });
+    }, index * 400);
+  });
+}
+
+/**
+ * Re-triggers probing only for services that are currently in 'Failed' state.
+ * Never re-queries services that are already 'Healthy'.
+ */
+export function ensureWarmupProgress(): void {
+  const state = initializeState();
+
+  if (!state.isInitiated) {
+    startSingleFlightWarmup();
+    return;
+  }
+
+  TARGET_SERVICES.forEach((target, index) => {
+    const record = state.services[target.key];
+    if (record && record.status === "Failed") {
+      setTimeout(() => {
+        probeServiceWithRetry(target, state).finally(() => {
+          state.isAllHealthy = Object.values(state.services).every((s) => s.status === "Healthy");
+        });
+      }, index * 300);
+    }
   });
 }
