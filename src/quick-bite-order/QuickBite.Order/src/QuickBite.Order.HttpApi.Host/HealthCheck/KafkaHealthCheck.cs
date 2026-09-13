@@ -12,6 +12,10 @@ namespace QuickBite.Order.HealthCheck;
 public class KafkaHealthCheck : IHealthCheck
 {
     private readonly IConfiguration _configuration;
+    private static DateTime _lastCheckTime = DateTime.MinValue;
+    private static HealthCheckResult _lastResult = HealthCheckResult.Healthy("Kafka connection initialized.");
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromSeconds(30);
+    private static readonly object _lock = new();
 
     public KafkaHealthCheck(IConfiguration configuration)
     {
@@ -22,6 +26,14 @@ public class KafkaHealthCheck : IHealthCheck
         HealthCheckContext context,
         CancellationToken cancellationToken = default)
     {
+        lock (_lock)
+        {
+            if (DateTime.UtcNow - _lastCheckTime < CacheDuration)
+            {
+                return Task.FromResult(_lastResult);
+            }
+        }
+
         return Task.Run(() =>
         {
             try
@@ -37,7 +49,7 @@ public class KafkaHealthCheck : IHealthCheck
                 var config = new AdminClientConfig
                 {
                     BootstrapServers = bootstrapServers,
-                    SocketTimeoutMs = 5000
+                    SocketTimeoutMs = 3000
                 };
 
                 var producerSection = _configuration.GetSection("Kafka:Producer");
@@ -53,7 +65,7 @@ public class KafkaHealthCheck : IHealthCheck
                     config.EnableSslCertificateVerification = verify;
 
                 using var adminClient = new AdminClientBuilder(config).Build();
-                var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(5));
+                var metadata = adminClient.GetMetadata(TimeSpan.FromSeconds(3));
 
                 var brokers = metadata.Brokers.Select(b => $"{b.Host}:{b.Port}").ToList();
 
@@ -63,11 +75,17 @@ public class KafkaHealthCheck : IHealthCheck
                     ["topic_count"] = metadata.Topics.Count
                 };
 
-                return HealthCheckResult.Healthy($"Kafka connection OK. Active brokers: {brokers.Count}.", data);
+                var result = HealthCheckResult.Healthy($"Kafka connection OK. Active brokers: {brokers.Count}.", data);
+                lock (_lock)
+                {
+                    _lastCheckTime = DateTime.UtcNow;
+                    _lastResult = result;
+                }
+                return result;
             }
             catch (Exception ex)
             {
-                return HealthCheckResult.Unhealthy("Kafka cluster connection failed.", ex);
+                return HealthCheckResult.Degraded("Kafka cluster connection degraded.", ex);
             }
         }, cancellationToken);
     }

@@ -22,7 +22,7 @@ RUN dotnet restore src/QuickBite.Order.HttpApi.Host/QuickBite.Order.HttpApi.Host
 
 # Copy remaining source code and publish
 COPY . .
-RUN dotnet publish src/QuickBite.Order.HttpApi.Host/QuickBite.Order.HttpApi.Host.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish src/QuickBite.Order.HttpApi.Host/QuickBite.Order.HttpApi.Host.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 # Stage 2: Production runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner
@@ -32,6 +32,15 @@ WORKDIR /app
 # Set default port
 ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
+
+# Performance tuning for constrained cloud containers (Render Free Tier 0.1 CPU):
+# 1. Workstation GC uses significantly less memory and does not block 0.1 CPU like Server GC
+ENV DOTNET_gcServer=0
+# 2. Tiered Compilation + Quick JIT compiles methods instantly at Tier 0, slashing startup time
+ENV DOTNET_TieredCompilation=1
+ENV DOTNET_TC_QuickJit=1
+ENV DOTNET_TC_QuickJitForLoops=1
+ENV DOTNET_ReadyToRun=1
 
 COPY --from=builder /app/publish .
 
