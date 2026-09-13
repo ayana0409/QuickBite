@@ -412,9 +412,27 @@ public class IdentityWebModule : AbpModule
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
 
-        // 1. Fast root probe response for Render health checks and wake-up pings (placed at the top before any DB queries or ABP middleware)
+        // 1. CORS MUST BE FIRST SO ALL PROBES AND HEALTH CHECKS HAVE ACCESS-CONTROL-ALLOW-ORIGIN
+        app.UseCors();
+
+        // 2. Fast root probe response for Render health checks and wake-up pings
         app.Use(async (httpContext, next) =>
         {
+            var origin = httpContext.Request.Headers.Origin.ToString();
+            if (!string.IsNullOrEmpty(origin))
+            {
+                httpContext.Response.Headers.AccessControlAllowOrigin = origin;
+                httpContext.Response.Headers.AccessControlAllowCredentials = "true";
+                httpContext.Response.Headers.AccessControlAllowHeaders = "*";
+                httpContext.Response.Headers.AccessControlAllowMethods = "GET, POST, OPTIONS, HEAD";
+            }
+
+            if (HttpMethods.IsOptions(httpContext.Request.Method))
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+
             // A. Respond instantly to HEAD requests (Render port scanning & liveness probes)
             if (HttpMethods.IsHead(httpContext.Request.Method))
             {
@@ -435,7 +453,7 @@ public class IdentityWebModule : AbpModule
             await next();
         });
 
-        // 2. Health check endpoints (must be before localization, unit of work, and auth to avoid hitting heavy DB pipelines)
+        // 3. Health check endpoints (must be before localization, unit of work, and auth to avoid hitting heavy DB pipelines)
         app.UseHealthChecks("/health", new HealthCheckOptions
         {
             ResponseWriter = WriteHealthResponse
@@ -517,6 +535,14 @@ public class IdentityWebModule : AbpModule
 
     private static async Task WriteHealthResponse(HttpContext context, HealthReport report)
     {
+        var origin = context.Request.Headers.Origin.ToString();
+        if (!string.IsNullOrEmpty(origin))
+        {
+            context.Response.Headers.AccessControlAllowOrigin = origin;
+            context.Response.Headers.AccessControlAllowCredentials = "true";
+            context.Response.Headers.AccessControlAllowHeaders = "*";
+            context.Response.Headers.AccessControlAllowMethods = "GET, POST, OPTIONS, HEAD";
+        }
         context.Response.ContentType = "application/json";
         var response = new
         {
