@@ -21,7 +21,7 @@ RUN dotnet restore src/QuickBite.Identity.Web/QuickBite.Identity.Web.csproj
 
 # Copy remaining source code and publish
 COPY . .
-RUN dotnet publish src/QuickBite.Identity.Web/QuickBite.Identity.Web.csproj -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish src/QuickBite.Identity.Web/QuickBite.Identity.Web.csproj -c Release -o /app/publish --no-restore /p:UseAppHost=false
 
 # Stage 2: Production runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runner

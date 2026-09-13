@@ -412,6 +412,39 @@ public class IdentityWebModule : AbpModule
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
 
+        // 1. Fast root probe response for Render health checks and wake-up pings (placed at the top before any DB queries or ABP middleware)
+        app.Use(async (httpContext, next) =>
+        {
+            // A. Respond instantly to HEAD requests (Render port scanning & liveness probes)
+            if (HttpMethods.IsHead(httpContext.Request.Method))
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status200OK;
+                return;
+            }
+
+            // B. Fast probe response for /healthz or root ping without HTML accept header (Render, curl, frontend fetch)
+            if (httpContext.Request.Path == "/healthz" || 
+                (httpContext.Request.Path == "/" && !httpContext.Request.Headers.Accept.ToString().Contains("text/html")))
+            {
+                httpContext.Response.StatusCode = StatusCodes.Status200OK;
+                httpContext.Response.ContentType = "application/json";
+                await httpContext.Response.WriteAsync("{\"status\":\"Healthy\",\"service\":\"identity-service\"}");
+                return;
+            }
+
+            await next();
+        });
+
+        // 2. Health check endpoints (must be before localization, unit of work, and auth to avoid hitting heavy DB pipelines)
+        app.UseHealthChecks("/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+        app.UseHealthChecks("/api/health", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
+
         if (env.IsDevelopment())
         {
             app.UseDeveloperExceptionPage();
@@ -434,28 +467,6 @@ public class IdentityWebModule : AbpModule
 
         app.UseCorrelationId();
 
-        // Fast root probe response for Render health checks and wake-up pings
-        app.Use(async (httpContext, next) =>
-        {
-            // 1. Respond instantly to HEAD requests (Render port scanning & liveness probes)
-            if (HttpMethods.IsHead(httpContext.Request.Method))
-            {
-                httpContext.Response.StatusCode = StatusCodes.Status200OK;
-                return;
-            }
-
-            // 2. Fast probe response for /healthz or root ping without HTML accept header (Render, curl, frontend fetch)
-            if (httpContext.Request.Path == "/healthz" || 
-                (httpContext.Request.Path == "/" && !httpContext.Request.Headers.Accept.ToString().Contains("text/html")))
-            {
-                httpContext.Response.StatusCode = StatusCodes.Status200OK;
-                httpContext.Response.ContentType = "application/json";
-                await httpContext.Response.WriteAsync("{\"status\":\"Healthy\",\"service\":\"identity-service\"}");
-                return;
-            }
-
-            await next();
-        });
         app.UseMiddleware<DatabaseUnavailableMiddleware>();
         app.MapAbpStaticAssets();
         app.UseStaticFiles();
@@ -490,15 +501,6 @@ public class IdentityWebModule : AbpModule
         app.UseAbpSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "Identity API");
-        });
-
-        app.UseHealthChecks("/health", new HealthCheckOptions
-        {
-            ResponseWriter = WriteHealthResponse
-        });
-        app.UseHealthChecks("/api/health", new HealthCheckOptions
-        {
-            ResponseWriter = WriteHealthResponse
         });
 
         app.UseAuditing();
