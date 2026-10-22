@@ -54,3 +54,6 @@ src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.Web/appsetting
 src/quick-bite-identity/QuickBite.Identity/src/QuickBite.Identity.Web/appsettings.json
 src/quick-bite-admin-portal/.env
 scratch/
+src/quick-bite-order/QuickBite.Order/src/QuickBite.Order.HttpApi.Host/appsettings.Deployment.json
+src/quick-bite-payment/src/main/resources/application.deployment.properties
+src/quick-bite-inventory/src/main/resources/application.deployment.properties
