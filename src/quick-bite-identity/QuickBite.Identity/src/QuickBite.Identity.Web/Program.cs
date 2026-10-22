@@ -1,8 +1,9 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using QuickBite.Identity.Web.Extensions;
 using Serilog;
 using Serilog.Events;
 
@@ -35,6 +36,10 @@ public class Program
             await builder.AddApplicationAsync<IdentityWebModule>();
             var app = builder.Build();
             await app.InitializeApplicationAsync();
+
+            // Automatically check schema and execute migrations/seed data if tables are not found
+            await app.AutoMigrateDatabaseAsync();
+
             await app.RunAsync();
             return 0;
         }
