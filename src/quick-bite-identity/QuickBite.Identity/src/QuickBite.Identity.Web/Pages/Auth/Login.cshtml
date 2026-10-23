@@ -350,6 +350,7 @@
 
         .eco-quickbite { background: linear-gradient(135deg, #f97316, #ea580c); color: #fff; }
         .eco-shorterlink { background: linear-gradient(135deg, #06b6d4, #3b82f6); color: #fff; }
+        .eco-quicktest { background: linear-gradient(135deg, #10b981, #059669); color: #fff; }
         .eco-upcoming { background: rgba(255, 255, 255, 0.04); border: 1px dashed rgba(255, 255, 255, 0.15); color: #64748b; }
 
         .ecosystem-info h4 {
@@ -787,7 +788,7 @@
                     <i class="fa-solid fa-layer-group"></i> Ecosystem Products
                 </div>
                 <div class="ecosystem-grid">
-                    <div class="ecosystem-card" title="QuickBite - Gourmet & Food Delivery">
+                    <a href="@Model.QuickBiteUrl" target="_blank" rel="noopener noreferrer" class="ecosystem-card" title="QuickBite - Gourmet & Food Delivery">
                         <div class="ecosystem-icon eco-quickbite">
                             <i class="fa-solid fa-utensils"></i>
                         </div>
@@ -795,9 +796,9 @@
                             <h4>QuickBite</h4>
                             <span>Food & Dining</span>
                         </div>
-                    </div>
+                    </a>
 
-                    <div class="ecosystem-card" title="ShorterLink - URL Shortener & Link Management">
+                    <a href="@Model.ShorterLinkUrl" target="_blank" rel="noopener noreferrer" class="ecosystem-card" title="ShorterLink - URL Shortener & Link Management">
                         <div class="ecosystem-icon eco-shorterlink">
                             <i class="fa-solid fa-link"></i>
                         </div>
@@ -805,25 +806,25 @@
                             <h4>ShorterLink</h4>
                             <span>Link Management</span>
                         </div>
-                    </div>
+                    </a>
+
+                    <a href="@Model.QuickTestUrl" target="_blank" rel="noopener noreferrer" class="ecosystem-card" title="Quick Test - Hệ Thống Thi Trực Tuyến & Giám Sát Thông Minh">
+                        <div class="ecosystem-icon eco-quicktest">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </div>
+                        <div class="ecosystem-info">
+                            <h4>Quick Test</h4>
+                            <span>Smart Online Exam</span>
+                        </div>
+                    </a>
 
                     <div class="ecosystem-card is-upcoming" title="In Development - Coming Soon">
                         <div class="ecosystem-icon eco-upcoming">
                             <i class="fa-solid fa-cube"></i>
                         </div>
                         <div class="ecosystem-info">
-                            <h4>In Development</h4>
-                            <span>Coming Soon</span>
-                        </div>
-                    </div>
-
-                    <div class="ecosystem-card is-upcoming" title="In Development - Coming Soon">
-                        <div class="ecosystem-icon eco-upcoming">
-                            <i class="fa-solid fa-sparkles"></i>
-                        </div>
-                        <div class="ecosystem-info">
-                            <h4>In Development</h4>
-                            <span>Coming Soon</span>
+                            <h4>QuickLogistics</h4>
+                            <span>In Development</span>
                         </div>
                     </div>
                 </div>

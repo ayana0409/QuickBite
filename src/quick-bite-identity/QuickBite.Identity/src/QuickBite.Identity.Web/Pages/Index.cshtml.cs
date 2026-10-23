@@ -16,6 +16,7 @@ public class IndexModel : IdentityPageModel
 
     public string QuickBiteUrl { get; set; } = "https://quickbite-wnkc.onrender.com";
     public string ShorterLinkUrl { get; set; } = "https://shink.onrender.com";
+    public string QuickTestUrl { get; set; } = "https://quicktest-kappa.vercel.app/";
 
     public void OnGet()
     {
@@ -27,5 +28,9 @@ public class IndexModel : IdentityPageModel
         ShorterLinkUrl = _configuration["Ecosystem:ShorterLinkUrl"] 
                          ?? Environment.GetEnvironmentVariable("ECOSYSTEM_SHORTERLINK_URL") 
                          ?? "https://shink.onrender.com";
+
+        QuickTestUrl = _configuration["Ecosystem:QuickTestUrl"] 
+                       ?? Environment.GetEnvironmentVariable("ECOSYSTEM_QUICKTEST_URL") 
+                       ?? "https://quicktest-kappa.vercel.app/";
     }
 }

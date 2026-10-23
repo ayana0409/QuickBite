@@ -37,6 +37,10 @@ public class IdentityMenuContributor : IMenuContributor
                              ?? Environment.GetEnvironmentVariable("ECOSYSTEM_SHORTERLINK_URL") 
                              ?? "https://shink.onrender.com";
 
+        var quickTestUrl = configuration["Ecosystem:QuickTestUrl"] 
+                           ?? Environment.GetEnvironmentVariable("ECOSYSTEM_QUICKTEST_URL") 
+                           ?? "https://quicktest-kappa.vercel.app/";
+
         // Top-level menu: Ecosystem Home
         context.Menu.Items.Insert(
             0,
@@ -70,6 +74,18 @@ public class IdentityMenuContributor : IMenuContributor
                 icon: "fas fa-link",
                 target: "_blank",
                 order: 2
+            )
+        );
+
+        // Ecosystem Link 3: Quick Test
+        context.Menu.AddItem(
+            new ApplicationMenuItem(
+                "QuickUniverse.QuickTest",
+                "Quick Test",
+                url: quickTestUrl,
+                icon: "fas fa-graduation-cap",
+                target: "_blank",
+                order: 3
             )
         );
 

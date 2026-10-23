@@ -216,6 +216,11 @@
         box-shadow: 0 8px 16px rgba(6, 182, 212, 0.3);
     }
 
+    .icon-quicktest {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.3);
+    }
+
     .icon-logistics {
         background: linear-gradient(135deg, #64748b 0%, #475569 100%);
     }
@@ -359,6 +364,19 @@
         background: linear-gradient(135deg, #0891b2 0%, #2563eb 100%);
         color: #ffffff !important;
         box-shadow: 0 6px 20px rgba(6, 182, 212, 0.5);
+        transform: translateY(-2px);
+    }
+
+    .btn-quicktest {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: #ffffff !important;
+        box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
+    }
+
+    .btn-quicktest:hover {
+        background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        color: #ffffff !important;
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.5);
         transform: translateY(-2px);
     }
 
@@ -548,7 +566,45 @@
             </a>
         </div>
 
-        <!-- 3. QuickLogistics Card (In Development) -->
+        <!-- 3. Quick Test Card -->
+        <div class="project-card">
+            <div>
+                <div class="card-top-row">
+                    <div class="project-icon-box icon-quicktest">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </div>
+                    <span class="status-pill status-active">
+                        <span class="pulse-dot-green"></span> Live Platform
+                    </span>
+                </div>
+
+                <h4 class="project-title">Quick Test</h4>
+                <div class="project-tagline">Hệ Thống Thi Trực Tuyến & Giám Sát Thông Minh</div>
+                <p class="project-desc">
+                    Comprehensive online testing and examination platform featuring intelligent AI proctoring, dynamic question banks, instant automated grading, and visual analytics.
+                </p>
+
+                <ul class="project-highlights">
+                    <li><i class="fa-solid fa-circle-check"></i> Intelligent online proctoring & integrity monitoring</li>
+                    <li><i class="fa-solid fa-circle-check"></i> Automated test generation from diverse question banks</li>
+                    <li><i class="fa-solid fa-circle-check"></i> Instant automated grading & visual score distributions</li>
+                </ul>
+
+                <div class="url-preview-box" title="@Model.QuickTestUrl">
+                    <i class="fa-solid fa-globe"></i>
+                    <span>@Model.QuickTestUrl</span>
+                </div>
+            </div>
+
+            <a href="@Model.QuickTestUrl" 
+               target="_blank" 
+               rel="noopener noreferrer" 
+               class="btn-ecosystem-action btn-quicktest">
+                Launch Quick Test <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            </a>
+        </div>
+
+        <!-- 4. QuickLogistics Card (In Development) -->
         <div class="project-card is-upcoming">
             <div>
                 <div class="card-top-row">
@@ -582,7 +638,7 @@
             </button>
         </div>
 
-        <!-- 4. QuickCloud Card (In Development) -->
+        <!-- 5. QuickCloud Card (In Development) -->
         <div class="project-card is-upcoming">
             <div>
                 <div class="card-top-row">
