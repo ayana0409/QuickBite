@@ -43,6 +43,7 @@ describe('CategoryService', () => {
     rating: { avg: 0, count: 0 },
     createdAt: new Date(),
     updatedAt: new Date(),
+    location: null,
     categories: [],
   };
 

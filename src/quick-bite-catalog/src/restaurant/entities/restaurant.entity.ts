@@ -62,7 +62,7 @@ export class Restaurant {
         srid: 4326,
         nullable: true,
     })
-    location!: any; // Stored as GeoJSON in TypeORM
+    location?: any; // Stored as GeoJSON in TypeORM
 
     @OneToMany(() => Category, (category) => category.restaurant)
     categories!: Category[];
