@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Cors;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Extensions.DependencyInjection;
 using Microsoft.AspNetCore.Hosting;
@@ -220,6 +221,7 @@ public class IdentityWebModule : AbpModule
         context.Services.AddTransient<PermissionClaimsPrincipalContributor>();
         context.Services.AddHttpClient();
 
+        ConfigureDataProtection(context);
         ConfigureCors(context);
         ConfigureAuthentication(context);
         ConfigureUrls(configuration);
@@ -271,6 +273,20 @@ public class IdentityWebModule : AbpModule
         });
 
         context.Services.AddMapperlyObjectMapper<IdentityWebModule>();
+    }
+
+    private void ConfigureDataProtection(ServiceConfigurationContext context)
+    {
+        var hostingEnvironment = context.Services.GetHostingEnvironment();
+        var dataProtectionPath = Path.Combine(hostingEnvironment.ContentRootPath, "data-protection-keys");
+        if (!Directory.Exists(dataProtectionPath))
+        {
+            Directory.CreateDirectory(dataProtectionPath);
+        }
+
+        context.Services.AddDataProtection()
+            .SetApplicationName("QuickBite.Identity")
+            .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionPath));
     }
 
     private void ConfigureCors(ServiceConfigurationContext context)

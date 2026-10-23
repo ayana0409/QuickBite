@@ -296,3 +296,7 @@ src/QuickBite.Identity.Blazor.Server.Tiered/Logs/*
 **/wwwroot/libs/**/messages_*.js
 !**/wwwroot/libs/**/messages_en*.js
 !**/wwwroot/libs/**/messages_vi*.js
+
+# Data Protection persistent keys
+**/data-protection-keys/
+
