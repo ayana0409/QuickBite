@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Volo.Abp.Application.Dtos;
@@ -17,5 +17,6 @@ namespace QuickBite.Identity.Accounts
         public Task<IdentityUserDto> UpdateUserAsync(Guid id, IdentityUserUpdateDto input);
         public Task UpdateUserRolesAsync(Guid id, List<string> roleNames);
         public Task DeleteUserAsync(Guid id);
+        public Task ChangePasswordAsync(Guid id, ChangeUserPasswordDto input);
     }
 }

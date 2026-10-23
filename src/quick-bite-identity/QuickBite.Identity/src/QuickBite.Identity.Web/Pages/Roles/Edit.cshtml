@@ -1,227 +1,368 @@
 @page "/roles/edit/{id:guid}"
 @model QuickBite.Identity.Web.Pages.Roles.EditModel
 
-<abp-card>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a asp-page="./Index" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="fa fa-arrow-left me-1"></i>Back to Roles
+        </a>
+        <h2 class="fw-bold text-white mb-1">
+            Edit Role: <span class="text-primary">@Model.Information?.Name</span>
+        </h2>
+        <p class="text-muted small mb-0">Configure role attributes and assign security permissions.</p>
+    </div>
+</div>
 
-    <abp-card-header>
-        <h3>Edit Role - @Model.Information?.Name</h3>
+<!-- ==================== ROLE INFORMATION ==================== -->
+<abp-card class="mb-4 shadow-sm border-0">
+    <abp-card-header class="py-3">
+        <h5 class="mb-0 fw-bold text-white">
+            <i class="fa fa-info-circle text-primary me-2"></i>Role Information
+        </h5>
     </abp-card-header>
 
     <abp-card-body>
+        <form method="post" asp-page-handler="Information">
+            <input type="hidden" asp-for="Id" />
 
-        <!-- INFORMATION -->
+            <div class="mb-3">
+                <label asp-for="Information.Name" class="form-label fw-bold">Role Name</label>
+                <input asp-for="Information.Name" class="form-control" placeholder="Enter role name..." />
+                <span asp-validation-for="Information.Name" class="text-danger small"></span>
+            </div>
 
-        <h5 class="mb-3">
-            Role Information
-        </h5>
-
-        <form method="post"
-              asp-page-handler="Information"
-              class="mb-5">
-
-            <input type="hidden"
-                   asp-for="Id" />
-
-            <abp-input asp-for="Information.Name" />
-
-            <div class="row">
-
+            <div class="row g-3 mb-4">
                 <div class="col-md-6">
-
-                    <div class="form-check">
-
-                        <input class="form-check-input"
-                               type="checkbox"
-                               asp-for="Information.IsDefault" />
-
-                        <label class="form-check-label"
-                               asp-for="Information.IsDefault">
-
-                            Is Default Role
-
-                        </label>
-
+                    <div class="p-3 rounded border border-white border-opacity-10 bg-dark bg-opacity-25 h-100">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="switchIsDefault"
+                                   asp-for="Information.IsDefault" />
+                            <label class="form-check-label fw-bold text-white" for="switchIsDefault">
+                                Default Role
+                            </label>
+                        </div>
+                        <small class="text-muted d-block ps-4 ms-2">
+                            Automatically assigned to newly created user accounts.
+                        </small>
                     </div>
-
                 </div>
 
                 <div class="col-md-6">
-
-                    <div class="form-check">
-
-                        <input class="form-check-input"
-                               type="checkbox"
-                               asp-for="Information.IsPublic" />
-
-                        <label class="form-check-label"
-                               asp-for="Information.IsPublic">
-
-                            Is Public
-
-                        </label>
-
+                    <div class="p-3 rounded border border-white border-opacity-10 bg-dark bg-opacity-25 h-100">
+                        <div class="form-check form-switch mb-1">
+                            <input class="form-check-input"
+                                   type="checkbox"
+                                   role="switch"
+                                   id="switchIsPublic"
+                                   asp-for="Information.IsPublic" />
+                            <label class="form-check-label fw-bold text-white" for="switchIsPublic">
+                                Public Role
+                            </label>
+                        </div>
+                        <small class="text-muted d-block ps-4 ms-2">
+                            Visible and selectable in public registration or selection lists.
+                        </small>
                     </div>
-
                 </div>
-
             </div>
 
-            <div class="mt-3">
-
-                <abp-button button-type="Primary"
-                            type="submit">
-
-                    Save Information
-
-                </abp-button>
-
+            <div>
+                <button type="submit" class="btn btn-primary px-3 shadow-sm">
+                    <i class="fa fa-save me-1"></i>Save Role Information
+                </button>
             </div>
-
         </form>
+    </abp-card-body>
+</abp-card>
 
+<!-- ==================== ROLE PERMISSIONS ==================== -->
+<abp-card class="mb-4 shadow-sm border-0">
+    <abp-card-header class="py-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-white">
+                <i class="fa fa-key text-primary me-2"></i>Permissions
+            </h5>
+            <span id="globalPermissionCountBadge" class="badge bg-primary bg-opacity-20 text-white border border-primary border-opacity-25 px-3 py-2 fs-7">
+                Selected: <span id="globalSelectedCount">0</span> / <span id="globalTotalCount">0</span>
+            </span>
+        </div>
+    </abp-card-header>
 
-        <hr class="my-5" />
+    <abp-card-body>
+        <form method="post" asp-page-handler="Permissions" id="permissionsForm">
+            <input type="hidden" asp-for="Id" />
 
-
-        <!-- PERMISSIONS -->
-
-        <h5 class="mb-4">
-            Permissions
-        </h5>
-
-
-        <form method="post"
-              asp-page-handler="Permissions">
-
-            <input type="hidden"
-                   asp-for="Id" />
+            <!-- Permissions Filter Toolbar -->
+            <div class="p-3 mb-4 rounded border border-white border-opacity-10 bg-dark bg-opacity-40">
+                <div class="row g-2 align-items-center">
+                    <div class="col-md-6">
+                        <div class="input-group">
+                            <span class="input-group-text bg-transparent border-end-0 text-muted">
+                                <i class="fa fa-search"></i>
+                            </span>
+                            <input type="text"
+                                   id="permissionSearchInput"
+                                   class="form-control border-start-0"
+                                   placeholder="Filter permissions by keyword (e.g., users, delete, roles)..." />
+                        </div>
+                    </div>
+                    <div class="col-md-6 text-md-end">
+                        <div class="d-inline-flex gap-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="btnSelectAllGlobal">
+                                <i class="fa fa-check-double me-1"></i>Select All
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="btnDeselectAllGlobal">
+                                <i class="fa fa-times me-1"></i>Deselect All
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             @if (Model.PermissionGroups.Any())
             {
+                var groupIndex = 0;
                 @foreach (var group in Model.PermissionGroups)
                 {
-                    <abp-card class="mb-4 shadow-sm">
+                    groupIndex++;
+                    var groupCheckboxId = $"group_checkbox_{groupIndex}";
 
-                        <abp-card-header>
-
+                    <div class="card mb-4 border border-white border-opacity-10 permission-group-card bg-transparent">
+                        <div class="card-header bg-dark bg-opacity-50 py-3 border-bottom border-white border-opacity-10">
                             <div class="d-flex justify-content-between align-items-center">
-
-                                <strong>
-                                    @group.DisplayName
-                                </strong>
-
-                                <div class="form-check">
-
-                                    <input type="checkbox"
-                                           class="form-check-input permission-group-checkbox" />
-
-                                    <label class="form-check-label">
-
-                                        Select All
-
-                                    </label>
-
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="fa fa-folder-open text-primary"></i>
+                                    <span class="fw-bold text-white fs-6 group-display-name">
+                                        @group.DisplayName
+                                    </span>
+                                    <span class="badge bg-secondary bg-opacity-25 text-white border border-white border-opacity-10 px-2 py-1 group-count-badge">
+                                        0 / @group.Permissions.Count
+                                    </span>
                                 </div>
 
+                                <div class="form-check mb-0">
+                                    <input type="checkbox"
+                                           class="form-check-input permission-group-checkbox"
+                                           id="@groupCheckboxId" />
+                                    <label class="form-check-label text-white small user-select-none" for="@groupCheckboxId">
+                                        Select Group
+                                    </label>
+                                </div>
                             </div>
+                        </div>
 
-                        </abp-card-header>
-
-                        <abp-card-body>
-
-                            <div class="row">
-
+                        <div class="card-body p-3">
+                            <div class="row g-2">
                                 @foreach (var permission in group.Permissions)
                                 {
-                                    <div class="col-md-6">
+                                    var isChecked = Model.SelectedPermissions.Contains(permission.Name);
+                                    var permId = $"perm_{Guid.NewGuid():N}";
 
-                                        <div class="border rounded p-2 mb-2">
+                                    <div class="col-md-6 col-lg-4 permission-col">
+                                        <div class="permission-tile @(isChecked ? "is-active" : "")">
+                                            <input class="form-check-input permission-item"
+                                                   type="checkbox"
+                                                   name="SelectedPermissions"
+                                                   value="@permission.Name"
+                                                   id="@permId"
+                                                   @(isChecked ? "checked" : "") />
 
-                                            <div class="form-check">
-
-                                                <input class="form-check-input permission-item"
-                                                       type="checkbox"
-                                                       name="SelectedPermissions"
-                                                       value="@permission.Name"
-                                                       checked="@Model.SelectedPermissions.Contains(permission.Name)" />
-
-                                                <label class="form-check-label">
-
-                                                    <strong>
-                                                        @permission.DisplayName
-                                                    </strong>
-
-                                                    <br />
-
-                                                    <small class="text-muted">
-
-                                                        @permission.Name
-
-                                                    </small>
-
+                                            <div class="permission-tile-content">
+                                                <label class="permission-tile-title" for="@permId">
+                                                    @permission.DisplayName
                                                 </label>
-
+                                                <span class="permission-tile-code">
+                                                    @permission.Name
+                                                </span>
                                             </div>
-
                                         </div>
-
                                     </div>
                                 }
-
                             </div>
-
-                        </abp-card-body>
-
-                    </abp-card>
+                        </div>
+                    </div>
                 }
+
+                <div id="noPermissionMatches" class="p-5 text-center text-muted d-none">
+                    <i class="fa fa-search fa-2x mb-2"></i>
+                    <p class="mb-0">No permissions match your filter keywords.</p>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top border-white border-opacity-10">
+                    <div class="text-white small">
+                        Total Permissions Selected: <strong id="bottomSelectedCount" class="text-primary fs-6">0</strong>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm">
+                        <i class="fa fa-save me-1"></i>Save Permissions
+                    </button>
+                </div>
             }
             else
             {
                 <div class="alert alert-warning">
-
-                    No permissions found.
-
+                    <i class="fa fa-exclamation-triangle me-2"></i>No permissions found for this role.
                 </div>
             }
-
-            <div class="mt-4">
-
-                <abp-button button-type="Primary"
-                            type="submit">
-
-                    Save Permissions
-
-                </abp-button>
-
-            </div>
-
         </form>
-
     </abp-card-body>
-
 </abp-card>
 
-
-@section scripts
+@section Scripts
 {
     <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var permissionCards = document.querySelectorAll('.permission-group-card');
+            var allPermissionTiles = document.querySelectorAll('.permission-tile');
+            var allCheckboxes = document.querySelectorAll('.permission-item');
+            var searchInput = document.getElementById('permissionSearchInput');
+            var noMatches = document.getElementById('noPermissionMatches');
 
-        document.querySelectorAll(".permission-group-checkbox")
-            .forEach(groupCheckbox => {
+            // Update active state and counters
+            function updateCounters() {
+                var totalSelected = 0;
+                var totalCount = allCheckboxes.length;
 
-                groupCheckbox.addEventListener("change", function () {
+                permissionCards.forEach(function (groupCard) {
+                    var groupCheckboxes = groupCard.querySelectorAll('.permission-item');
+                    var groupSelectedCount = 0;
 
-                    const card = this.closest(".card");
-
-                    const permissions = card.querySelectorAll(".permission-item");
-
-                    permissions.forEach(p => {
-                        p.checked = this.checked;
+                    groupCheckboxes.forEach(function (cb) {
+                        var tile = cb.closest('.permission-tile');
+                        if (cb.checked) {
+                            groupSelectedCount++;
+                            if (tile) tile.classList.add('is-active');
+                        } else {
+                            if (tile) tile.classList.remove('is-active');
+                        }
                     });
 
+                    totalSelected += groupSelectedCount;
+
+                    // Update group badge
+                    var badge = groupCard.querySelector('.group-count-badge');
+                    if (badge) {
+                        badge.textContent = groupSelectedCount + ' / ' + groupCheckboxes.length;
+                    }
+
+                    // Update group select-all checkbox
+                    var groupCb = groupCard.querySelector('.permission-group-checkbox');
+                    if (groupCb) {
+                        groupCb.checked = (groupSelectedCount === groupCheckboxes.length && groupCheckboxes.length > 0);
+                        groupCb.indeterminate = (groupSelectedCount > 0 && groupSelectedCount < groupCheckboxes.length);
+                    }
                 });
 
+                // Update global counters
+                var globalSelectedEl = document.getElementById('globalSelectedCount');
+                var globalTotalEl = document.getElementById('globalTotalCount');
+                var bottomSelectedEl = document.getElementById('bottomSelectedCount');
+
+                if (globalSelectedEl) globalSelectedEl.textContent = totalSelected;
+                if (globalTotalEl) globalTotalEl.textContent = totalCount;
+                if (bottomSelectedEl) bottomSelectedEl.textContent = totalSelected;
+            }
+
+            // Click listener on permission tiles
+            allPermissionTiles.forEach(function (tile) {
+                tile.addEventListener('click', function (e) {
+                    if (e.target.tagName.toLowerCase() === 'input') {
+                        updateCounters();
+                        return;
+                    }
+                    var cb = tile.querySelector('.permission-item');
+                    if (cb) {
+                        cb.checked = !cb.checked;
+                        updateCounters();
+                    }
+                });
             });
 
+            // Group checkbox change
+            document.querySelectorAll('.permission-group-checkbox').forEach(function (groupCheckbox) {
+                groupCheckbox.addEventListener('change', function () {
+                    var card = this.closest('.permission-group-card');
+                    var checkboxes = card.querySelectorAll('.permission-item');
+                    var checked = this.checked;
+
+                    checkboxes.forEach(function (cb) {
+                        // Only check visible ones if filtered, or all in group
+                        var col = cb.closest('.permission-col');
+                        if (!col || col.style.display !== 'none') {
+                            cb.checked = checked;
+                        }
+                    });
+
+                    updateCounters();
+                });
+            });
+
+            // Global Select All
+            var btnSelectAll = document.getElementById('btnSelectAllGlobal');
+            if (btnSelectAll) {
+                btnSelectAll.addEventListener('click', function () {
+                    allCheckboxes.forEach(function (cb) {
+                        var col = cb.closest('.permission-col');
+                        if (!col || col.style.display !== 'none') {
+                            cb.checked = true;
+                        }
+                    });
+                    updateCounters();
+                });
+            }
+
+            // Global Deselect All
+            var btnDeselectAll = document.getElementById('btnDeselectAllGlobal');
+            if (btnDeselectAll) {
+                btnDeselectAll.addEventListener('click', function () {
+                    allCheckboxes.forEach(function (cb) {
+                        var col = cb.closest('.permission-col');
+                        if (!col || col.style.display !== 'none') {
+                            cb.checked = false;
+                        }
+                    });
+                    updateCounters();
+                });
+            }
+
+            // Real-time Search / Filter
+            if (searchInput) {
+                searchInput.addEventListener('input', function () {
+                    var query = this.value.toLowerCase().trim();
+                    var visibleTilesTotal = 0;
+
+                    permissionCards.forEach(function (groupCard) {
+                        var cols = groupCard.querySelectorAll('.permission-col');
+                        var groupMatches = 0;
+
+                        cols.forEach(function (col) {
+                            var title = col.querySelector('.permission-tile-title')?.textContent.toLowerCase() || '';
+                            var code = col.querySelector('.permission-tile-code')?.textContent.toLowerCase() || '';
+
+                            if (title.includes(query) || code.includes(query)) {
+                                col.style.display = '';
+                                groupMatches++;
+                                visibleTilesTotal++;
+                            } else {
+                                col.style.display = 'none';
+                            }
+                        });
+
+                        // Hide group card if no matches in that group
+                        groupCard.style.display = (groupMatches > 0) ? '' : 'none';
+                    });
+
+                    if (noMatches) {
+                        noMatches.classList.toggle('d-none', visibleTilesTotal > 0 || query === '');
+                    }
+                });
+            }
+
+            // Initialize counters on page load
+            updateCounters();
+        });
     </script>
 }

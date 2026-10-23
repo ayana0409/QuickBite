@@ -30,6 +30,17 @@ public class IndexModel : AbpPageModel
     public int TotalPages => (int)Math.Ceiling((double)TotalCount / PageSize);
     public IEnumerable<IdentityUserDto> Users { get; set; } = [];
 
+    [BindProperty]
+    public ChangePasswordModalInput ChangePasswordInput { get; set; } = new();
+
+    public class ChangePasswordModalInput
+    {
+        public Guid UserId { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+
     public async Task<IActionResult> OnGetAsync()
     {
         try
@@ -56,7 +67,7 @@ public class IndexModel : AbpPageModel
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
-            ModelState.AddModelError(String.Empty, "$\"An error occurred: {ex.Message}\"");
+            ModelState.AddModelError(string.Empty, $"An error occurred: {ex.Message}");
             return Page();
         }
     }
@@ -67,7 +78,8 @@ public class IndexModel : AbpPageModel
         {
             await _accountService.DeleteUserAsync(id);
 
-            return RedirectToPage();
+            Alerts.Success("User deleted successfully.");
+            return RedirectToPage(new { Filter, CurrentPage });
         }
         catch (AbpAuthorizationException)
         {
@@ -76,7 +88,54 @@ public class IndexModel : AbpPageModel
         catch (Exception ex)
         {
             Console.WriteLine($"An error occurred: {ex.Message}");
-            return Redirect("/error");
+            Alerts.Danger(ex.Message ?? "Failed to delete user.");
+            return RedirectToPage(new { Filter, CurrentPage });
+        }
+    }
+
+    /// <summary>
+    /// Handles password change submission from the accounts list modal.
+    /// </summary>
+    public async Task<IActionResult> OnPostChangePasswordAsync()
+    {
+        if (string.IsNullOrWhiteSpace(ChangePasswordInput.NewPassword))
+        {
+            Alerts.Danger("New password cannot be empty.");
+            return RedirectToPage(new { Filter, CurrentPage });
+        }
+
+        if (ChangePasswordInput.NewPassword.Length < 6)
+        {
+            Alerts.Danger("Password must be at least 6 characters long.");
+            return RedirectToPage(new { Filter, CurrentPage });
+        }
+
+        if (ChangePasswordInput.NewPassword != ChangePasswordInput.ConfirmPassword)
+        {
+            Alerts.Danger("The password and confirmation password do not match.");
+            return RedirectToPage(new { Filter, CurrentPage });
+        }
+
+        try
+        {
+            await _accountService.ChangePasswordAsync(ChangePasswordInput.UserId, new ChangeUserPasswordDto
+            {
+                NewPassword = ChangePasswordInput.NewPassword,
+                ConfirmPassword = ChangePasswordInput.ConfirmPassword
+            });
+
+            Alerts.Success($"Successfully changed password for user '{ChangePasswordInput.UserName}'.");
+            return RedirectToPage(new { Filter, CurrentPage });
+        }
+        catch (AbpAuthorizationException)
+        {
+            return Redirect("/access-denied");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"An error occurred: {ex.Message}");
+            Alerts.Danger(ex.Message ?? "An error occurred while changing password.");
+            return RedirectToPage(new { Filter, CurrentPage });
         }
     }
 }

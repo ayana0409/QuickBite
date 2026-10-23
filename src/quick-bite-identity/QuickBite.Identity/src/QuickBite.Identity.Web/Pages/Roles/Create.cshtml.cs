@@ -24,7 +24,7 @@ public class CreateModel : AbpPageModel
 
     public void OnGet()
     {
-        // Giá trị mặc định
+        // Default values
         Input.IsPublic = true;
     }
 
@@ -39,24 +39,24 @@ public class CreateModel : AbpPageModel
         {
             await _roleService.CreateAsync(Input);
 
-            Alerts.Success($"Đã tạo role '{Input.Name}' thành công.");
+            Alerts.Success($"Role '{Input.Name}' created successfully.");
             return RedirectToPage("./Index");
         }
         catch (AbpValidationException ex)
         {
-            // Map lỗi validation về ModelState để hiển thị trên form
+            // Map validation errors to ModelState for form display
             foreach (var error in ex.ValidationErrors)
             {
                 foreach (var member in error.MemberNames)
                 {
-                    ModelState.AddModelError($"Input.{member}", error.ErrorMessage ?? "Có lỗi xảy ra khi tạo role.");
+                    ModelState.AddModelError($"Input.{member}", error.ErrorMessage ?? "An error occurred while creating role.");
                 }
             }
             return Page();
         }
         catch (Exception ex)
         {
-            ModelState.AddModelError(string.Empty, ex.Message ?? "Không thể tạo role. Vui lòng thử lại.");
+            ModelState.AddModelError(string.Empty, ex.Message ?? "Failed to create role. Please try again.");
             Logger.LogError(ex, "Error creating role {RoleName}", Input.Name);
             return Page();
         }

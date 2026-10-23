@@ -1,48 +1,77 @@
 @page
 @model QuickBite.Identity.Web.Pages.Roles.CreateModel
 
-<h2 class="mb-4">Create New Role</h2>
+<div class="mb-4">
+    <a asp-page="./Index" class="btn btn-outline-secondary btn-sm mb-2">
+        <i class="fa fa-arrow-left me-1"></i>Back to Roles
+    </a>
+    <h2 class="fw-bold text-white mb-1">
+        <i class="fa fa-plus-circle text-primary me-2"></i>Create New Role
+    </h2>
+    <p class="text-muted small mb-0">Define a new security role with custom permissions and assignment rules.</p>
+</div>
 
-<abp-card>
-    <abp-card-header>Create New Role</abp-card-header>
+<abp-card class="shadow-sm border-0">
+    <abp-card-header class="py-3">
+        <h5 class="mb-0 fw-bold text-white">Role Details</h5>
+    </abp-card-header>
+
     <abp-card-body>
         <form method="post">
-            <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger mb-4 d-none"></div>
 
-            <abp-input asp-for="Input.Name" />
-
-            <!-- Checkbox IsDefault -->
-            <div class="mb-3">
-                <div class="form-check">
-                    <input type="checkbox" 
-                           class="form-check-input" 
-                           asp-for="Input.IsDefault" />
-                    <label class="form-check-label" asp-for="Input.IsDefault">
-                        Is Default Role
-                    </label>
-                </div>
-                <small class="text-muted">Role này sẽ được gán tự động cho người dùng mới.</small>
-            </div>
-
-            <!-- Checkbox IsPublic -->
             <div class="mb-4">
-                <div class="form-check">
-                    <input type="checkbox" 
-                           class="form-check-input" 
-                           asp-for="Input.IsPublic" />
-                    <label class="form-check-label" asp-for="Input.IsPublic">
-                        Is Public
-                    </label>
-                </div>
-                <small class="text-muted">Người dùng có thể nhìn thấy role này.</small>
+                <label asp-for="Input.Name" class="form-label fw-bold">Role Name</label>
+                <input asp-for="Input.Name" class="form-control" placeholder="e.g., SupportSpecialist, ContentManager..." />
+                <span asp-validation-for="Input.Name" class="text-danger small"></span>
             </div>
 
-            <div>
-                <abp-button button-type="Primary" type="submit">
-                    <i class="fa fa-save"></i> Create Role
-                </abp-button>
+            <div class="row g-3 mb-4">
+                <!-- Switch IsDefault -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded border border-white border-opacity-10 bg-dark bg-opacity-25 h-100">
+                        <div class="form-check form-switch mb-1">
+                            <input type="checkbox" 
+                                   class="form-check-input" 
+                                   role="switch"
+                                   id="switchCreateDefault"
+                                   asp-for="Input.IsDefault" />
+                            <label class="form-check-label fw-bold text-white" for="switchCreateDefault">
+                                Default Role
+                            </label>
+                        </div>
+                        <small class="text-muted d-block ps-4 ms-2">
+                            This role will be assigned automatically to newly registered users.
+                        </small>
+                    </div>
+                </div>
+
+                <!-- Switch IsPublic -->
+                <div class="col-md-6">
+                    <div class="p-3 rounded border border-white border-opacity-10 bg-dark bg-opacity-25 h-100">
+                        <div class="form-check form-switch mb-1">
+                            <input type="checkbox" 
+                                   class="form-check-input" 
+                                   role="switch"
+                                   id="switchCreatePublic"
+                                   asp-for="Input.IsPublic" />
+                            <label class="form-check-label fw-bold text-white" for="switchCreatePublic">
+                                Public Role
+                            </label>
+                        </div>
+                        <small class="text-muted d-block ps-4 ms-2">
+                            This role will be publicly visible and selectable.
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary px-4 py-2 fw-semibold shadow-sm">
+                    <i class="fa fa-save me-1"></i>Create Role
+                </button>
                 
-                <a asp-page="./Index" class="btn btn-secondary">
+                <a asp-page="./Index" class="btn btn-outline-secondary px-3 py-2">
                     Cancel
                 </a>
             </div>

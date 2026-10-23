@@ -48,7 +48,7 @@
                     <th>Phone Number</th>
                     <th>Email Confirmed</th>
                     <th>Active</th>
-                    <th width="180">Actions</th>
+                    <th style="min-width: 260px;">Actions</th>
                 </tr>
                 </thead>
 
@@ -58,35 +58,44 @@
                 {
                     <tr>
 
-                        <td>@user.UserName</td>
+                        <td><strong>@user.UserName</strong></td>
                         <td>@user.Email</td>
                         <td>@user.PhoneNumber</td>
-                        <td>@user.EmailConfirmed</td>
-                        <td>@user.IsActive</td>
+                        <td>@(user.EmailConfirmed ? "✅" : "❌")</td>
+                        <td>@(user.IsActive ? "✅" : "❌")</td>
 
                         <td>
+                            <div class="d-flex gap-1 align-items-center">
+                                <a class="btn btn-warning btn-sm"
+                                   href="/accounts/edit/@user.Id">
+                                    <i class="fa fa-edit me-1"></i>Edit
+                                </a>
 
-                            <a class="btn btn-warning btn-sm"
-                               href="/accounts/edit/@user.Id">
-                                Edit
-                            </a>
-
-                            <form method="post"
-                                asp-page-handler="Delete">
-
-                                <input type="hidden"
-                                    name="id"
-                                    value="@user.Id"/>
-
-                                <button type="submit"
-                                        class="btn btn-danger btn-sm">
-
-                                    Delete
-
+                                <button type="button"
+                                        class="btn btn-outline-primary btn-sm btn-change-password"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#changePasswordModal"
+                                        data-user-id="@user.Id"
+                                        data-user-name="@user.UserName">
+                                    <i class="fa fa-key me-1"></i>Password
                                 </button>
 
-                            </form>
+                                <form method="post"
+                                      asp-page-handler="Delete"
+                                      class="d-inline"
+                                      onsubmit="return confirm('Are you sure you want to delete user @user.UserName?');">
 
+                                    <input type="hidden"
+                                           name="id"
+                                           value="@user.Id"/>
+
+                                    <button type="submit"
+                                            class="btn btn-danger btn-sm">
+                                        <i class="fa fa-trash me-1"></i>Delete
+                                    </button>
+
+                                </form>
+                            </div>
                         </td>
 
                     </tr>
@@ -152,3 +161,126 @@
     </div>
 
 </div>
+
+<!-- Modal Change Password -->
+<div class="modal fade" id="changePasswordModal" tabindex="-1" aria-labelledby="changePasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" asp-page-handler="ChangePassword">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="changePasswordModalLabel">
+                        <i class="fa fa-key me-2 text-primary"></i>Change Password
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="changePasswordUserId" name="ChangePasswordInput.UserId" />
+                    <input type="hidden" id="changePasswordUserName" name="ChangePasswordInput.UserName" />
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Account</label>
+                        <input type="text" id="displayUserName" class="form-control bg-light" readonly />
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label fw-bold">New Password</label>
+                        <div class="input-group">
+                            <input type="password"
+                                   id="newPassword"
+                                   name="ChangePasswordInput.NewPassword"
+                                   class="form-control"
+                                   required
+                                   minlength="6"
+                                   autocomplete="new-password"
+                                   placeholder="Enter new password" />
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="newPassword">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label fw-bold">Confirm Password</label>
+                        <div class="input-group">
+                            <input type="password"
+                                   id="confirmPassword"
+                                   name="ChangePasswordInput.ConfirmPassword"
+                                   class="form-control"
+                                   required
+                                   minlength="6"
+                                   autocomplete="new-password"
+                                   placeholder="Re-enter new password" />
+                            <button class="btn btn-outline-secondary toggle-password" type="button" data-target="confirmPassword">
+                                <i class="fa fa-eye"></i>
+                            </button>
+                        </div>
+                        <div id="passwordMismatchError" class="text-danger small mt-1 d-none">
+                            Passwords do not match.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btnSubmitPassword">
+                        <i class="fa fa-check me-1"></i>Save Password
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var modal = document.getElementById('changePasswordModal');
+            if (modal) {
+                modal.addEventListener('show.bs.modal', function (event) {
+                    var button = event.relatedTarget;
+                    var userId = button.getAttribute('data-user-id');
+                    var userName = button.getAttribute('data-user-name');
+
+                    document.getElementById('changePasswordUserId').value = userId || '';
+                    document.getElementById('changePasswordUserName').value = userName || '';
+                    document.getElementById('displayUserName').value = userName || '';
+                    document.getElementById('newPassword').value = '';
+                    document.getElementById('confirmPassword').value = '';
+                    document.getElementById('passwordMismatchError').classList.add('d-none');
+                });
+
+                // Toggle password visibility
+                var toggleBtns = modal.querySelectorAll('.toggle-password');
+                toggleBtns.forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var targetId = btn.getAttribute('data-target');
+                        var input = document.getElementById(targetId);
+                        if (input) {
+                            var isPassword = input.getAttribute('type') === 'password';
+                            input.setAttribute('type', isPassword ? 'text' : 'password');
+                            var icon = btn.querySelector('i');
+                            if (icon) {
+                                icon.classList.toggle('fa-eye', !isPassword);
+                                icon.classList.toggle('fa-eye-slash', isPassword);
+                            }
+                        }
+                    });
+                });
+
+                // Client-side password confirmation validation
+                var form = modal.querySelector('form');
+                form.addEventListener('submit', function (e) {
+                    var newPass = document.getElementById('newPassword').value;
+                    var confirmPass = document.getElementById('confirmPassword').value;
+                    var errorDiv = document.getElementById('passwordMismatchError');
+
+                    if (newPass !== confirmPass) {
+                        e.preventDefault();
+                        errorDiv.classList.remove('d-none');
+                        return false;
+                    }
+                    errorDiv.classList.add('d-none');
+                });
+            }
+        });
+    </script>
+}

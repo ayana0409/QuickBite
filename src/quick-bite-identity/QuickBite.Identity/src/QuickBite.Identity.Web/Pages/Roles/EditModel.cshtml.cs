@@ -84,14 +84,14 @@ public class EditModel : AbpPageModel
         try
         {
             await _roleService.UpdateAsync(Id, Information);
-            Alerts.Success("Cập nhật thông tin role thành công.");
+            Alerts.Success("Role information updated successfully.");
             return RedirectToPage(new { id = Id });
         }
         catch (AbpValidationException ex)
         {
             foreach (var error in ex.ValidationErrors)
             {
-                ModelState.AddModelError($"Information.{error.MemberNames}", error.ErrorMessage ?? "Error"); // Sửa member
+                ModelState.AddModelError($"Information.{error.MemberNames}", error.ErrorMessage ?? "Validation error");
             }
             await LoadPermissionsAsync();
             return Page();
@@ -109,16 +109,16 @@ public class EditModel : AbpPageModel
     {
         try
         {
-            // Lấy thông tin role
+            // Retrieve role information
             var role = await _roleService.GetAsync(Id);
 
-            // Load toàn bộ permission của role
+            // Load all permissions for the role
             var permissionResult = await _permissionAppService.GetAsync(
                 RolePermissionValueProvider.ProviderName,
                 role.Name
             );
 
-            // Mapping sang DTO update
+            // Map to permission update DTO
             var updateDto = new UpdatePermissionsDto
             {
                 Permissions = permissionResult.Groups
@@ -126,21 +126,19 @@ public class EditModel : AbpPageModel
                     .Select(p => new UpdatePermissionDto
                     {
                         Name = p.Name,
-
-                        // Checkbox nào được tick thì grant
                         IsGranted = SelectedPermissions.Contains(p.Name)
                     })
                     .ToArray()
             };
 
-            // Update permission
+            // Update role permissions
             await _permissionAppService.UpdateAsync(
                 RolePermissionValueProvider.ProviderName,
                 role.Name,
                 updateDto
             );
 
-            Alerts.Success("Cập nhật quyền thành công.");
+            Alerts.Success("Permissions updated successfully.");
 
             return RedirectToPage(new { id = Id });
         }
@@ -150,7 +148,7 @@ public class EditModel : AbpPageModel
             {
                 ModelState.AddModelError(
                     string.Empty,
-                    error.ErrorMessage
+                    error.ErrorMessage ?? "Validation error"
                 );
             }
 

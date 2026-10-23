@@ -1,72 +1,170 @@
 @page
 @model QuickBite.Identity.Web.Pages.Roles.IndexModel
 
-<h2 class="mb-4">Role Management</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="fw-bold text-white mb-1">
+            <i class="fa fa-user-shield text-primary me-2"></i>Role Management
+        </h2>
+        <p class="text-muted small mb-0">Configure system roles, access levels, and security permissions.</p>
+    </div>
+    <a asp-page="./Create" class="btn btn-primary px-3 shadow-sm">
+        <i class="fa fa-plus me-1"></i>Create Role
+    </a>
+</div>
 
-<abp-card>
-    <abp-card-header>
-        <div class="d-flex justify-content-between align-items-center">
-            <h4>Roles</h4>
-            <a asp-page="./Create" class="btn btn-primary">
-                <i class="fa fa-plus"></i> Create Role
-            </a>
+<abp-card class="shadow-sm border-0">
+    <abp-card-header class="py-3">
+        <div class="row g-2 align-items-center justify-content-between">
+            <div class="col-md-5">
+                <div class="input-group">
+                    <span class="input-group-text bg-transparent border-end-0 text-muted">
+                        <i class="fa fa-search"></i>
+                    </span>
+                    <input type="text"
+                           id="roleSearchInput"
+                           class="form-control border-start-0"
+                           placeholder="Filter roles by name..." />
+                </div>
+            </div>
+            <div class="col-auto">
+                <span class="badge bg-primary bg-opacity-20 text-white border border-primary border-opacity-25 px-3 py-2 fs-7">
+                    <i class="fa fa-shield-alt me-1 text-primary"></i>Total: <span id="roleCountDisplay">@Model.Roles.Count()</span> roles
+                </span>
+            </div>
         </div>
     </abp-card-header>
 
-    <abp-card-body>
+    <abp-card-body class="p-0">
         @if (Model.Roles.Any())
         {
-            <table class="table table-bordered table-hover align-middle">
-                <thead class="table-light">
-                    <tr>
-                        <th>Name</th>
-                        <th>Is Default</th>
-                        <th>Is Public</th>
-                        <th width="220">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @foreach (var role in Model.Roles)
-                {
-                    <tr>
-                        <td><strong>@role.Name</strong></td>
-                        <td>@(role.IsDefault ? "✅" : "")</td>
-                        <td>@(role.IsPublic ? "✅" : "")</td>
-                        <td>
-                            <a asp-page="./Edit" 
-                               asp-route-id="@role.Id" 
-                               class="btn btn-warning btn-sm">
-                                <i class="fa fa-edit"></i> Edit
-                            </a>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="rolesTable">
+                    <thead>
+                        <tr>
+                            <th class="ps-4 py-3" style="min-width: 200px;">Name</th>
+                            <th class="py-3 text-center" style="width: 160px;">Is Default</th>
+                            <th class="py-3 text-center" style="width: 160px;">Is Public</th>
+                            <th class="pe-4 py-3 text-end" style="min-width: 180px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var role in Model.Roles)
+                    {
+                        <tr class="role-row">
+                            <td class="ps-4 py-3">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="rounded-circle bg-primary bg-opacity-10 p-2 text-primary d-flex align-items-center justify-content-center" style="width: 34px; height: 34px;">
+                                        <i class="fa fa-shield-alt"></i>
+                                    </div>
+                                    <div>
+                                        <span class="fw-bold text-white fs-6 role-name">@role.Name</span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="text-center py-3">
+                                @if (role.IsDefault)
+                                {
+                                    <span class="badge bg-success bg-opacity-20 text-success border border-success border-opacity-25 px-3 py-1">
+                                        <i class="fa fa-check-circle me-1"></i>Default
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary bg-opacity-10 text-muted px-2 py-1">
+                                        No
+                                    </span>
+                                }
+                            </td>
+                            <td class="text-center py-3">
+                                @if (role.IsPublic)
+                                {
+                                    <span class="badge bg-info bg-opacity-20 text-info border border-info border-opacity-25 px-3 py-1">
+                                        <i class="fa fa-globe me-1"></i>Public
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary bg-opacity-10 text-muted px-2 py-1">
+                                        <i class="fa fa-lock me-1"></i>Private
+                                    </span>
+                                }
+                            </td>
+                            <td class="pe-4 py-3 text-end">
+                                <div class="d-inline-flex gap-2">
+                                    <a asp-page="./Edit" 
+                                       asp-route-id="@role.Id" 
+                                       class="btn btn-warning btn-sm fw-semibold text-dark px-3">
+                                        <i class="fa fa-edit me-1"></i>Edit
+                                    </a>
 
-                            <form method="post" 
-                                  asp-page-handler="Delete" 
-                                  asp-route-id="@role.Id" 
-                                  style="display:inline"
-                                  onsubmit="return confirmDelete(this);">
-
-                                <button type="submit" 
-                                        class="btn btn-danger btn-sm">
-                                    <i class="fa fa-trash"></i> Delete
-                                </button>
-                            </form>
-                        </td>
-                    </tr>
-                }
-                </tbody>
-            </table>
+                                    <form method="post" 
+                                          asp-page-handler="Delete" 
+                                          asp-route-id="@role.Id" 
+                                          class="d-inline"
+                                          onsubmit="return confirmDelete('@role.Name');">
+                                        <button type="submit" 
+                                                class="btn btn-outline-danger btn-sm px-2">
+                                            <i class="fa fa-trash me-1"></i>Delete
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+            <div id="noMatchMessage" class="p-4 text-center text-muted d-none">
+                <i class="fa fa-search fa-2x mb-2"></i>
+                <p class="mb-0">No roles match your search.</p>
+            </div>
         }
         else
         {
-            <div class="alert alert-info">No roles found.</div>
+            <div class="p-4 text-center text-muted">
+                <i class="fa fa-shield-alt fa-2x mb-2"></i>
+                <p class="mb-0">No roles found.</p>
+            </div>
         }
     </abp-card-body>
 </abp-card>
 
 @section Scripts {
     <script>
-        function confirmDelete(form) {
-            return confirm("Bạn có chắc chắn muốn xóa role này không?");
+        function confirmDelete(roleName) {
+            return confirm("Are you sure you want to delete role '" + roleName + "'?");
         }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            var searchInput = document.getElementById('roleSearchInput');
+            var rows = document.querySelectorAll('.role-row');
+            var noMatch = document.getElementById('noMatchMessage');
+            var countDisplay = document.getElementById('roleCountDisplay');
+
+            if (searchInput && rows.length > 0) {
+                searchInput.addEventListener('input', function () {
+                    var query = this.value.toLowerCase().trim();
+                    var visibleCount = 0;
+
+                    rows.forEach(function (row) {
+                        var roleName = row.querySelector('.role-name')?.textContent.toLowerCase() || '';
+                        if (roleName.includes(query)) {
+                            row.style.display = '';
+                            visibleCount++;
+                        } else {
+                            row.style.display = 'none';
+                        }
+                    });
+
+                    if (noMatch) {
+                        noMatch.classList.toggle('d-none', visibleCount > 0);
+                    }
+                    if (countDisplay) {
+                        countDisplay.textContent = visibleCount;
+                    }
+                });
+            }
+        });
     </script>
 }

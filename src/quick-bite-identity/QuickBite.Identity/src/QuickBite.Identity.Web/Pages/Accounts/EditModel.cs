@@ -30,6 +30,9 @@ public class EditModel : AbpPageModel
     [BindProperty]
     public List<string> SelectedRoles { get; set; } = new();
 
+    [BindProperty]
+    public ChangeUserPasswordDto PasswordInput { get; set; } = new();
+
     public IEnumerable<IdentityRoleDto> AllRoles { get; set; } = [];
 
     public async Task OnGetAsync()
@@ -116,6 +119,59 @@ public class EditModel : AbpPageModel
         catch (Exception ex)
         {
             ModelState.AddModelError(string.Empty, ex.Message);
+            await LoadUserAsync();
+            await LoadRolesAsync();
+            return Page();
+        }
+    }
+
+    // ==================== PASSWORD ====================
+    public async Task<IActionResult> OnPostPasswordAsync()
+    {
+        if (string.IsNullOrWhiteSpace(PasswordInput.NewPassword))
+        {
+            ModelState.AddModelError("PasswordInput.NewPassword", "New password cannot be empty.");
+        }
+        else if (PasswordInput.NewPassword.Length < 6)
+        {
+            ModelState.AddModelError("PasswordInput.NewPassword", "Password must be at least 6 characters long.");
+        }
+
+        if (PasswordInput.NewPassword != PasswordInput.ConfirmPassword)
+        {
+            ModelState.AddModelError("PasswordInput.ConfirmPassword", "The password and confirmation password do not match.");
+        }
+
+        if (!ModelState.IsValid && (ModelState.ContainsKey("PasswordInput.NewPassword") || ModelState.ContainsKey("PasswordInput.ConfirmPassword")))
+        {
+            await LoadUserAsync();
+            await LoadRolesAsync();
+            return Page();
+        }
+
+        try
+        {
+            await _accountService.ChangePasswordAsync(Id, PasswordInput);
+
+            Alerts.Success("Password changed successfully.");
+            return RedirectToPage(new { id = Id });
+        }
+        catch (AbpValidationException ex)
+        {
+            foreach (var error in ex.ValidationErrors)
+            {
+                foreach (var member in error.MemberNames)
+                {
+                    ModelState.AddModelError($"PasswordInput.{member}", error.ErrorMessage ?? "Error");
+                }
+            }
+            await LoadUserAsync();
+            await LoadRolesAsync();
+            return Page();
+        }
+        catch (Exception ex)
+        {
+            ModelState.AddModelError(string.Empty, ex.Message ?? "Failed to change password.");
             await LoadUserAsync();
             await LoadRolesAsync();
             return Page();

@@ -270,21 +270,130 @@ html, body {
 .table {
     color: var(--qu-text-main) !important;
     border-color: var(--qu-border) !important;
+    --bs-table-color: var(--qu-text-main) !important;
+    --bs-table-bg: transparent !important;
 }
 
-.table th {
-    background: rgba(30, 41, 59, 0.5) !important;
-    color: #e2e8f0 !important;
+.table th,
+.table > thead > tr > th {
+    background: rgba(30, 41, 59, 0.75) !important;
+    color: #f1f5f9 !important;
     border-color: var(--qu-border) !important;
     font-weight: 600 !important;
     font-size: 13px !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.5px !important;
 }
 
-.table td {
+.table td,
+.table > tbody > tr > td,
+.table > tbody > tr > th {
+    color: #f8fafc !important;
     border-color: var(--qu-border) !important;
     vertical-align: middle !important;
+    background: transparent !important;
 }
 
-.table-hover tbody tr:hover {
-    background-color: rgba(99, 102, 241, 0.06) !important;
+.table-hover tbody tr:hover,
+.table-hover tbody tr:hover > td {
+    background-color: rgba(99, 102, 241, 0.1) !important;
+    color: #ffffff !important;
+}
+
+/* --------------------------------------------------------------------------
+   Forms & Checkboxes
+   -------------------------------------------------------------------------- */
+.form-label,
+.form-check-label {
+    color: #f1f5f9 !important;
+    font-weight: 500 !important;
+}
+
+.form-control,
+.form-select {
+    background-color: rgba(15, 23, 42, 0.8) !important;
+    border: 1px solid var(--qu-border) !important;
+    color: #f8fafc !important;
+    border-radius: 8px !important;
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: rgba(15, 23, 42, 0.95) !important;
+    border-color: #818cf8 !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
+}
+
+.form-control::placeholder {
+    color: #64748b !important;
+}
+
+.text-muted,
+small.text-muted {
+    color: #94a3b8 !important;
+}
+
+/* --------------------------------------------------------------------------
+   Permission Tile Cards
+   -------------------------------------------------------------------------- */
+.permission-tile {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(30, 41, 59, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    height: 100%;
+}
+
+.permission-tile:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: rgba(129, 140, 248, 0.35);
+    transform: translateY(-1px);
+}
+
+.permission-tile.is-active {
+    background: rgba(99, 102, 241, 0.18);
+    border-color: #6366f1;
+    box-shadow: 0 0 14px rgba(99, 102, 241, 0.18);
+}
+
+.permission-tile .form-check-input {
+    margin-top: 3px;
+    flex-shrink: 0;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: #6366f1;
+}
+
+.permission-tile-content {
+    flex-grow: 1;
+    min-width: 0;
+}
+
+.permission-tile-title {
+    color: #f8fafc;
+    font-weight: 600;
+    font-size: 13.5px;
+    line-height: 1.35;
+    margin-bottom: 2px;
+}
+
+.permission-tile-code {
+    color: #94a3b8;
+    font-size: 11px;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    word-break: break-all;
+    display: block;
+}
+
+.permission-tile.is-active .permission-tile-code {
+    color: #c7d2fe;
 }

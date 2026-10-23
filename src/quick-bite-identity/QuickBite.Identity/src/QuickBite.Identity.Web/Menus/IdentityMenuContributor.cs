@@ -101,8 +101,24 @@ public class IdentityMenuContributor : IMenuContributor
             );
         }
 
-        administration.SetSubItemOrder(IdentityMenuNames.GroupName, 2);
-        administration.SetSubItemOrder(SettingManagementMenuNames.GroupName, 3);
+        // Remove redundant default ABP menu items: "Identity Management" and "Setting"
+        administration.Items.RemoveAll(x =>
+            x.Name == IdentityMenuNames.GroupName ||
+            x.Name == SettingManagementMenuNames.GroupName ||
+            x.Name.Equals("SettingManagement", StringComparison.OrdinalIgnoreCase) ||
+            x.Name.Equals("Setting", StringComparison.OrdinalIgnoreCase) ||
+            x.Name.Equals("Settings", StringComparison.OrdinalIgnoreCase) ||
+            x.Name.Equals("AbpIdentity", StringComparison.OrdinalIgnoreCase)
+        );
+
+        context.Menu.Items.RemoveAll(x =>
+            x.Name == IdentityMenuNames.GroupName ||
+            x.Name == SettingManagementMenuNames.GroupName ||
+            x.Name.Equals("SettingManagement", StringComparison.OrdinalIgnoreCase) ||
+            x.Name.Equals("Setting", StringComparison.OrdinalIgnoreCase) ||
+            x.Name.Equals("Settings", StringComparison.OrdinalIgnoreCase) ||
+            x.Name.Equals("AbpIdentity", StringComparison.OrdinalIgnoreCase)
+        );
 
         return Task.CompletedTask;
     }
