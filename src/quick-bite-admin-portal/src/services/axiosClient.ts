@@ -3,6 +3,7 @@ import type { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../stores/authStore';
 import { toast } from '../stores/toastStore';
 import { refreshAccessToken } from './authService';
+import { getAdminSystemConfig } from '../utils/operatingHours';
 
 // 1. Initialize Axios Instance
 const axiosClient = axios.create({
@@ -171,6 +172,13 @@ const extractErrorMessage = (error: unknown): string => {
 // Interceptor Request: Attach Access Token from Zustand store & Log Payload
 axiosClient.interceptors.request.use(
   (config) => {
+    // Zero-request guarantee: Block all requests when maintenance mode is active
+    if (getAdminSystemConfig().isMaintain) {
+      return Promise.reject(
+        new Error('Hệ thống đang bảo trì, vui lòng quay lại sau.')
+      );
+    }
+
     const token = useAuthStore.getState().accessToken;
     if (token) {
       if (!config.headers) {

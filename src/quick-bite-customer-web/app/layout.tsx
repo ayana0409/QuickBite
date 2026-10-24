@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import ClientBootManager from "@/src/components/shared/ClientBootManager";
 import Providers from "@/src/components/shared/Providers";
@@ -26,6 +27,9 @@ const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "https://quick-bite-ca
 const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "https://quick-bite-inventory.onrender.com/api/v1";
 const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://quick-bite-payment.onrender.com/v1";
 const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quick-bite-gw.onrender.com";
+const isMaintain =
+  process.env.NEXT_PUBLIC_IS_MAINTAIN === 'true' ||
+  process.env.NEXT_PUBLIC_IS_MAINTAIN === '1';
 
 const wakeupScript = `
   (function() {
@@ -74,10 +78,14 @@ export default function RootLayout({
       lang="vi"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: wakeupScript }} />
-      </head>
       <body className="min-h-full flex flex-col font-sans bg-background text-foreground">
+        {!isMaintain && (
+          <Script
+            id="quickbite-wakeup"
+            strategy="beforeInteractive"
+            dangerouslySetInnerHTML={{ __html: wakeupScript }}
+          />
+        )}
         <Providers>
           <ClientBootManager>
             <Header />

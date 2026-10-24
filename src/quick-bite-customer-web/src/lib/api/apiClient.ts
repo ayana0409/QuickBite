@@ -1,4 +1,5 @@
 import { HttpMethod } from './httpMethod';
+import { getCustomerSystemConfig } from '../operatingHours';
 
 export interface ApiClientOptions extends Omit<RequestInit, 'method' | 'body'> {
   method?: HttpMethod | `${HttpMethod}`;
@@ -18,6 +19,11 @@ export async function apiClient<T = any>(
   url: string,
   options: ApiClientOptions = {}
 ): Promise<T> {
+  // Zero-request guarantee: Block all requests when maintenance mode is active
+  if (getCustomerSystemConfig().isMaintain) {
+    return [] as unknown as T;
+  }
+
   const { method = HttpMethod.GET, body, params, headers, cache, ...rest } = options;
 
   // Do not force 'no-store' if 'next' revalidation options are present, allowing Next.js Data Cache/ISR

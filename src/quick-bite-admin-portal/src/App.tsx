@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import BootScreen from './components/BootScreen';
 import ToastContainer from './components/common/ToastContainer';
+import MaintenanceModal from './components/common/MaintenanceModal';
+import OffHoursModal from './components/common/OffHoursModal';
+import { useSystemStatus } from './hooks/useSystemStatus';
 import { useAuthStore } from './stores/authStore';
 
 // Layouts
@@ -64,9 +67,21 @@ function SmartRootRedirect() {
 }
 
 export default function App() {
+  const { isMaintainMode, isOffHours, startup, shutdown } = useSystemStatus();
   const [isSystemReady, setIsSystemReady] = useState<boolean>(false);
 
-  // Nếu hệ thống microservices chưa sẵn sàng, hiển thị BootScreen (polling API Gateway /health)
+  // 1. Maintenance Mode has absolute priority:
+  // Strictly prevent any backend requests or BootScreen polling, lock entire screen
+  if (isMaintainMode) {
+    return <MaintenanceModal />;
+  }
+
+  // 2. Off-hours Mode: Screen locked outside operating hours (UTC+7)
+  if (isOffHours) {
+    return <OffHoursModal startup={startup} shutdown={shutdown} />;
+  }
+
+  // 3. Normal Operating State: Run BootScreen wakeup check if not yet ready
   if (!isSystemReady) {
     return <BootScreen onReady={() => setIsSystemReady(true)} />;
   }
