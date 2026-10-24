@@ -73,6 +73,10 @@ async function bootstrap() {
         consumer: {
           groupId: 'catalog-service-group',
           allowAutoTopicCreation: true,
+          maxWaitTimeInMs: 2000,
+          heartbeatInterval: 3000,
+          sessionTimeout: 30000,
+          metadataMaxAge: 300000,
         },
       },
     });
