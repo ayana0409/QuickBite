@@ -241,32 +241,30 @@ export const BootScreenV1: React.FC<BootScreenProps> = ({ onReady }) => {
     payment_service: 'Pending',
   });
 
+  // Helper to ensure trailing slash on baseUrl
+  const formatPingUrl = (url?: string) => (url ? `${url.trim().replace(/\/+$/, '')}/` : '');
+
   // Map serviceKey -> URL from environment variables
   const SERVICE_URLS: Record<string, string[]> = {
     identity_service: [
-      import.meta.env.VITE_IDENTITY_URL,
-      `${import.meta.env.VITE_IDENTITY_URL}/health`,
-      `${import.meta.env.VITE_IDENTITY_URL}/api/health`,
+      formatPingUrl(import.meta.env.VITE_IDENTITY_URL),
+      import.meta.env.VITE_IDENTITY_URL ? `${import.meta.env.VITE_IDENTITY_URL.replace(/\/+$/, '')}/health` : '',
     ].filter(Boolean),
     order_service: [
-      import.meta.env.VITE_ORDER_URL,
-      `${import.meta.env.VITE_ORDER_URL}/health`,
-      `${import.meta.env.VITE_ORDER_URL}/api/app/health`,
+      formatPingUrl(import.meta.env.VITE_ORDER_URL),
+      import.meta.env.VITE_ORDER_URL ? `${import.meta.env.VITE_ORDER_URL.replace(/\/+$/, '')}/health` : '',
     ].filter(Boolean),
     catalog_service: [
-      import.meta.env.VITE_CATALOG_URL,
-      `${import.meta.env.VITE_CATALOG_URL}/health`,
-      `${import.meta.env.VITE_CATALOG_URL}/api/health`,
+      formatPingUrl(import.meta.env.VITE_CATALOG_URL),
+      import.meta.env.VITE_CATALOG_URL ? `${import.meta.env.VITE_CATALOG_URL.replace(/\/+$/, '')}/health` : '',
     ].filter(Boolean),
     inventory_service: [
-      import.meta.env.VITE_INVENTORY_URL,
-      `${import.meta.env.VITE_INVENTORY_URL}/health`,
-      `${import.meta.env.VITE_INVENTORY_URL}/v1/health`,
+      formatPingUrl(import.meta.env.VITE_INVENTORY_URL),
+      import.meta.env.VITE_INVENTORY_URL ? `${import.meta.env.VITE_INVENTORY_URL.replace(/\/+$/, '')}/health` : '',
     ].filter(Boolean),
     payment_service: [
-      import.meta.env.VITE_PAYMENT_URL,
-      `${import.meta.env.VITE_PAYMENT_URL}/health`,
-      `${import.meta.env.VITE_PAYMENT_URL}/v1/health`,
+      formatPingUrl(import.meta.env.VITE_PAYMENT_URL),
+      import.meta.env.VITE_PAYMENT_URL ? `${import.meta.env.VITE_PAYMENT_URL.replace(/\/+$/, '')}/health` : '',
     ].filter(Boolean),
   };
 
@@ -1263,16 +1261,29 @@ export const BootScreenV2: React.FC<BootScreenProps> = ({ onReady }) => {
   useEffect(() => {
     let isCancelled = false;
 
-    const SERVICE_URLS: Record<string, string> = {
-      identity_service: `${import.meta.env.VITE_IDENTITY_URL || 'https://quick-bite-identity.onrender.com'}/health`,
-      order_service: `${import.meta.env.VITE_ORDER_URL || 'https://quick-bite-order.onrender.com/api/app'}/health`,
-      catalog_service: `${import.meta.env.VITE_CATALOG_URL || 'https://quick-bite-catalog.onrender.com'}/health`,
-      inventory_service: `${import.meta.env.VITE_INVENTORY_URL || 'https://quick-bite-inventory.onrender.com/api/v1'}/health`,
-      payment_service: `${import.meta.env.VITE_PAYMENT_URL || 'https://quick-bite-payment.onrender.com/v1'}/health`,
-    };
+    // Build wake-up URLs strictly from configured environment variables with trailing slash '/'
+    const formatPingUrl = (url?: string) => (url ? `${url.trim().replace(/\/+$/, '')}/` : '');
 
-    // 1. Send parallel wake-up pings to each service container
+    const SERVICE_URLS: Record<string, string> = {};
+    if (import.meta.env.VITE_IDENTITY_URL) {
+      SERVICE_URLS.identity_service = formatPingUrl(import.meta.env.VITE_IDENTITY_URL);
+    }
+    if (import.meta.env.VITE_ORDER_URL) {
+      SERVICE_URLS.order_service = formatPingUrl(import.meta.env.VITE_ORDER_URL);
+    }
+    if (import.meta.env.VITE_CATALOG_URL) {
+      SERVICE_URLS.catalog_service = formatPingUrl(import.meta.env.VITE_CATALOG_URL);
+    }
+    if (import.meta.env.VITE_INVENTORY_URL) {
+      SERVICE_URLS.inventory_service = formatPingUrl(import.meta.env.VITE_INVENTORY_URL);
+    }
+    if (import.meta.env.VITE_PAYMENT_URL) {
+      SERVICE_URLS.payment_service = formatPingUrl(import.meta.env.VITE_PAYMENT_URL);
+    }
+
+    // 1. Send parallel wake-up pings to each configured service container
     Object.entries(SERVICE_URLS).forEach(([key, url]) => {
+      if (!url) return;
       try {
         fetch(url, { method: 'GET', mode: 'no-cors' }).catch(() => { });
       } catch { }
