@@ -331,8 +331,14 @@ export default function OrdersPage() {
                       <div className="flex items-center gap-1.5 text-xs text-slate-500">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span className="truncate">
-                          Giao đến: {order.deliveryAddress.addressLine}, {order.deliveryAddress.ward},{' '}
-                          {order.deliveryAddress.district}
+                          Giao đến:{' '}
+                          {[
+                            order.deliveryAddress.addressLine,
+                            order.deliveryAddress.ward,
+                            order.deliveryAddress.province,
+                          ]
+                            .filter(Boolean)
+                            .join(', ')}
                         </span>
                       </div>
                     )}

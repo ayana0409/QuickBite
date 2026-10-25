@@ -13,7 +13,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const { orderId } = await params;
     const response = await serverFetch.get(
-      `${GATEWAY_URL}/payments/payments/order/${orderId}`,
+      `${GATEWAY_URL}/payments/order/${orderId}`,
       { requireAuth: true },
       req
     );

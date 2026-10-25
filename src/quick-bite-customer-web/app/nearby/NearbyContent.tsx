@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { getNearbyRestaurants } from '@/src/lib/api/catalog';
 import { NearbyRestaurant } from '@/src/types/catalog.type';
+import RestaurantCard from '@/src/components/home/RestaurantCard';
 
 const RADIUS_OPTIONS = [
   { label: '1 km', value: 1000 },
@@ -28,6 +29,7 @@ const RADIUS_OPTIONS = [
 ];
 
 const PRESET_LOCATIONS = [
+  { name: 'Ninh Kiều, Cần Thơ', lat: 10.0123, lng: 105.7612 },
   { name: 'Quận 1, TP.HCM', lat: 10.7769, lng: 106.7009 },
   { name: 'Quận Cầu Giấy, Hà Nội', lat: 21.0333, lng: 105.7939 },
   { name: 'Quận Hải Châu, Đà Nẵng', lat: 16.0678, lng: 108.2208 },
@@ -247,111 +249,14 @@ export default function NearbyContent() {
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="aspect-16/10 bg-slate-100 rounded-3xl animate-pulse" />
+                <div key={i} className="h-48 bg-slate-100 rounded-3xl animate-pulse" />
               ))}
             </div>
           ) : restaurants.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {restaurants.map((restaurant) => {
-                const formattedDistance = formatDistance(restaurant.distance_meters);
-                const defaultImage =
-                  'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80';
-                const displayImage = restaurant.imageUrl || defaultImage;
-                const formattedAddress = [restaurant.address?.district, restaurant.address?.city]
-                  .filter(Boolean)
-                  .join(', ') || restaurant.address?.line1 || 'Việt Nam';
-
-                return (
-                  <Link
-                    key={restaurant.id}
-                    href={`/restaurant/${restaurant.id}`}
-                    prefetch={false}
-                    className="group flex flex-col bg-white rounded-3xl overflow-hidden border border-orange-100/70 shadow-xs hover:shadow-xl hover:border-orange-200/90 hover:-translate-y-1 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                  >
-                    {/* Thumbnail Container */}
-                    <div className="relative w-full aspect-16/10 overflow-hidden bg-slate-100">
-                      <img
-                        src={displayImage}
-                        alt={restaurant.name}
-                        loading="lazy"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-                      />
-
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-                      {/* Distance Badge (PostGIS) */}
-                      <div className="absolute top-3 left-3">
-                        <span className="inline-flex items-center gap-1 px-3 py-1 text-xs font-black rounded-full bg-orange-600 text-white shadow-md">
-                          <MapPin className="w-3.5 h-3.5" />
-                          <span>Cách {formattedDistance}</span>
-                        </span>
-                      </div>
-
-                      {/* Rating Badge */}
-                      <div className="absolute top-3 right-3 flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/95 backdrop-blur-md shadow-xs text-xs">
-                        {restaurant.rating?.count && restaurant.rating.count > 0 ? (
-                          <>
-                            <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                            <span className="font-black text-slate-900">{Number(restaurant.rating.avg).toFixed(1)}</span>
-                            <span className="text-[10px] text-slate-500 font-normal">
-                              ({restaurant.rating.count})
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-[11px] text-slate-500 font-medium">
-                            Chưa có đánh giá
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Available Foods Count */}
-                      <div className="absolute bottom-2.5 left-3 right-3 flex items-center justify-between text-white text-xs font-medium">
-                        <span className="truncate drop-shadow-sm text-orange-200 text-[11px] font-semibold">
-                          {restaurant.available_food_count ? `${restaurant.available_food_count} món ăn phục vụ` : 'Đang mở cửa'}
-                        </span>
-                        <div className="flex items-center gap-1 bg-black/40 px-2 py-0.5 rounded-md backdrop-blur-xs text-[11px]">
-                          <Clock className="w-3 h-3 text-orange-300" />
-                          <span>15-25 phút</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Content Info */}
-                    <div className="p-4 flex flex-col flex-1 justify-between gap-3">
-                      <div>
-                        <h3 className="font-bold text-slate-900 text-base line-clamp-1 group-hover:text-orange-600 transition-colors">
-                          {restaurant.name}
-                        </h3>
-                        <div className="flex items-center gap-1.5 mt-1.5 text-xs text-slate-600">
-                          <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                          <span className="line-clamp-1">{formattedAddress}</span>
-                        </div>
-                      </div>
-
-                      {/* Categories list */}
-                      {restaurant.categories && restaurant.categories.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {restaurant.categories.slice(0, 3).map((cat) => (
-                            <span key={cat.id} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
-                              {cat.name}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Action footer */}
-                      <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between text-xs">
-                        <span className="text-orange-600 font-bold group-hover:underline">
-                          Xem menu quán →
-                        </span>
-                        <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                          Giao siêu tốc
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
+              {restaurants.map((restaurant) => (
+                <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+              ))}
             </div>
           ) : (
             <div className="bg-white rounded-3xl p-12 text-center border border-dashed border-orange-200 max-w-xl mx-auto my-8">

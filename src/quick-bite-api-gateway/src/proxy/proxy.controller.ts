@@ -317,7 +317,9 @@ export class ProxyController {
         : `/api/inventory${cleanSubPath}`;
     } else if (targetConfigKey === 'PAYMENT_URL') {
       // Standardize downstream payment route to /api/payments
-      const stripped = req.originalUrl.replace(/^\/(api\/v1\/|api\/|v1\/|)(payments)?/, '');
+      const stripped = req.originalUrl
+        .replace(/^\/(api\/v1\/|api\/|v1\/|)(payments)?/, '')
+        .replace(/^\/payments/, '');
       const cleanSubPath = stripped.startsWith('/') ? stripped : (stripped ? `/${stripped}` : '');
       formattedPath = cleanBaseUrl.endsWith('/api/payments')
         ? cleanSubPath

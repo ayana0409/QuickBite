@@ -108,7 +108,19 @@ export async function proxyResponse(backendResponse: Response): Promise<NextResp
 
     try {
       const parsed = JSON.parse(errorText);
-      errorMessage = parsed?.error?.message || parsed?.message || errorMessage;
+      if (Array.isArray(parsed?.error?.validationErrors) && parsed.error.validationErrors.length > 0) {
+        const fieldErrors = parsed.error.validationErrors
+          .map((v: any) => v.message)
+          .filter(Boolean)
+          .join('; ');
+        errorMessage = fieldErrors
+          ? `${parsed?.error?.message || 'Dữ liệu không hợp lệ'}: ${fieldErrors}`
+          : parsed?.error?.message || errorMessage;
+      } else if (parsed?.error?.details) {
+        errorMessage = `${parsed?.error?.message || 'Lỗi yêu cầu'}: ${parsed.error.details}`;
+      } else {
+        errorMessage = parsed?.error?.message || parsed?.message || errorMessage;
+      }
     } catch {}
 
     return NextResponse.json(

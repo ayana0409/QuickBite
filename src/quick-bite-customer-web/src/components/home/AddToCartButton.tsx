@@ -6,6 +6,7 @@ import { Plus, Check, X, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { FoodItem } from '@/src/types/catalog.type';
 import { getFoodById } from '@/src/lib/api/catalog';
 import FoodCustomizer from '@/src/components/shared/FoodCustomizer';
+import { formatImageUrl, DEFAULT_FALLBACK_FOOD_IMAGE } from '@/src/lib/utils/image';
 
 interface AddToCartButtonProps {
   food: FoodItem;
@@ -86,12 +87,10 @@ export default function AddToCartButton({ food, restaurantName }: AddToCartButto
     }, 2000);
   };
 
-  const defaultImage =
-    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
-  const displayImage =
-    currentFood.images && currentFood.images.length > 0
-      ? currentFood.images[0]
-      : defaultImage;
+  const displayImage = formatImageUrl(
+    currentFood.images?.[0],
+    DEFAULT_FALLBACK_FOOD_IMAGE,
+  );
 
   return (
     <>
@@ -158,6 +157,9 @@ export default function AddToCartButton({ food, restaurantName }: AddToCartButto
                   <img
                     src={displayImage}
                     alt={currentFood.name}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = DEFAULT_FALLBACK_FOOD_IMAGE;
+                    }}
                     className="w-full h-full object-cover"
                   />
                 </div>

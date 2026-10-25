@@ -43,11 +43,38 @@ export async function POST(req: NextRequest) {
         ? deliveryLongitude
         : deliveryAddress.longitude;
 
+    // Ensure backwards compatibility with downstream Order service validation rules
+    const resolvedDistrict =
+      deliveryAddress.district && deliveryAddress.district.trim() !== ''
+        ? deliveryAddress.district.trim()
+        : deliveryAddress.ward?.trim() || deliveryAddress.province?.trim() || 'Chưa cập nhật';
+
+    const resolvedProvince =
+      deliveryAddress.province && deliveryAddress.province.trim() !== ''
+        ? deliveryAddress.province.trim()
+        : deliveryAddress.city?.trim() || 'Hồ Chí Minh';
+
+    const resolvedWard =
+      deliveryAddress.ward && deliveryAddress.ward.trim() !== ''
+        ? deliveryAddress.ward.trim()
+        : 'Phường/Xã';
+
+    const resolvedAddressLine =
+      deliveryAddress.addressLine && deliveryAddress.addressLine.trim() !== ''
+        ? deliveryAddress.addressLine.trim()
+        : 'Địa chỉ nhận hàng';
+
     const payload = {
       restaurantId,
       customerId: session.user.id,
       deliveryAddress: {
-        ...deliveryAddress,
+        receiverName: deliveryAddress.receiverName?.trim() || session.user.name || 'Khách hàng',
+        phoneNumber: deliveryAddress.phoneNumber?.trim() || '',
+        addressLine: resolvedAddressLine,
+        ward: resolvedWard,
+        district: resolvedDistrict,
+        province: resolvedProvince,
+        note: deliveryAddress.note?.trim() || '',
         latitude: resolvedLatitude ?? null,
         longitude: resolvedLongitude ?? null,
       },
@@ -61,12 +88,18 @@ export async function POST(req: NextRequest) {
       })),
     };
 
+    console.log(`📦 [POST /api/order] Sending order payload to ${GATEWAY_URL}/order/order`);
+
     const response = await serverFetch.post(
       `${GATEWAY_URL}/order/order`,
       payload,
       { requireAuth: true },
       req
     );
+
+    if (!response.ok) {
+      console.warn(`⚠️ [POST /api/order] Downstream order service returned status ${response.status}`);
+    }
 
     return proxyResponse(response);
   } catch (error: any) {

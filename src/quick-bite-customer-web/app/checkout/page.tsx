@@ -28,6 +28,7 @@ import { useCartStore } from '@/src/store/cart.store';
 import { useToast } from '@/src/components/shared/ToastProvider';
 import DeliveryAddressModal from '@/src/components/shared/DeliveryAddressModal';
 import AuthModal from '@/src/components/shared/AuthModal';
+import { formatImageUrl, DEFAULT_FALLBACK_FOOD_IMAGE } from '@/src/lib/utils/image';
 import { getRestaurantById } from '@/src/lib/api/catalog';
 import { RestaurantDetail } from '@/src/types/catalog.type';
 import {
@@ -200,7 +201,7 @@ export default function CheckoutPage() {
           phoneNumber: deliveryAddress.phoneNumber,
           addressLine: deliveryAddress.addressLine,
           ward: deliveryAddress.ward,
-          district: deliveryAddress.district,
+          district: deliveryAddress.district || deliveryAddress.ward || 'Chưa cập nhật',
           province: deliveryAddress.province,
           note: deliveryAddress.note || '',
           latitude: deliveryAddress.latitude,
@@ -310,7 +311,7 @@ export default function CheckoutPage() {
                     <span className="text-[11px] text-slate-500 block truncate max-w-sm">
                       {[
                         restaurantDetail.address.line1,
-                        restaurantDetail.address.district,
+                        restaurantDetail.address.ward,
                         restaurantDetail.address.city,
                       ]
                         .filter(Boolean)
@@ -338,8 +339,11 @@ export default function CheckoutPage() {
                     {/* Item Thumbnail */}
                     {item.imageUrl ? (
                       <img
-                        src={item.imageUrl}
+                        src={formatImageUrl(item.imageUrl)}
                         alt={item.name}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = DEFAULT_FALLBACK_FOOD_IMAGE;
+                        }}
                         className="w-16 h-16 rounded-2xl object-cover border border-slate-100 shrink-0"
                       />
                     ) : (
@@ -452,8 +456,7 @@ export default function CheckoutPage() {
                     <span>{deliveryAddress.phoneNumber}</span>
                   </div>
                   <p className="text-slate-700 leading-relaxed pt-1">
-                    {deliveryAddress.addressLine}, {deliveryAddress.ward}, {deliveryAddress.district},{' '}
-                    {deliveryAddress.province}
+                    {[deliveryAddress.addressLine, deliveryAddress.ward, deliveryAddress.province].filter(Boolean).join(', ')}
                   </p>
 
                   {/* GPS Coordinates Badge */}

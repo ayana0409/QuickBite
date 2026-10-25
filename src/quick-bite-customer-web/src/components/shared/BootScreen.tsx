@@ -20,6 +20,14 @@ import {
   Clock,
   Orbit,
   X,
+  Utensils,
+  ShieldCheck,
+  Check,
+  CheckCircle2,
+  RefreshCw,
+  ArrowRight,
+  Sparkles,
+  Coffee,
 } from "lucide-react";
 
 interface BootScreenProps {
@@ -327,7 +335,10 @@ interface LogEntry {
   level: "info" | "success" | "warn" | "accent";
 }
 
-export default function BootScreen({ onReady }: BootScreenProps) {
+// ============================================================================
+// BOOTSCREEN V1 (Legacy / Starship 3-Ring Matrix Visualizer)
+// ============================================================================
+export function BootScreenV1({ onReady }: BootScreenProps) {
   // Service health status registry
   const [serviceStatuses, setServiceStatuses] = useState<Record<string, NodeState>>({
     gateway: "Standby",
@@ -363,13 +374,13 @@ export default function BootScreen({ onReady }: BootScreenProps) {
 
   const completedServicesRef = useRef<Set<string>>(new Set());
 
-  // Environment URLs
-  const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "https://quick-bite-identity.onrender.com";
-  const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "https://quick-bite-order.onrender.com/api/app";
-  const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "https://quick-bite-catalog.onrender.com";
-  const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "https://quick-bite-inventory.onrender.com/api/v1";
-  const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://quick-bite-payment.onrender.com/v1";
-  const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quick-bite-gw.onrender.com";
+  // Environment URLs (strictly from environment, no hardcoded URLs)
+  const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "";
+  const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "";
+  const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "";
+  const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "";
+  const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "";
+  const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "";
 
   // Append telemetry log
   const pushLog = (message: string, level: "info" | "success" | "warn" | "accent" = "info") => {
@@ -445,15 +456,26 @@ export default function BootScreen({ onReady }: BootScreenProps) {
   // 4. Client Single-Flight Execution (Zero Spam, Max 1 Request per Service)
   useEffect(() => {
     let isCancelled = false;
+    const formatPingUrl = (url?: string) => (url ? `${url.trim().replace(/\/+$/, '')}/` : '');
 
     const targets = [
-      { id: "gateway", key: "gateway", name: "API Gateway", url: `${gatewayUrl}/health` },
-      { id: "identity", key: "identity_service", name: "Identity Service", url: `${identityUrl}/health` },
-      { id: "order", key: "order_service", name: "Order Service", url: `${orderUrl}/health` },
-      { id: "catalog", key: "catalog_service", name: "Catalog Service", url: `${catalogUrl}/health` },
-      { id: "payment", key: "payment_service", name: "Payment Service", url: `${paymentUrl}/health` },
-      { id: "inventory", key: "inventory_service", name: "Inventory Service", url: `${inventoryUrl}/health` },
-    ];
+      gatewayUrl ? { id: "gateway", key: "gateway", name: "API Gateway", url: `${gatewayUrl.trim().replace(/\/+$/, '')}/health` } : null,
+      identityUrl ? { id: "identity", key: "identity_service", name: "Identity Service", url: formatPingUrl(identityUrl) } : null,
+      orderUrl ? { id: "order", key: "order_service", name: "Order Service", url: formatPingUrl(orderUrl) } : null,
+      catalogUrl ? { id: "catalog", key: "catalog_service", name: "Catalog Service", url: formatPingUrl(catalogUrl) } : null,
+      paymentUrl ? { id: "payment", key: "payment_service", name: "Payment Service", url: formatPingUrl(paymentUrl) } : null,
+      inventoryUrl ? { id: "inventory", key: "inventory_service", name: "Inventory Service", url: formatPingUrl(inventoryUrl) } : null,
+    ].filter(Boolean) as Array<{ id: string; key: string; name: string; url: string }>;
+
+    // Pre-mark unconfigured services as Healthy so startup is not blocked
+    const allServiceKeys = ["identity_service", "order_service", "catalog_service", "payment_service", "inventory_service", "gateway"];
+    const configuredKeys = new Set(targets.map((t) => t.key));
+    allServiceKeys.forEach((key) => {
+      if (!configuredKeys.has(key)) {
+        completedServicesRef.current.add(key);
+        setServiceStatuses((prev) => ({ ...prev, [key]: "Healthy" }));
+      }
+    });
 
     targets.forEach((t) => {
       // Set initial status to Priming
@@ -472,11 +494,11 @@ export default function BootScreen({ onReady }: BootScreenProps) {
       const prewarmedPromise = (typeof window !== "undefined" && (window as any).__QUICKBITE_PROMISES?.[t.key])
         ? (window as any).__QUICKBITE_PROMISES[t.key]
         : fetch(t.url, {
-            method: "GET",
-            headers: { Accept: "application/json, text/plain, */*" },
-            signal: AbortSignal.timeout(90000),
-            cache: "no-store",
-          }).then((r) => r.json().catch(() => ({ status: r.ok ? "Healthy" : "Unhealthy" })));
+          method: "GET",
+          headers: { Accept: "application/json, text/plain, */*" },
+          signal: AbortSignal.timeout(90000),
+          cache: "no-store",
+        }).then((r) => r.json().catch(() => ({ status: r.ok ? "Healthy" : "Unhealthy" })));
 
       const handleSuccess = (data: any) => {
         if (isCancelled || completedServicesRef.current.has(t.key)) return;
@@ -515,7 +537,7 @@ export default function BootScreen({ onReady }: BootScreenProps) {
                 .then((retryData) => {
                   handleSuccess(retryData);
                 })
-                .catch(() => {});
+                .catch(() => { });
             }, 4000);
           }
         })
@@ -533,7 +555,7 @@ export default function BootScreen({ onReady }: BootScreenProps) {
               .then((retryData) => {
                 handleSuccess(retryData);
               })
-              .catch(() => {});
+              .catch(() => { });
           }, 3000);
         });
     });
@@ -1077,3 +1099,469 @@ export default function BootScreen({ onReady }: BootScreenProps) {
     </div>
   );
 }
+
+// ============================================================================
+// BOOTSCREEN V2 (Human-Centric / Warm Food Delivery Preparation)
+// ============================================================================
+
+interface CustomerFriendlyStep {
+  key: string;
+  name: string;
+  role: string;
+  icon: React.ElementType;
+  badgeColor: string;
+}
+
+const CUSTOMER_FRIENDLY_STEPS: CustomerFriendlyStep[] = [
+  {
+    key: "catalog_service",
+    name: "Thực đơn & Quán ngon",
+    role: "Cập nhật danh sách món ăn, hình ảnh và đánh giá mới nhất",
+    icon: Utensils,
+    badgeColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  },
+  {
+    key: "inventory_service",
+    name: "Tình trạng Món ăn",
+    role: "Kiểm tra món ăn còn hàng để bạn đặt giao nhanh nhất",
+    icon: Boxes,
+    badgeColor: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  },
+  {
+    key: "order_service",
+    name: "Tiếp nhận Đơn hàng",
+    role: "Sẵn sàng điều phối đơn tức thì tới nhà hàng và bác tài",
+    icon: ShoppingBag,
+    badgeColor: "text-rose-400 bg-rose-500/10 border-rose-500/20",
+  },
+  {
+    key: "payment_service",
+    name: "Thanh toán & Khuyến mãi",
+    role: "Kết nối ví điện tử an toàn, áp dụng voucher giảm giá",
+    icon: CreditCard,
+    badgeColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  },
+  {
+    key: "identity_service",
+    name: "Tài khoản & Hội viên",
+    role: "Bảo mật thông tin cá nhân và điểm tích lũy của bạn",
+    icon: ShieldCheck,
+    badgeColor: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+  },
+  {
+    key: "gateway",
+    name: "Kết nối Đường truyền",
+    role: "Tối ưu hóa tốc độ tải để bạn lướt món ăn mượt mà",
+    icon: Zap,
+    badgeColor: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+  },
+];
+
+export function BootScreenV2({ onReady }: BootScreenProps) {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const [canRedirect, setCanRedirect] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>(
+    "Đang kiểm tra kết nối với thực đơn và các nhà hàng..."
+  );
+
+  const [stepStatuses, setStepStatuses] = useState<Record<string, "Pending" | "Ready">>({
+    catalog_service: "Pending",
+    inventory_service: "Pending",
+    order_service: "Pending",
+    payment_service: "Pending",
+    identity_service: "Pending",
+    gateway: "Pending",
+  });
+
+  const completedSetRef = useRef<Set<string>>(new Set());
+
+  // Elapsed time counter
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedSeconds((s) => s + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Minimum presentation delay (3.5s) to prevent flickering
+  useEffect(() => {
+    const minDelayTimer = setTimeout(() => {
+      setCanRedirect(true);
+    }, 3500);
+    return () => clearTimeout(minDelayTimer);
+  }, []);
+
+  // Environment URLs (strictly from environment, no hardcoded URLs)
+  const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "";
+  const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "";
+  const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "";
+  const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "";
+  const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "";
+  const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "";
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const formatPingUrl = (url?: string) => (url ? `${url.trim().replace(/\/+$/, '')}/` : '');
+
+    const targets = [
+      gatewayUrl ? { id: "gateway", key: "gateway", name: "Cổng Kết Nối", url: `${gatewayUrl.trim().replace(/\/+$/, '')}/health` } : null,
+      catalogUrl ? { id: "catalog", key: "catalog_service", name: "Thực đơn & Nhà hàng", url: formatPingUrl(catalogUrl) } : null,
+      inventoryUrl ? { id: "inventory", key: "inventory_service", name: "Tình trạng Món ăn", url: formatPingUrl(inventoryUrl) } : null,
+      orderUrl ? { id: "order", key: "order_service", name: "Tiếp nhận Đơn hàng", url: formatPingUrl(orderUrl) } : null,
+      paymentUrl ? { id: "payment", key: "payment_service", name: "Thanh toán & Khuyến mãi", url: formatPingUrl(paymentUrl) } : null,
+      identityUrl ? { id: "identity", key: "identity_service", name: "Tài khoản & Bảo mật", url: formatPingUrl(identityUrl) } : null,
+    ].filter(Boolean) as Array<{ id: string; key: string; name: string; url: string }>;
+
+    const markServiceReady = (key: string) => {
+      if (!completedSetRef.current.has(key)) {
+        completedSetRef.current.add(key);
+        setStepStatuses((prev) => ({ ...prev, [key]: "Ready" }));
+      }
+    };
+
+    // 1. Check pre-warmed promises or dispatch direct fetch for all targets (original logic)
+    targets.forEach((t) => {
+      const executeTargetCheck = () => {
+        if (isCancelled || completedSetRef.current.has(t.key)) return;
+
+        const prewarmedPromise =
+          typeof window !== "undefined" && (window as any).__QUICKBITE_PROMISES?.[t.key]
+            ? (window as any).__QUICKBITE_PROMISES[t.key]
+            : fetch(t.url, {
+              method: "GET",
+              headers: { Accept: "application/json, text/plain, */*" },
+              signal: AbortSignal.timeout(90000),
+              cache: "no-store",
+            }).then((r) => r.json().catch(() => ({ status: r.ok ? "Healthy" : "Unhealthy" })));
+
+        prewarmedPromise
+          .then((data: any) => {
+            if (isCancelled) return;
+            const rawStatus = (data?.status || data?.data?.status || "").toString().toLowerCase();
+            const isHealthy =
+              rawStatus === "healthy" ||
+              rawStatus === "ok" ||
+              rawStatus === "up" ||
+              t.id === "gateway" ||
+              data?.success === true;
+
+            if (isHealthy) {
+              markServiceReady(t.key);
+            } else {
+              // Retry after 3.5s if service is waking up
+              setTimeout(() => {
+                if (!isCancelled && !completedSetRef.current.has(t.key)) {
+                  fetch(t.url, {
+                    method: "GET",
+                    headers: { Accept: "application/json, text/plain, */*" },
+                    signal: AbortSignal.timeout(45000),
+                    cache: "no-store",
+                  })
+                    .then((r) => r.json().catch(() => ({ status: r.ok ? "Healthy" : "Unhealthy" })))
+                    .then((retryData) => {
+                      const retryStatus = (retryData?.status || retryData?.data?.status || "").toString().toLowerCase();
+                      if (retryStatus === "healthy" || retryStatus === "ok" || retryStatus === "up") {
+                        markServiceReady(t.key);
+                      }
+                    })
+                    .catch(() => { });
+                }
+              }, 3500);
+            }
+          })
+          .catch(() => {
+            // Single gentle retry on error
+            setTimeout(() => {
+              if (!isCancelled && !completedSetRef.current.has(t.key)) {
+                fetch(t.url, {
+                  method: "GET",
+                  headers: { Accept: "application/json, text/plain, */*" },
+                  signal: AbortSignal.timeout(45000),
+                  cache: "no-store",
+                })
+                  .then((r) => r.json().catch(() => ({ status: r.ok ? "Healthy" : "Unhealthy" })))
+                  .then((retryData) => {
+                    const retryStatus = (retryData?.status || retryData?.data?.status || "").toString().toLowerCase();
+                    if (retryStatus === "healthy" || retryStatus === "ok" || retryStatus === "up") {
+                      markServiceReady(t.key);
+                    }
+                  })
+                  .catch(() => { });
+              }
+            }, 3500);
+          });
+      };
+
+      executeTargetCheck();
+    });
+
+    // 2. Poll Gateway /health periodically as the central health aggregator
+    const pollGateway = async () => {
+      let pollCount = 0;
+      const gwHealthUrl = gatewayUrl ? `${gatewayUrl}/health` : "/health";
+      while (!isCancelled) {
+        pollCount++;
+        try {
+          const res = await fetch(gwHealthUrl, {
+            method: "GET",
+            headers: { Accept: "application/json, text/plain, */*" },
+            cache: "no-store",
+            signal: AbortSignal.timeout(25000),
+          });
+
+          if (res.ok) {
+            const data = await res.json().catch(() => null);
+            if (data && !isCancelled) {
+              const rawGw = (data.status || data.data?.status || "").toString().toLowerCase();
+              if (rawGw === "healthy" || rawGw === "ok") {
+                markServiceReady("gateway");
+              }
+
+              const entries = data.entries || data.data?.entries || {};
+              Object.entries(entries).forEach(([k, v]: [string, any]) => {
+                const subStatus = (v?.status || "").toString().toLowerCase();
+                if (subStatus === "healthy" || subStatus === "ok") {
+                  markServiceReady(k);
+                }
+              });
+            }
+          }
+        } catch {
+          // Gateway booting or sleeping
+        }
+
+        const currentReady = completedSetRef.current.size;
+        if (currentReady >= targets.length) {
+          setStatusMessage("🎉 Tất cả dịch vụ đã trực tuyến và sẵn sàng phục vụ bạn!");
+          break;
+        } else {
+          setStatusMessage(
+            `Đã kết nối ${currentReady}/${targets.length} dịch vụ. Đang chuẩn bị các món ngon còn lại... (Lần ${pollCount})`
+          );
+        }
+
+        if (!isCancelled) {
+          await new Promise((r) => setTimeout(r, 2500));
+        }
+      }
+    };
+
+    pollGateway();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [catalogUrl, gatewayUrl, identityUrl, inventoryUrl, orderUrl, paymentUrl]);
+
+  const readyCount = Object.values(stepStatuses).filter((st) => st === "Ready").length;
+  const isAllReady = readyCount >= CUSTOMER_FRIENDLY_STEPS.length;
+  const progressPercent = Math.min(100, Math.round((readyCount / CUSTOMER_FRIENDLY_STEPS.length) * 100));
+
+  // Auto redirect countdown when all services verified Ready + min presentation time passed
+  useEffect(() => {
+    if (isAllReady && canRedirect && redirectCountdown === null) {
+      setRedirectCountdown(2);
+    }
+  }, [isAllReady, canRedirect, redirectCountdown]);
+
+  useEffect(() => {
+    if (redirectCountdown === null) return;
+    if (redirectCountdown <= 0) {
+      if (onReady) onReady();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [redirectCountdown, onReady]);
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const elapsedFormatted = `${pad(Math.floor(elapsedSeconds / 60))}:${pad(elapsedSeconds % 60)}s`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950 text-slate-100 overflow-y-auto select-none font-sans">
+      {/* Warm ambient background lighting */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Main Container Card */}
+      <div className="relative w-full max-w-2xl rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl shadow-slate-950/80 p-6 sm:p-8 flex flex-col gap-6 overflow-hidden backdrop-blur-xl">
+        {/* Top vibrant gradient accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500" />
+
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 p-0.5 flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                <Utensils className="w-6 h-6 text-amber-400" />
+              </div>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-300 mb-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Bữa ngon đang chờ bạn</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                Chào bạn! QuickBite đang chuẩn bị bữa ăn ngon...
+              </h1>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
+          Hệ thống đang đồng bộ danh sách nhà hàng, kiểm tra thực đơn còn món và kết nối cổng giao hàng nhanh nhất để phục vụ bạn.
+        </p>
+
+        {/* Progress Section */}
+        <div className="rounded-2xl bg-slate-950/60 border border-slate-800/80 p-4 sm:p-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="font-medium text-slate-300 flex items-center gap-2">
+              {isAllReady ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-300 font-semibold">Tất cả món ngon và dịch vụ đã sẵn sàng!</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 text-amber-400 animate-spin" />
+                  <span>Đang kết nối hệ thống quán ăn ({readyCount}/{CUSTOMER_FRIENDLY_STEPS.length} hoàn tất)</span>
+                </>
+              )}
+            </span>
+            <span className="font-mono font-bold text-amber-300 text-sm sm:text-base">
+              {progressPercent}%
+            </span>
+          </div>
+
+          {/* Smooth Progress Bar */}
+          <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+
+          {/* Real-time status message feed */}
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80">
+            <span
+              className={`w-2 h-2 rounded-full shrink-0 ${isAllReady ? "bg-emerald-400" : "bg-amber-400 animate-pulse"
+                }`}
+            />
+            <span className="truncate">{statusMessage}</span>
+          </div>
+        </div>
+
+        {/* Humanized Service Steps Checklist */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+          {CUSTOMER_FRIENDLY_STEPS.map((step) => {
+            const isReady = stepStatuses[step.key] === "Ready";
+            const Icon = step.icon;
+
+            return (
+              <div
+                key={step.key}
+                className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${isReady
+                    ? "bg-emerald-950/20 border-emerald-500/30 text-slate-100 shadow-xs"
+                    : "bg-slate-950/40 border-slate-800/70 text-slate-400"
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${isReady ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400" : step.badgeColor
+                      }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3
+                      className={`text-xs sm:text-sm font-bold truncate ${isReady ? "text-white" : "text-slate-300"
+                        }`}
+                    >
+                      {step.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 truncate leading-tight">
+                      {step.role}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 ml-2">
+                  {isReady ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                      <Check className="w-3 h-3" />
+                      <span className="hidden sm:inline">Xong</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      <span className="hidden sm:inline">Chờ...</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Human Touch Tip Card */}
+        <div className="rounded-2xl bg-slate-800/40 border border-slate-800 p-3.5 flex items-start gap-3 text-xs text-slate-300">
+          <Coffee className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="leading-relaxed text-slate-400">
+            <strong className="text-slate-200">Mẹo nhỏ:</strong> Khi các quán ăn mở bán ca sáng hoặc sau giờ nghỉ, máy chủ có thể mất 15–30 giây để cập nhật lại menu mới nhất. Bạn có thể lưu sẵn địa chỉ giao hàng để đặt món nhanh nhất nhé!
+          </p>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>
+              Thời gian kết nối:{" "}
+              <strong className="font-mono text-slate-200">{elapsedFormatted}</strong>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {isAllReady ? (
+              <button
+                type="button"
+                onClick={() => onReady && onReady()}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              >
+                <span>Vào đặt món ngay</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => onReady && onReady()}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all cursor-pointer"
+              >
+                <span>Bỏ qua & Khám phá ngay</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// SWITCH BOOTSCREEN VERSION
+// Hướng dẫn: Đổi dấu comment // bên dưới để chuyển đổi tức thì giữa 2 phiên bản
+// ============================================================================
+
+// [MẶC ĐỊNH - V2]: Giao diện thân thiện con người, ấm áp, trải nghiệm khách hàng
+export const BootScreen = BootScreenV2;
+export default BootScreenV2;
+
+// [TÙY CHỌN - V1]: Giao diện Starship Matrix / 3-Ring Sci-Fi Cluster Visualizer
+// export const BootScreen = BootScreenV1;
+// export default BootScreenV1;
+

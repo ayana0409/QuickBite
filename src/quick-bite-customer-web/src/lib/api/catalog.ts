@@ -9,10 +9,24 @@ import {
   NearbyRestaurant,
 } from '@/src/types/catalog.type';
 import { apiClient } from './apiClient';
+import { formatFoodItemImages } from '@/src/lib/utils/image';
 
 const GATEWAY_URL =
   process.env.NEXT_PUBLIC_API_GATEWAY_URL?.replace(/\/$/, '') ||
   'https://quick-bite-gw.onrender.com';
+
+/**
+ * Robustly extracts array data from various API response shapes
+ * (direct array, { data: [...] }, or double-wrapped { data: { data: [...] } })
+ */
+function extractList<T>(json: any): T[] {
+  if (!json) return [];
+  if (Array.isArray(json)) return json;
+  if (Array.isArray(json.data)) return json.data;
+  if (json.data && Array.isArray(json.data.data)) return json.data.data;
+  if (json.data && Array.isArray(json.data.items)) return json.data.items;
+  return [];
+}
 
 /**
  * Fetch restaurants list via API Gateway
@@ -26,14 +40,7 @@ export async function getRestaurants(page = 1, limit = 8): Promise<Restaurant[]>
       next: { revalidate: 60 },
     });
 
-    if (Array.isArray(json)) return json;
-    if ((json as any)?.data) {
-      const data = (json as any).data;
-      if (Array.isArray(data)) return data;
-      if (data?.data && Array.isArray(data.data)) return data.data;
-    }
-
-    return [];
+    return extractList<Restaurant>(json);
   } catch (error) {
     console.error(`[getRestaurants] Failed to fetch from Gateway (${GATEWAY_URL}):`, error);
     return [];
@@ -52,15 +59,7 @@ export async function getFeaturedFoods(page = 1, limit = 8): Promise<FoodItem[]>
       next: { revalidate: 60 },
     });
 
-    let items: FoodItem[] = [];
-    if (Array.isArray(json)) {
-      items = json;
-    } else if ((json as any)?.data) {
-      const data = (json as any).data;
-      if (Array.isArray(data)) items = data;
-      else if (data?.data && Array.isArray(data.data)) items = data.data;
-    }
-
+    const items = extractList<FoodItem>(json).map((f) => formatFoodItemImages(f));
     if (items.length > 0) {
       return items.sort((a, b) => (b.totalSold || 0) - (a.totalSold || 0));
     }
@@ -84,9 +83,9 @@ export async function getTrendingFoods(limit = 8): Promise<FoodItem[]> {
       next: { revalidate: 300 }, // Cache on Next.js edge for 5 minutes
     });
 
-    if (Array.isArray(json)) return json;
-    if ((json as any)?.data && Array.isArray((json as any).data)) {
-      return (json as any).data;
+    const list = extractList<FoodItem>(json);
+    if (list.length > 0) {
+      return list.map((f) => formatFoodItemImages(f));
     }
 
     return [];
@@ -108,12 +107,8 @@ export async function getSimilarFoods(foodId: string, limit = 8): Promise<FoodIt
       next: { revalidate: 300 },
     });
 
-    if (Array.isArray(json)) return json;
-    if ((json as any)?.data && Array.isArray((json as any).data)) {
-      return (json as any).data;
-    }
-
-    return [];
+    const list = extractList<FoodItem>(json);
+    return list.map((f) => formatFoodItemImages(f));
   } catch (error) {
     console.error(`[getSimilarFoods] Failed to fetch for ${foodId}:`, error);
     return [];
@@ -139,12 +134,7 @@ export async function getNearbyRestaurants(
       cache: 'no-store',
     });
 
-    if (Array.isArray(json)) return json;
-    if ((json as any)?.data && Array.isArray((json as any).data)) {
-      return (json as any).data;
-    }
-
-    return [];
+    return extractList<NearbyRestaurant>(json);
   } catch (error) {
     console.error(`[getNearbyRestaurants] Failed to fetch nearby restaurants:`, error);
     return [];
@@ -169,26 +159,23 @@ export async function searchFoods(
     if (params.page != null) cleanParams.page = params.page;
     if (params.limit != null) cleanParams.limit = params.limit;
 
-    const json = await apiClient<ApiResponse<{ data: FoodItem[]; meta: any }> | { data: FoodItem[]; meta: any }>(url, {
+    const json = await apiClient<any>(url, {
       params: cleanParams,
-      // Short cache or no cache for search queries
       next: { revalidate: 30 },
     });
 
-    if ((json as any)?.data?.data && Array.isArray((json as any).data.data)) {
-      return {
-        data: (json as any).data.data,
-        meta: (json as any).data.meta,
-      };
-    }
-    if ((json as any)?.data && Array.isArray((json as any).data)) {
-      return {
-        data: (json as any).data,
-        meta: (json as any).meta,
-      };
-    }
+    const items = extractList<FoodItem>(json).map((f) => formatFoodItemImages(f));
+    const meta = (json as any)?.data?.meta || (json as any)?.meta || {
+      page: params.page || 1,
+      limit: params.limit || 10,
+      total: items.length,
+      totalPages: Math.ceil(items.length / (params.limit || 10)) || 1,
+    };
 
-    return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
+    return {
+      data: items,
+      meta,
+    };
   } catch (error) {
     console.error(`[searchFoods] Failed to search:`, error);
     return { data: [], meta: { page: 1, limit: 10, total: 0, totalPages: 0 } };
@@ -227,14 +214,8 @@ export async function getFoodsByRestaurant(
       next: { revalidate: 60 },
     });
 
-    if (Array.isArray(json)) return json;
-    if ((json as any)?.data) {
-      const data = (json as any).data;
-      if (Array.isArray(data)) return data;
-      if (data?.data && Array.isArray(data.data)) return data.data;
-    }
-
-    return [];
+    const list = extractList<FoodItem>(json);
+    return list.map((f) => formatFoodItemImages(f));
   } catch (error) {
     console.error(`[getFoodsByRestaurant] Failed to fetch for restaurant ${restaurantId}:`, error);
     return [];
@@ -250,7 +231,8 @@ export async function getFoodById(id: string): Promise<FoodItem | null> {
     const json = await apiClient<ApiResponse<FoodItem> | FoodItem>(url, {
       next: { revalidate: 60 },
     });
-    return ((json as any)?.data ?? json) || null;
+    const raw = ((json as any)?.data ?? json) || null;
+    return raw ? formatFoodItemImages(raw) : null;
   } catch (error) {
     console.error(`[getFoodById] Failed to fetch (${GATEWAY_URL}/food-items/${id}):`, error);
     return null;

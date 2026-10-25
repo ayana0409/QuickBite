@@ -16,6 +16,7 @@ import {
   Star,
 } from 'lucide-react';
 import { getFoodById, getRestaurantById } from '@/src/lib/api/catalog';
+import { formatImageUrl, DEFAULT_FALLBACK_FOOD_IMAGE } from '@/src/lib/utils/image';
 import FoodCustomizer from '@/src/components/shared/FoodCustomizer';
 import ReviewListSection from '@/src/components/shared/ReviewListSection';
 import FoodImageGallery from '@/src/components/food/FoodImageGallery';
@@ -36,7 +37,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const coverImage = food.images?.[0] || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+  const coverImage = formatImageUrl(food.images?.[0], DEFAULT_FALLBACK_FOOD_IMAGE);
   const descriptionText =
     food.description ||
     `Thưởng thức món ${food.name} thơm ngon, chuẩn vị tại QuickBite. Giao hàng tận nơi siêu tốc 20-30 phút!`;

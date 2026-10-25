@@ -72,8 +72,8 @@ const partnerRegistrationSchema = z.object({
     .string()
     .trim()
     .min(3, "Địa chỉ chi tiết (số nhà, tên đường) phải có tối thiểu 3 ký tự"),
-  ward: z.string().trim().min(1, "Vui lòng nhập Phường / Xã"),
-  district: z.string().trim().min(1, "Vui lòng nhập Quận / Huyện"),
+  ward: z.string().trim().min(1, "Vui lòng nhập Khu vực / Xã, Phường"),
+  district: z.string(),
   city: z.string().trim().min(1, "Vui lòng nhập Tỉnh / Thành phố"),
   longitude: z.number().min(-180).max(180),
   latitude: z.number().min(-90).max(90),
@@ -217,10 +217,7 @@ export default function PartnerRegistrationForm() {
           setValue("ward", geoResult.ward, { shouldValidate: true });
           hasUpdatedAnyField = true;
         }
-        if (geoResult.district) {
-          setValue("district", geoResult.district, { shouldValidate: true });
-          hasUpdatedAnyField = true;
-        }
+        setValue("district", "");
         if (geoResult.city) {
           setValue("city", geoResult.city, { shouldValidate: true });
           hasUpdatedAnyField = true;
@@ -295,7 +292,7 @@ export default function PartnerRegistrationForm() {
         address: {
           line1: data.line1,
           ward: data.ward,
-          district: data.district,
+          district: "",
           city: data.city,
           geo: {
             type: "Point",
@@ -391,7 +388,6 @@ export default function PartnerRegistrationForm() {
               {[
                 existingRestaurant.address?.line1,
                 existingRestaurant.address?.ward,
-                existingRestaurant.address?.district,
                 existingRestaurant.address?.city,
               ]
                 .filter(Boolean)
@@ -470,7 +466,6 @@ export default function PartnerRegistrationForm() {
               {[
                 activeRequest.payload?.address?.line1,
                 activeRequest.payload?.address?.ward,
-                activeRequest.payload?.address?.district,
                 activeRequest.payload?.address?.city,
               ]
                 .filter(Boolean)
@@ -797,15 +792,15 @@ export default function PartnerRegistrationForm() {
               )}
             </div>
 
-            {/* Ward, District, City */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Ward, City */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Phường / Xã <span className="text-red-500">*</span>
+                  Khu Vực / Xã, Phường <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
-                  placeholder="Ví dụ: Phường Bến Nghé"
+                  placeholder="Ví dụ: Phường Bến Nghé, Xã Long Hòa..."
                   {...register("ward")}
                   className={`w-full pl-3.5 pr-4 py-2.5 text-sm bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500/20 outline-none transition-all ${
                     errors.ward
@@ -816,27 +811,6 @@ export default function PartnerRegistrationForm() {
                 {errors.ward && (
                   <p className="mt-1 text-xs text-red-500 font-medium">
                     {errors.ward.message}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                  Quận / Huyện <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ví dụ: Quận 1"
-                  {...register("district")}
-                  className={`w-full pl-3.5 pr-4 py-2.5 text-sm bg-slate-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-orange-500/20 outline-none transition-all ${
-                    errors.district
-                      ? "border-red-400 focus:border-red-500 bg-red-50/20"
-                      : "border-slate-200 focus:border-orange-500"
-                  }`}
-                />
-                {errors.district && (
-                  <p className="mt-1 text-xs text-red-500 font-medium">
-                    {errors.district.message}
                   </p>
                 )}
               </div>

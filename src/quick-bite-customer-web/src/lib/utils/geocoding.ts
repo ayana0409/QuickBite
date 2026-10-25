@@ -50,30 +50,22 @@ export async function fetchAddressFromCoordinates(
       const locality = data.locality || "";
       const localityInfo = data.localityInfo?.administrative || [];
 
-      let district = "";
       let ward = "";
       if (Array.isArray(localityInfo)) {
-        const districtObj = localityInfo.find((item: any) => item.adminLevel === 6 || item.order === 4);
-        if (districtObj) district = districtObj.name || "";
-
         const wardObj = localityInfo.find((item: any) => item.adminLevel === 8 || item.order === 5);
         if (wardObj) ward = wardObj.name || "";
       }
 
-      if (!district && locality && locality !== city) {
-        district = locality;
-      }
-
       const rawLine1 = (data.localityInfo?.informative?.[0]?.name || locality || "").trim();
-      const line1 = rawLine1 === city || rawLine1 === district || rawLine1 === ward ? "" : rawLine1;
+      const line1 = rawLine1 === city || rawLine1 === ward ? "" : rawLine1;
 
-      const parts = [line1, ward, district, city].filter(Boolean);
+      const parts = [line1, ward, city].filter(Boolean);
       const displayName = parts.join(", ") || data.city || "";
 
       return {
         line1: line1.trim(),
         ward: ward.trim(),
-        district: district.trim(),
+        district: "",
         city: city.trim(),
         displayName,
       };

@@ -6,6 +6,7 @@ import { FoodItem } from '@/src/types/catalog.type';
 import { useCartStore } from '@/src/store/cart.store';
 import { useToast } from './ToastProvider';
 import ConfirmModal from './ConfirmModal';
+import { formatImageUrl } from '@/src/lib/utils/image';
 
 interface FoodCustomizerProps {
   food: FoodItem;
@@ -83,7 +84,7 @@ export default function FoodCustomizer({ food, restaurantName, onAdded }: FoodCu
       name: food.name,
       price: Number(food.price) || 0,
       unitPrice,
-      imageUrl: food.images?.[0] || '',
+      imageUrl: formatImageUrl(food.images?.[0]),
       quantity,
       selectedVariant,
       selectedToppings,

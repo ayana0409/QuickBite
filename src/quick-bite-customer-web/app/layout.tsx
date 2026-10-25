@@ -21,12 +21,12 @@ export const metadata: Metadata = {
   description: "Trải nghiệm dịch vụ đặt món ăn giao tận nơi hàng đầu cùng QuickBite.",
 };
 
-const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "https://quick-bite-identity.onrender.com";
-const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "https://quick-bite-order.onrender.com/api/app";
-const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "https://quick-bite-catalog.onrender.com";
-const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "https://quick-bite-inventory.onrender.com/api/v1";
-const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://quick-bite-payment.onrender.com/v1";
-const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quick-bite-gw.onrender.com";
+const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "";
+const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "";
+const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "";
+const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "";
+const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "";
+const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "";
 const isMaintain =
   process.env.NEXT_PUBLIC_IS_MAINTAIN === 'true' ||
   process.env.NEXT_PUBLIC_IS_MAINTAIN === '1';
@@ -38,14 +38,16 @@ const wakeupScript = `
       if (sessionStorage.getItem('quickbite_system_ready') === 'true') return;
     } catch(e) {}
 
-    var targets = [
-      { key: 'gateway', url: '${gatewayUrl}/health' },
-      { key: 'identity_service', url: '${identityUrl}/health' },
-      { key: 'order_service', url: '${orderUrl}/health' },
-      { key: 'catalog_service', url: '${catalogUrl}/health' },
-      { key: 'payment_service', url: '${paymentUrl}/health' },
-      { key: 'inventory_service', url: '${inventoryUrl}/health' }
+    var rawTargets = [
+      { key: 'gateway', url: '${gatewayUrl ? `${gatewayUrl.replace(/\/+$/, '')}/health` : ""}' },
+      { key: 'identity_service', url: '${identityUrl ? `${identityUrl.replace(/\/+$/, '')}/` : ""}' },
+      { key: 'order_service', url: '${orderUrl ? `${orderUrl.replace(/\/+$/, '')}/` : ""}' },
+      { key: 'catalog_service', url: '${catalogUrl ? `${catalogUrl.replace(/\/+$/, '')}/` : ""}' },
+      { key: 'payment_service', url: '${paymentUrl ? `${paymentUrl.replace(/\/+$/, '')}/` : ""}' },
+      { key: 'inventory_service', url: '${inventoryUrl ? `${inventoryUrl.replace(/\/+$/, '')}/` : ""}' }
     ];
+
+    var targets = rawTargets.filter(function(t) { return Boolean(t.url); });
 
     window.__QUICKBITE_PROMISES = window.__QUICKBITE_PROMISES || {};
 

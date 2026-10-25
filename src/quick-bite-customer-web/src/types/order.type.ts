@@ -21,7 +21,7 @@ export interface DeliveryAddress {
   phoneNumber: string;
   addressLine: string;
   ward: string;
-  district: string;
+  district?: string;
   province: string;
   note?: string;
   latitude?: number | null;

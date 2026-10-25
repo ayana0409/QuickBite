@@ -13,7 +13,7 @@ export async function getPaymentByOrderId(orderId: string): Promise<PaymentDto |
   if (!orderId) return null;
 
   try {
-    const url = `${GATEWAY_URL}/payments/payments/order/${orderId}`;
+    const url = `${GATEWAY_URL}/payments/order/${orderId}`;
     return await apiClient.get<PaymentDto>(url);
   } catch (error) {
     console.error(`[getPaymentByOrderId] Failed to fetch payment for order ${orderId}:`, error);
@@ -35,7 +35,7 @@ export async function processMockPayment(
   }
 
   try {
-    const url = `${GATEWAY_URL}/payments/payments/${paymentId}/mock-process`;
+    const url = `${GATEWAY_URL}/payments/${paymentId}/mock-process`;
     const paymentData = await apiClient.post<PaymentDto>(url, {
       success,
       failureReason: failureReason || (success ? null : 'Khách hàng hủy thanh toán trong Sandbox'),

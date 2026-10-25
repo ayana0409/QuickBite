@@ -15,7 +15,7 @@ import { fetchAddressFromCoordinates } from "@/src/lib/utils/geocoding";
 export interface AddressInfo {
   line1: string;
   ward: string;
-  district: string;
+  district?: string;
   city: string;
   fullAddress: string;
 }
@@ -85,10 +85,9 @@ export default function CheckoutMapPicker({
 
       const line1 = geoResult?.line1 || "";
       const ward = geoResult?.ward || "";
-      const district = geoResult?.district || "";
       const city = geoResult?.city || "";
 
-      const parts = [line1, ward, district, city].filter(Boolean);
+      const parts = [line1, ward, city].filter(Boolean);
       const fullAddress = parts.join(", ");
 
       if (geoResult && parts.length > 0) {
@@ -106,7 +105,7 @@ export default function CheckoutMapPicker({
       onLocationSelect(lat, lng, {
         line1,
         ward,
-        district,
+        district: "",
         city,
         fullAddress,
       });

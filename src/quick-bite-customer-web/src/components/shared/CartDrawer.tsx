@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useCartStore } from '@/src/store/cart.store';
 import { useToast } from './ToastProvider';
+import { formatImageUrl, DEFAULT_FALLBACK_FOOD_IMAGE } from '@/src/lib/utils/image';
 import DeliveryAddressModal from './DeliveryAddressModal';
 import AuthModal from './AuthModal';
 import ConfirmModal from './ConfirmModal';
@@ -143,7 +144,7 @@ export default function CartDrawer() {
               {deliveryAddress ? (
                 <p className="text-xs text-slate-600 truncate">
                   <span className="font-bold">{deliveryAddress.receiverName}</span> ({deliveryAddress.phoneNumber}) -{' '}
-                  {deliveryAddress.addressLine}, {deliveryAddress.ward}, {deliveryAddress.district}
+                  {[deliveryAddress.addressLine, deliveryAddress.ward, deliveryAddress.province].filter(Boolean).join(', ')}
                 </p>
               ) : (
                 <p className="text-xs text-orange-600 font-semibold italic">
@@ -191,8 +192,11 @@ export default function CartDrawer() {
                 <div className="w-16 h-16 rounded-2xl bg-slate-100 overflow-hidden shrink-0 border border-slate-200/80">
                   {item.imageUrl ? (
                     <img
-                      src={item.imageUrl}
+                      src={formatImageUrl(item.imageUrl)}
                       alt={item.name}
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = DEFAULT_FALLBACK_FOOD_IMAGE;
+                      }}
                       className="w-full h-full object-cover"
                     />
                   ) : (

@@ -116,7 +116,7 @@ export const revenueService = {
     if (orderIds.length > 0) {
       try {
         // Try optimized batch payment endpoint
-        const batchRes: any = await axiosClient.post('/payments/payments/batch', orderIds);
+        const batchRes: any = await axiosClient.post('/payments/batch', orderIds);
         const paymentsList = unwrapArray<PaymentDto>(batchRes);
         if (Array.isArray(paymentsList) && paymentsList.length > 0) {
           paymentsList.forEach((p) => {
@@ -130,7 +130,7 @@ export const revenueService = {
         console.warn('Batch payments lookup failed, falling back to parallel lookup:', batchErr);
         const paymentPromises = orderIds.map((id) =>
           axiosClient
-            .get(`/payments/payments/order/${id}`)
+            .get(`/payments/order/${id}`)
             .then((res: any) => unwrapData<PaymentDto>(res))
             .catch(() => null)
         );

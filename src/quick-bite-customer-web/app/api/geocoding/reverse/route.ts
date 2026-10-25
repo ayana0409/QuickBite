@@ -83,18 +83,21 @@ export async function GET(req: NextRequest) {
         "";
 
       let line1 = [houseNumber, road].filter(Boolean).join(" ");
-      if (!line1 && data.name && data.name !== city && data.name !== district && data.name !== ward) {
+      if (!line1 && data.name && data.name !== city && data.name !== ward) {
         line1 = data.name;
       }
+
+      const parts = [line1, ward, city].filter(Boolean);
+      const displayName = parts.join(", ") || data.display_name || "";
 
       return NextResponse.json({
         success: true,
         data: {
           line1: line1.trim(),
           ward: ward.trim(),
-          district: district.trim(),
+          district: "",
           city: city.trim(),
-          displayName: data.display_name || "",
+          displayName,
         },
       });
     }
@@ -116,32 +119,25 @@ export async function GET(req: NextRequest) {
       const locality = bdcData.locality || "";
       const localityInfo = bdcData.localityInfo?.administrative || [];
 
-      // Extract district and ward from administrative hierarchy
-      let district = "";
+      // Extract ward from administrative hierarchy
       let ward = "";
       if (Array.isArray(localityInfo)) {
-        const districtObj = localityInfo.find((item: any) => item.adminLevel === 6 || item.order === 4);
-        if (districtObj) district = districtObj.name || "";
-
         const wardObj = localityInfo.find((item: any) => item.adminLevel === 8 || item.order === 5);
         if (wardObj) ward = wardObj.name || "";
       }
 
-      if (!district && locality && locality !== city) {
-        district = locality;
-      }
+      const rawLine1 = (bdcData.localityInfo?.informative?.[0]?.name || locality || "").trim();
+      const line1 = rawLine1 === city || rawLine1 === ward ? "" : rawLine1;
 
-      const line1 = (bdcData.localityInfo?.informative?.[0]?.name || locality || "").trim();
-
-      const parts = [line1, ward, district, city].filter(Boolean);
+      const parts = [line1, ward, city].filter(Boolean);
       const displayName = parts.join(", ") || bdcData.city || "";
 
       return NextResponse.json({
         success: true,
         data: {
-          line1: line1 === city || line1 === district || line1 === ward ? "" : line1,
+          line1: line1.trim(),
           ward: ward.trim(),
-          district: district.trim(),
+          district: "",
           city: city.trim(),
           displayName,
         },

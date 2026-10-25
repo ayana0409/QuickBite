@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 
+const formatPingUrl = (url?: string) => (url ? `${url.trim().replace(/\/+$/, '')}/` : null);
+
 const SERVICE_URLS = [
-  process.env.NEXT_PUBLIC_IDENTITY_URL ? `${process.env.NEXT_PUBLIC_IDENTITY_URL}/health` : "https://quick-bite-identity.onrender.com/health",
-  process.env.NEXT_PUBLIC_ORDER_URL ? `${process.env.NEXT_PUBLIC_ORDER_URL}/health` : "https://quick-bite-order.onrender.com/api/app/health",
-  process.env.NEXT_PUBLIC_CATALOG_URL ? `${process.env.NEXT_PUBLIC_CATALOG_URL}/health` : "https://quick-bite-catalog.onrender.com/health",
-  process.env.NEXT_PUBLIC_INVENTORY_URL ? `${process.env.NEXT_PUBLIC_INVENTORY_URL}/health` : "https://quick-bite-inventory.onrender.com/api/v1/health",
-  process.env.NEXT_PUBLIC_PAYMENT_URL ? `${process.env.NEXT_PUBLIC_PAYMENT_URL}/health` : "https://quick-bite-payment.onrender.com/v1/health",
-  process.env.NEXT_PUBLIC_API_GATEWAY_URL ? `${process.env.NEXT_PUBLIC_API_GATEWAY_URL}/health` : "https://quick-bite-gw.onrender.com/health",
-];
+  formatPingUrl(process.env.NEXT_PUBLIC_IDENTITY_URL),
+  formatPingUrl(process.env.NEXT_PUBLIC_ORDER_URL),
+  formatPingUrl(process.env.NEXT_PUBLIC_CATALOG_URL),
+  formatPingUrl(process.env.NEXT_PUBLIC_INVENTORY_URL),
+  formatPingUrl(process.env.NEXT_PUBLIC_PAYMENT_URL),
+  process.env.NEXT_PUBLIC_API_GATEWAY_URL ? `${process.env.NEXT_PUBLIC_API_GATEWAY_URL.trim().replace(/\/+$/, '')}/health` : null,
+].filter(Boolean) as string[];
 
 export async function GET() {
   // Fire server-side wakeup requests to all downstream services in parallel

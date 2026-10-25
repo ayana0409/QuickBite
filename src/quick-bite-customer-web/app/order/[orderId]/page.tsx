@@ -504,7 +504,7 @@ export default function OrderDetailPage({ params }: PageProps) {
                     <span>{address.phoneNumber}</span>
                   </div>
                   <p className="text-xs text-slate-600 pt-1 leading-relaxed">
-                    {address.addressLine}, {address.ward}, {address.district}, {address.province}
+                    {[address.addressLine, address.ward, address.province].filter(Boolean).join(', ')}
                   </p>
                   {address.note && (
                     <p className="text-[11px] text-amber-800 bg-amber-50 px-2.5 py-1 rounded-lg mt-1 font-medium border border-amber-200/40">

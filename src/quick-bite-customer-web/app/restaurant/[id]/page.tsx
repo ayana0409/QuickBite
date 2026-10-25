@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     };
   }
 
-  const addressStr = [restaurant.address?.district, restaurant.address?.city]
+  const addressStr = [restaurant.address?.ward, restaurant.address?.city]
     .filter(Boolean)
     .join(', ');
 
@@ -65,7 +65,6 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
   const fullAddress = [
     restaurant.address?.line1,
     restaurant.address?.ward,
-    restaurant.address?.district,
     restaurant.address?.city,
   ]
     .filter(Boolean)

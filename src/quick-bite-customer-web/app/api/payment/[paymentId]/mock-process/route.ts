@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { paymentId } = await params;
     const body = await req.json();
     const response = await serverFetch.post(
-      `${GATEWAY_URL}/payments/payments/${paymentId}/mock-process`,
+      `${GATEWAY_URL}/payments/${paymentId}/mock-process`,
       body,
       { requireAuth: true },
       req

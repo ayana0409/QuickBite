@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Flame, Star, Images } from 'lucide-react';
 import { FoodItem } from '@/src/types/catalog.type';
 import AddToCartButton from './AddToCartButton';
+import { formatImageUrl, DEFAULT_FALLBACK_FOOD_IMAGE } from '@/src/lib/utils/image';
 
 interface FoodCardProps {
   food: FoodItem;
@@ -25,9 +26,7 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
     tags = [],
   } = food;
 
-  const defaultImage =
-    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80';
-  const displayImage = images && images.length > 0 ? images[0] : defaultImage;
+  const displayImage = formatImageUrl(images?.[0], DEFAULT_FALLBACK_FOOD_IMAGE);
 
   const formattedPrice = price ? `${Number(price).toLocaleString('vi-VN')}đ` : 'Liên hệ';
 
@@ -42,7 +41,7 @@ export default function FoodCard({ food, restaurantName }: FoodCardProps) {
             alt={name}
             loading="lazy"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = defaultImage;
+              (e.target as HTMLImageElement).src = DEFAULT_FALLBACK_FOOD_IMAGE;
             }}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
           />

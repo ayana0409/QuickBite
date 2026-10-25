@@ -32,21 +32,23 @@ declare global {
   var __quickbite_backend_state: BackendWarmupState | undefined;
 }
 
-const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "https://quick-bite-identity.onrender.com";
-const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "https://quick-bite-order.onrender.com/api/app";
-const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "https://quick-bite-catalog.onrender.com";
-const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "https://quick-bite-inventory.onrender.com/api/v1";
-const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "https://quick-bite-payment.onrender.com/v1";
-const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://quick-bite-gw.onrender.com";
+const identityUrl = process.env.NEXT_PUBLIC_IDENTITY_URL || "";
+const orderUrl = process.env.NEXT_PUBLIC_ORDER_URL || "";
+const catalogUrl = process.env.NEXT_PUBLIC_CATALOG_URL || "";
+const inventoryUrl = process.env.NEXT_PUBLIC_INVENTORY_URL || "";
+const paymentUrl = process.env.NEXT_PUBLIC_PAYMENT_URL || "";
+const gatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "";
+
+const formatPingUrl = (url?: string) => (url ? `${url.trim().replace(/\/+$/, '')}/` : '');
 
 const TARGET_SERVICES: Array<{ id: string; key: string; name: string; url: string }> = [
-  { id: "gateway", key: "gateway", name: "API Gateway", url: `${gatewayUrl}/health` },
-  { id: "identity", key: "identity_service", name: "Identity Service", url: `${identityUrl}/health` },
-  { id: "order", key: "order_service", name: "Order Service", url: `${orderUrl}/health` },
-  { id: "catalog", key: "catalog_service", name: "Catalog Service", url: `${catalogUrl}/health` },
-  { id: "payment", key: "payment_service", name: "Payment Service", url: `${paymentUrl}/health` },
-  { id: "inventory", key: "inventory_service", name: "Inventory Service", url: `${inventoryUrl}/health` },
-];
+  gatewayUrl ? { id: "gateway", key: "gateway", name: "API Gateway", url: `${gatewayUrl.trim().replace(/\/+$/, '')}/health` } : null,
+  identityUrl ? { id: "identity", key: "identity_service", name: "Identity Service", url: formatPingUrl(identityUrl) } : null,
+  orderUrl ? { id: "order", key: "order_service", name: "Order Service", url: formatPingUrl(orderUrl) } : null,
+  catalogUrl ? { id: "catalog", key: "catalog_service", name: "Catalog Service", url: formatPingUrl(catalogUrl) } : null,
+  paymentUrl ? { id: "payment", key: "payment_service", name: "Payment Service", url: formatPingUrl(paymentUrl) } : null,
+  inventoryUrl ? { id: "inventory", key: "inventory_service", name: "Inventory Service", url: formatPingUrl(inventoryUrl) } : null,
+].filter(Boolean) as Array<{ id: string; key: string; name: string; url: string }>;
 
 const BROWSER_USER_AGENT =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";

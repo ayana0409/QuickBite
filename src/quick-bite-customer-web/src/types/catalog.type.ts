@@ -10,7 +10,7 @@ export interface GeoLocation {
 export interface RestaurantAddress {
   line1: string;
   ward?: string;
-  district: string;
+  district?: string;
   city: string;
   geo?: GeoLocation;
 }

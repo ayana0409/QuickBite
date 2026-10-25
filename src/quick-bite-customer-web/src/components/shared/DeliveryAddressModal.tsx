@@ -104,7 +104,7 @@ export default function DeliveryAddressModal({
       longitude: lng,
       addressLine: addressInfo.line1 || prev.addressLine,
       ward: addressInfo.ward || prev.ward,
-      district: addressInfo.district || prev.district,
+      district: '',
       province: addressInfo.city || prev.province,
     }));
 
@@ -145,8 +145,7 @@ export default function DeliveryAddressModal({
     }
 
     if (!formData.addressLine.trim()) newErrors.addressLine = 'Vui lòng nhập số nhà, tên đường';
-    if (!formData.ward.trim()) newErrors.ward = 'Vui lòng nhập phường / xã';
-    if (!formData.district.trim()) newErrors.district = 'Vui lòng nhập quận / huyện';
+    if (!formData.ward.trim()) newErrors.ward = 'Vui lòng nhập khu vực / xã, phường';
     if (!formData.province.trim()) newErrors.province = 'Vui lòng nhập tỉnh / thành phố';
 
     if (Object.keys(newErrors).length > 0) {
@@ -160,7 +159,7 @@ export default function DeliveryAddressModal({
       phoneNumber: formData.phoneNumber.trim(),
       addressLine: formData.addressLine.trim(),
       ward: formData.ward.trim(),
-      district: formData.district.trim(),
+      district: '',
       province: formData.province.trim(),
       note: formData.note?.trim() || '',
       latitude: typeof formData.latitude === 'number' ? formData.latitude : null,
@@ -315,16 +314,16 @@ export default function DeliveryAddressModal({
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-bold text-slate-800 mb-1">
-                Phường / Xã <span className="text-red-500">*</span>
+                Khu Vực / Xã, Phường <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={formData.ward}
                 onChange={(e) => handleChange('ward', e.target.value)}
-                placeholder="Mễ Trì"
+                placeholder="Mễ Trì, Bến Nghé..."
                 className={`w-full px-3 py-2.5 text-sm font-medium bg-white text-slate-900 placeholder:text-slate-400 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all ${
                   errors.ward
                     ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
@@ -333,26 +332,6 @@ export default function DeliveryAddressModal({
               />
               {errors.ward && (
                 <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.ward}</p>
-              )}
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-800 mb-1">
-                Quận / Huyện <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.district}
-                onChange={(e) => handleChange('district', e.target.value)}
-                placeholder="Nam Từ Liêm"
-                className={`w-full px-3 py-2.5 text-sm font-medium bg-white text-slate-900 placeholder:text-slate-400 border rounded-xl focus:bg-white focus:ring-2 outline-none transition-all ${
-                  errors.district
-                    ? 'border-red-300 focus:border-red-500 focus:ring-red-200'
-                    : 'border-slate-300 focus:border-orange-500 focus:ring-orange-200 shadow-2xs'
-                }`}
-              />
-              {errors.district && (
-                <p className="text-[11px] text-red-500 mt-1 font-medium">{errors.district}</p>
               )}
             </div>
 

@@ -11,6 +11,8 @@ import {
   Images,
 } from 'lucide-react';
 
+import { formatImageUrl, DEFAULT_FALLBACK_FOOD_IMAGE } from '@/src/lib/utils/image';
+
 interface FoodImageGalleryProps {
   images?: string[];
   foodName: string;
@@ -18,17 +20,17 @@ interface FoodImageGalleryProps {
   preparationTime?: number;
 }
 
-const DEFAULT_IMAGE =
-  'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80';
-
 export default function FoodImageGallery({
   images = [],
   foodName,
   totalSold = 0,
   preparationTime,
 }: FoodImageGalleryProps) {
-  // Ensure we have a valid array of image URLs
-  const validImages = Array.isArray(images) && images.length > 0 ? images : [DEFAULT_IMAGE];
+  // Ensure we have a valid array of formatted image URLs
+  const validImages =
+    Array.isArray(images) && images.length > 0
+      ? images.map((img) => formatImageUrl(img, DEFAULT_FALLBACK_FOOD_IMAGE))
+      : [DEFAULT_FALLBACK_FOOD_IMAGE];
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [isLightboxOpen, setIsLightboxOpen] = useState<boolean>(false);
 
