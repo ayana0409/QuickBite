@@ -27,13 +27,6 @@ export class SearchController {
     `,
   })
   async search(@Query() dto: SearchQueryDto) {
-    const result = await this.searchService.search(dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Success.',
-      data: result,
-      timestamp: new Date().toISOString(),
-    };
+    return this.searchService.search(dto);
   }
 }

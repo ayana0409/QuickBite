@@ -1,8 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import type { Cache } from 'cache-manager';
 import { FoodItem } from '@/food-item/entities/food-item.entity';
 import { Restaurant } from '@/restaurant/entities/restaurant.entity';
@@ -28,11 +29,44 @@ export class RecommendationService {
     private readonly dataSource: DataSource,
     @Inject(CACHE_MANAGER)
     private readonly cacheManager: Cache,
+    @Optional()
+    private readonly configService?: ConfigService,
   ) {}
+
+  private get imageBaseUrl(): string {
+    const url = this.configService?.get<string>('IMAGE_BASE_URL');
+    if (url) return url.endsWith('/') ? url : `${url}/`;
+    const cloudName = this.configService?.get<string>('CLOUDINARY_CLOUD_NAME');
+    const folder = this.configService?.get<string>('CLOUDINARY_FOLDER') || 'quick-bite/food-items';
+    if (cloudName) {
+      return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/`;
+    }
+    return '';
+  }
+
+  private formatImageUrl(filename: string): string {
+    if (!filename) return filename;
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      return filename;
+    }
+    const baseUrl = this.imageBaseUrl;
+    if (!baseUrl) return filename;
+    const clean = filename.replace(/^\/+/, '');
+    return `${baseUrl}${clean}`;
+  }
+
+  private formatFoodRow(row: any): any {
+    if (!row) return row;
+    if (Array.isArray(row.images)) {
+      row.images = row.images.map((img: string) => this.formatImageUrl(img));
+    }
+    return row;
+  }
 
   // ──────────────────────────────────────────────────────────────────────
   // A. Nearby Restaurants
   // Uses PostGIS ST_DWithin for radius filter and ST_Distance for ordering.
+  // Robustly handles both r.location column and r.address->'geo'->'coordinates'.
   // ──────────────────────────────────────────────────────────────────────
   async getNearbyRestaurants(dto: NearbyQueryDto) {
     const { lat, lng, radius = 5000, limit = 10 } = dto;
@@ -52,7 +86,13 @@ export class RecommendationService {
         r."ownerId",
         r."createdAt",
         ST_Distance(
-          r.location::geography,
+          COALESCE(
+            r.location::geography,
+            ST_SetSRID(ST_MakePoint(
+              COALESCE((r.address->'geo'->'coordinates'->>0)::float, 0),
+              COALESCE((r.address->'geo'->'coordinates'->>1)::float, 0)
+            ), 4326)::geography
+          ),
           ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography
         ) AS distance_meters,
         (
@@ -66,10 +106,22 @@ export class RecommendationService {
         ) AS available_food_count
       FROM restaurants r
       WHERE
-        r.location IS NOT NULL
-        AND r.status = 'open'
+        (
+          r.location IS NOT NULL
+          OR (r.address->'geo'->'coordinates') IS NOT NULL
+        )
+        AND (
+          LOWER(r.status) IN ('open', 'active')
+          OR r.status IS NULL
+        )
         AND ST_DWithin(
-          r.location::geography,
+          COALESCE(
+            r.location::geography,
+            ST_SetSRID(ST_MakePoint(
+              COALESCE((r.address->'geo'->'coordinates'->>0)::float, 0),
+              COALESCE((r.address->'geo'->'coordinates'->>1)::float, 0)
+            ), 4326)::geography
+          ),
           ST_SetSRID(ST_MakePoint($2, $1), 4326)::geography,
           $3
         )
@@ -152,7 +204,7 @@ export class RecommendationService {
         tags.length > 0 ? tags : '{}',
         limit,
       ]);
-      return rows;
+      return (rows || []).map((r: any) => this.formatFoodRow(r));
     } catch (error: any) {
       this.logger.error(`[getSimilarFoods] Failed: ${error.message}`, error.stack);
       throw error;
@@ -205,12 +257,13 @@ export class RecommendationService {
 
     try {
       const rows = await this.dataSource.query(sql, [limit]);
+      const formatted = (rows || []).map((r: any) => this.formatFoodRow(r));
 
       // Store in cache with TTL in seconds (cache-manager v5 uses seconds)
-      await this.cacheManager.set(cacheKey, rows, TRENDING_TTL_MS / 1000);
-      this.logger.log(`[getTrendingFoods] Cached ${rows.length} items for ${TRENDING_TTL_MS / 1000}s`);
+      await this.cacheManager.set(cacheKey, formatted, TRENDING_TTL_MS / 1000);
+      this.logger.log(`[getTrendingFoods] Cached ${formatted.length} items for ${TRENDING_TTL_MS / 1000}s`);
 
-      return rows;
+      return formatted;
     } catch (error: any) {
       this.logger.error(`[getTrendingFoods] Failed: ${error.message}`, error.stack);
       throw error;

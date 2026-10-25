@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { FoodItem } from '@/food-item/entities/food-item.entity';
 import { Restaurant } from '@/restaurant/entities/restaurant.entity';
 import { SearchQueryDto } from './dto/search-query.dto';
@@ -15,7 +16,39 @@ export class SearchService {
     @InjectRepository(Restaurant)
     private readonly restaurantRepo: Repository<Restaurant>,
     private readonly dataSource: DataSource,
+    @Optional()
+    private readonly configService?: ConfigService,
   ) {}
+
+  private get imageBaseUrl(): string {
+    const url = this.configService?.get<string>('IMAGE_BASE_URL');
+    if (url) return url.endsWith('/') ? url : `${url}/`;
+    const cloudName = this.configService?.get<string>('CLOUDINARY_CLOUD_NAME');
+    const folder = this.configService?.get<string>('CLOUDINARY_FOLDER') || 'quick-bite/food-items';
+    if (cloudName) {
+      return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/`;
+    }
+    return '';
+  }
+
+  private formatImageUrl(filename: string): string {
+    if (!filename) return filename;
+    if (filename.startsWith('http://') || filename.startsWith('https://')) {
+      return filename;
+    }
+    const baseUrl = this.imageBaseUrl;
+    if (!baseUrl) return filename;
+    const clean = filename.replace(/^\/+/, '');
+    return `${baseUrl}${clean}`;
+  }
+
+  private formatFoodRow(row: any): any {
+    if (!row) return row;
+    if (Array.isArray(row.images)) {
+      row.images = row.images.map((img: string) => this.formatImageUrl(img));
+    }
+    return row;
+  }
 
   /**
    * Advanced Full-Text Search with optional proximity scoring.
@@ -70,7 +103,7 @@ export class SearchService {
         )`;
     }
 
-    // Build proximity score expression (PostGIS ST_Distance, degrees)
+    // Build proximity score expression (PostGIS ST_Distance, geography meters)
     let scoreExpr: string;
     let proximityJoin = '';
     if (hasLocation) {
@@ -79,8 +112,14 @@ export class SearchService {
 
       scoreExpr = `(${rankExpr} * 0.6) - (
           COALESCE(ST_Distance(
-            r.location,
-            ST_SetSRID(ST_MakePoint(${lngParam}, ${latParam}), 4326)
+            COALESCE(
+              r.location::geography,
+              ST_SetSRID(ST_MakePoint(
+                COALESCE((r.address->'geo'->'coordinates'->>0)::float, 0),
+                COALESCE((r.address->'geo'->'coordinates'->>1)::float, 0)
+              ), 4326)::geography
+            ),
+            ST_SetSRID(ST_MakePoint(${lngParam}, ${latParam}), 4326)::geography
           ), 99999) / 10000.0 * 0.4
         )`;
 
@@ -156,7 +195,7 @@ export class SearchService {
       const total = parseInt(countRes?.total ?? '0', 10);
 
       return {
-        data,
+        data: (data || []).map((r: any) => this.formatFoodRow(r)),
         meta: {
           page,
           limit,
@@ -239,8 +278,14 @@ export class SearchService {
       const lngP = addData(lng);
       scoreExpr = `(${ftsRankExpr} * 0.6) - (
         COALESCE(ST_Distance(
-          r.location,
-          ST_SetSRID(ST_MakePoint(${lngP}, ${latP}), 4326)
+          COALESCE(
+            r.location::geography,
+            ST_SetSRID(ST_MakePoint(
+              COALESCE((r.address->'geo'->'coordinates'->>0)::float, 0),
+              COALESCE((r.address->'geo'->'coordinates'->>1)::float, 0)
+            ), 4326)::geography
+          ),
+          ST_SetSRID(ST_MakePoint(${lngP}, ${latP}), 4326)::geography
         ), 99999) / 10000.0 * 0.4
       )`;
     } else {
@@ -295,7 +340,7 @@ export class SearchService {
       const total = parseInt(countRows[0]?.total ?? '0', 10);
 
       return {
-        data: rows,
+        data: (rows || []).map((r: any) => this.formatFoodRow(r)),
         meta: {
           page,
           limit,

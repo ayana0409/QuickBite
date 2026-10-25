@@ -281,6 +281,10 @@ export class RequestService {
               },
             },
             status: 'ACTIVE',
+            location: {
+              type: 'Point',
+              coordinates: payload.address.geo?.coordinates || [106.702444, 10.776192],
+            },
             rating: {
               avg: 0,
               count: 0,

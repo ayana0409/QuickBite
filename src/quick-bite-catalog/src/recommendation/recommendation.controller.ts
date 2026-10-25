@@ -21,14 +21,7 @@ export class RecommendationController {
     description: 'Returns open restaurants within the specified radius (meters) sorted by distance. Requires PostGIS extension and location column on restaurants table.',
   })
   async getNearbyRestaurants(@Query() dto: NearbyQueryDto) {
-    const data = await this.recommendationService.getNearbyRestaurants(dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Success.',
-      data,
-      timestamp: new Date().toISOString(),
-    };
+    return this.recommendationService.getNearbyRestaurants(dto);
   }
 
   /**
@@ -45,14 +38,7 @@ export class RecommendationController {
     @Param('foodId') foodId: string,
     @Query() dto: SimilarFoodsQueryDto,
   ) {
-    const data = await this.recommendationService.getSimilarFoods(foodId, dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Success.',
-      data,
-      timestamp: new Date().toISOString(),
-    };
+    return this.recommendationService.getSimilarFoods(foodId, dto);
   }
 
   /**
@@ -66,13 +52,6 @@ export class RecommendationController {
     description: 'Returns trending food items by trending_score = (total_sold * 0.7) + (rating * 30). Cached in memory for 30 minutes to reduce DB load.',
   })
   async getTrendingFoods(@Query() dto: TrendingQueryDto) {
-    const data = await this.recommendationService.getTrendingFoods(dto);
-    return {
-      success: true,
-      statusCode: 200,
-      message: 'Success.',
-      data,
-      timestamp: new Date().toISOString(),
-    };
+    return this.recommendationService.getTrendingFoods(dto);
   }
 }

@@ -67,20 +67,28 @@ export class FoodItemService implements OnModuleInit {
    * Helper property to get the base URL for images from environment
    */
   private get imageBaseUrl(): string {
-    const url = this.configService.get<string>('IMAGE_BASE_URL') || '';
-    if (!url) return '';
-    return url.endsWith('/') ? url : `${url}/`;
+    const url = this.configService.get<string>('IMAGE_BASE_URL');
+    if (url) return url.endsWith('/') ? url : `${url}/`;
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    const folder = this.configService.get<string>('CLOUDINARY_FOLDER') || 'quick-bite/food-items';
+    if (cloudName) {
+      return `https://res.cloudinary.com/${cloudName}/image/upload/${folder}/`;
+    }
+    return '';
   }
 
   /**
-   * Format single image filename into full URL if IMAGE_BASE_URL is configured
+   * Format single image filename into full URL if IMAGE_BASE_URL or Cloudinary is configured
    */
   private formatImageUrl(filename: string): string {
     if (!filename) return filename;
     if (filename.startsWith('http://') || filename.startsWith('https://')) {
       return filename;
     }
-    return `${this.imageBaseUrl}${filename}`;
+    const baseUrl = this.imageBaseUrl;
+    if (!baseUrl) return filename;
+    const clean = filename.replace(/^\/+/, '');
+    return `${baseUrl}${clean}`;
   }
 
   /**

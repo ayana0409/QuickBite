@@ -38,21 +38,23 @@ export class RestaurantService {
       );
     }
 
+    const coords = createRestaurantDto.address.geo.coordinates;
     const restaurant = this.restaurantRepository.create({
-    ownerId: createRestaurantDto.ownerId,
-    name: createRestaurantDto.name,
-    slug: createRestaurantDto.slug,
-    address: {
+      ownerId: createRestaurantDto.ownerId,
+      name: createRestaurantDto.name,
+      slug: createRestaurantDto.slug,
+      address: {
         line1: createRestaurantDto.address.line1,
         ward: createRestaurantDto.address.ward,
         district: createRestaurantDto.address.district,
         city: createRestaurantDto.address.city,
         geo: {
-            type: 'Point',
-            coordinates: createRestaurantDto.address.geo.coordinates,
+          type: 'Point',
+          coordinates: coords,
         },
-    },
-});
+      },
+      location: coords ? { type: 'Point', coordinates: coords } : undefined,
+    });
 
     return await this.restaurantRepository.save(
       restaurant,
@@ -124,6 +126,7 @@ export class RestaurantService {
         ...updateRestaurantDto.address,
         geo: geoData,
       };
+      restaurant.location = geoData;
       delete (updateRestaurantDto as any).address;
     }
 
