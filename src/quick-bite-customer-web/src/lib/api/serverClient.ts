@@ -34,7 +34,8 @@ export async function serverFetch(
     const session = await getServerSession(authOptions);
     const authHeader = req?.headers.get('authorization');
     const headerToken = authHeader?.startsWith('Bearer ') ? authHeader.substring(7) : null;
-    token = session?.accessToken || headerToken;
+    const cookieToken = req?.cookies?.get('qb_access_token')?.value;
+    token = session?.accessToken || headerToken || cookieToken;
   }
 
   if (requireAuth && !token) {
@@ -62,6 +63,7 @@ export async function serverFetch(
     headers: requestHeaders,
     cache,
     body: isJsonBody && typeof body === 'object' ? JSON.stringify(body) : body,
+    signal: rest.signal || AbortSignal.timeout(15000),
     ...rest,
   });
 }

@@ -124,6 +124,18 @@ public class IdentityWebModule : AbpModule
                 "permissions"
             );
 
+            // Configure explicit Issuer URI for OpenIddict (prevents http/https reverse proxy mismatch)
+            var configuredIssuer = configuration["AuthServer:Authority"]
+                ?? configuration["App:SelfUrl"]
+                ?? configuration["OPENIDDICT_ISSUER"]
+                ?? configuration["OpenIddict:Issuer"];
+
+            if (!string.IsNullOrWhiteSpace(configuredIssuer))
+            {
+                var issuerUri = configuredIssuer.TrimEnd('/') + "/";
+                serverBuilder.SetIssuer(new Uri(issuerUri));
+            }
+
             // Configure Token Lifetimes from Environment / Configuration with fallback to defaults
             var refreshTokenLifetimeDaysStr = configuration["OpenIddict:RefreshTokenLifetimeDays"] 
                 ?? configuration["OPENIDDICT_REFRESH_TOKEN_LIFETIME_DAYS"];
@@ -438,6 +450,17 @@ public class IdentityWebModule : AbpModule
         forwardedHeadersOptions.KnownIPNetworks.Clear();
         forwardedHeadersOptions.KnownProxies.Clear();
         app.UseForwardedHeaders(forwardedHeadersOptions);
+
+        // Enforce HTTPS scheme if reverse proxy forwarded SSL (Traefik, Cloudflare, Render)
+        app.Use((context, next) =>
+        {
+            if (context.Request.Headers.TryGetValue("X-Forwarded-Proto", out var proto) &&
+                string.Equals(proto.ToString(), "https", StringComparison.OrdinalIgnoreCase))
+            {
+                context.Request.Scheme = "https";
+            }
+            return next();
+        });
 
         // 1. CORS MUST BE FIRST SO ALL PROBES AND HEALTH CHECKS HAVE ACCESS-CONTROL-ALLOW-ORIGIN
         app.UseCors();

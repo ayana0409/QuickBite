@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -45,6 +45,7 @@ export default function CheckoutPage() {
 
   const [mounted, setMounted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isOrderPlacedRef = useRef(false);
   const [addressModalOpen, setAddressModalOpen] = useState(false);
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [restaurantDetail, setRestaurantDetail] = useState<RestaurantDetail | null>(null);
@@ -74,11 +75,11 @@ export default function CheckoutPage() {
 
   // Redirect if cart is empty after hydration
   useEffect(() => {
-    if (mounted && items.length === 0) {
+    if (mounted && items.length === 0 && !isOrderPlacedRef.current && !isSubmitting) {
       toastError('Giỏ hàng trống, vui lòng chọn món trước');
       router.push('/');
     }
-  }, [mounted, items.length, router, toastError]);
+  }, [mounted, items.length, router, toastError, isSubmitting]);
 
   // Fetch restaurant details to get restaurant GPS coordinates
   useEffect(() => {
@@ -104,7 +105,11 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-[70vh] flex flex-col items-center justify-center gap-3 bg-[#fdfbf7]">
         <Loader2 className="w-8 h-8 text-orange-500 animate-spin" />
-        <p className="text-sm font-bold text-slate-600">Đang tải thông tin đơn hàng...</p>
+        <p className="text-sm font-bold text-slate-600">
+          {isOrderPlacedRef.current
+            ? 'Đặt hàng thành công! Đang chuyển hướng...'
+            : 'Đang tải thông tin đơn hàng...'}
+        </p>
       </div>
     );
   }
@@ -233,15 +238,16 @@ export default function CheckoutPage() {
 
       const orderId = data.id || data.data?.id;
 
-      // 5. Clear cart and notify success
+      // 5. Mark order as placed before clearing cart to avoid empty cart redirect race condition
+      isOrderPlacedRef.current = true;
       clearCart();
       toastSuccess('🎉 Đặt hàng thành công! Vui lòng kiểm tra chi tiết đơn và thanh toán.');
 
       // 6. Navigate to order detail page
       if (orderId) {
-        router.push(`/order/${orderId}`);
+        router.replace(`/order/${orderId}`);
       } else {
-        router.push('/');
+        router.replace('/');
       }
     } catch (err: any) {
       console.error('Place order error:', err);

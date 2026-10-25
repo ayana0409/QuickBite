@@ -163,8 +163,8 @@ export default async function RestaurantDetailPage({ params }: PageProps) {
             Trang chủ
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <Link href="/restaurants" className="hover:text-orange-600 transition-colors font-medium">
-            Nhà hàng
+          <Link href="/nearby" className="hover:text-orange-600 transition-colors font-medium">
+            Quán gần bạn
           </Link>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           <span className="text-slate-700 font-semibold truncate max-w-[180px]">

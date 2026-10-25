@@ -153,10 +153,48 @@ export const authOptions: NextAuthOptions = {
         },
       },
       token: {
-        url: `${identityUrl}/connect/token`
+        url: `${identityUrl}/connect/token`,
+        async request({ provider, params, checks }: any) {
+          const body = new URLSearchParams();
+          body.append("grant_type", "authorization_code");
+          body.append("client_id", (provider.clientId as string) || "quickbite_web");
+          body.append("client_secret", (provider.clientSecret as string) || "1q2w3e*");
+          body.append("code", params.code);
+          body.append("redirect_uri", provider.callbackUrl);
+          if (checks?.code_verifier) {
+            body.append("code_verifier", checks.code_verifier);
+          }
+
+          console.log("🔄 [NextAuth SSO] Exchanging authorization code at:", `${identityUrl}/connect/token`);
+          const res = await fetch(`${identityUrl}/connect/token`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: body.toString(),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            console.error("❌ [NextAuth SSO Token Error]:", err);
+            throw new Error(err.error_description || err.error || "Không thể xác thực mã đăng nhập SSO");
+          }
+
+          const tokens = await res.json();
+          console.log("✅ [NextAuth SSO] Token exchange successful. Has access_token:", !!tokens?.access_token);
+          return { tokens };
+        },
       },
       userinfo: {
-        url: `${identityUrl}/connect/userinfo`
+        url: `${identityUrl}/connect/userinfo`,
+        async request({ tokens }: any) {
+          const claims =
+            (tokens.id_token ? parseJwt(tokens.id_token) : null) ||
+            (tokens.access_token ? parseJwt(tokens.access_token) : null) ||
+            {};
+          console.log("👤 [NextAuth SSO] Extracted claims for user:", claims.sub || claims.email);
+          return claims;
+        },
       },
       jwks_endpoint: `${identityUrl}/.well-known/jwks`,
       client: {
@@ -164,24 +202,32 @@ export const authOptions: NextAuthOptions = {
       },
       clientId: process.env.OIDC_CLIENT_ID || "quickbite_web",
       clientSecret: process.env.OIDC_CLIENT_SECRET || "1q2w3e*",
-      idToken: true,
+      idToken: false,
       checks: ["pkce", "state"],
-      profile(profile) {
-        const roles = Array.isArray(profile.role)
-          ? profile.role
-          : Array.isArray(profile.roles)
-          ? profile.roles
-          : profile.role
-          ? [profile.role]
-          : profile.roles
-          ? [profile.roles]
-          : [];
+      profile(profile: any, tokens: any) {
+        const claims = (profile && (profile.sub || profile.email))
+          ? profile
+          : (tokens?.id_token ? parseJwt(tokens.id_token) : null) ||
+            (tokens?.access_token ? parseJwt(tokens.access_token) : null) ||
+            profile ||
+            {};
+
+        const rawRoles = claims.role || claims.roles;
+        const roles = Array.isArray(rawRoles)
+          ? rawRoles
+          : rawRoles
+          ? [rawRoles]
+          : ["Customer"];
+
+        const username =
+          claims.preferred_username || claims.given_name || claims.sub || "sso-user";
+        const fullName = claims.name || claims.given_name || username;
 
         return {
-          id: profile.sub,
-          name: profile.name || profile.preferred_username || profile.email || "User",
-          email: profile.email,
-          image: profile.picture || null,
+          id: (claims.sub || claims.id || "user-id") as string,
+          name: fullName,
+          email: claims.email || `${username}@quickbite.internal`,
+          image: claims.picture || null,
           role: roles[0] || "Customer",
           roles: roles,
           provider: "oidc",
@@ -213,6 +259,25 @@ export const authOptions: NextAuthOptions = {
         token.accessTokenExpires = account.expires_at ? account.expires_at * 1000 : 0;
         token.provider = "oidc";
         token.isGoogle = false;
+
+        // Ensure token has role and id even if user object was partially populated
+        if (!token.id && account.providerAccountId) {
+          token.id = account.providerAccountId;
+        }
+        if (!token.roles || (Array.isArray(token.roles) && token.roles.length === 0)) {
+          const claims =
+            (account.id_token ? parseJwt(account.id_token) : null) ||
+            parseJwt(account.access_token) ||
+            {};
+          const rawRoles = claims.role || claims.roles;
+          const roles = Array.isArray(rawRoles)
+            ? rawRoles
+            : rawRoles
+            ? [rawRoles]
+            : ["Customer"];
+          token.role = roles[0] || "Customer";
+          token.roles = roles;
+        }
         console.log("🎫 [JWT Callback] SSO Account connected. Token has accessToken:", !!token.accessToken);
       }
 

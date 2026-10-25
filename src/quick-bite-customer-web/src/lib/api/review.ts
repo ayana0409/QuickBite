@@ -80,7 +80,7 @@ export async function getReviewsByRestaurant(
   }
 
   try {
-    const url = `${GATEWAY_URL}/reviews/restaurants/${restaurantId}`;
+    const url = `/api/reviews/restaurants/${restaurantId}`;
     const params: Record<string, any> = { page, limit };
     if (rating && rating >= 1 && rating <= 5) {
       params.rating = rating;
@@ -121,7 +121,7 @@ export async function getReviewsByFoodItem(
   }
 
   try {
-    const url = `${GATEWAY_URL}/reviews/food-items/${foodItemId}`;
+    const url = `/api/reviews/food-items/${foodItemId}`;
     const params: Record<string, any> = { page, limit };
     if (rating && rating >= 1 && rating <= 5) {
       params.rating = rating;

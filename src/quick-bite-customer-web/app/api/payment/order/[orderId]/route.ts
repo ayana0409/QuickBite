@@ -14,7 +14,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
     const { orderId } = await params;
     const response = await serverFetch.get(
       `${GATEWAY_URL}/payments/order/${orderId}`,
-      { requireAuth: true },
+      { requireAuth: false },
       req
     );
     return proxyResponse(response);
