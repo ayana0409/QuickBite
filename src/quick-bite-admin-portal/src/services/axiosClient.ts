@@ -186,23 +186,23 @@ axiosClient.interceptors.request.use(
       }
       config.headers.set('Authorization', `Bearer ${token}`);
     } else {
-      console.warn(`⚠️ [HTTP REQUEST] Không tìm thấy Access Token cho request: ${config.url}`);
+      // console.warn(`⚠️ [HTTP REQUEST] Không tìm thấy Access Token cho request: ${config.url}`);
     }
 
     // Global Request Payload Logger
-    console.log(
-      `🚀 [HTTP REQUEST] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`,
-      {
-        params: config.params || null,
-        data: config.data || null,
-        headers: config.headers,
-      }
-    );
+    // console.log(
+    //   `🚀 [HTTP REQUEST] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`,
+    //   {
+    //     params: config.params || null,
+    //     data: config.data || null,
+    //     headers: config.headers,
+    //   }
+    // );
 
     return config;
   },
   (error) => {
-    console.error('❌ [HTTP REQUEST ERROR]', error);
+    // console.error('❌ [HTTP REQUEST ERROR]', error);
     return Promise.reject(error);
   }
 );
@@ -210,10 +210,10 @@ axiosClient.interceptors.request.use(
 // Interceptor Response: Handle Data, 401 Silent Refresh Queue, and Error Toasts
 axiosClient.interceptors.response.use(
   (response) => {
-    console.log(
-      `✅ [HTTP RESPONSE ${response.status}] ${response.config.method?.toUpperCase()} ${response.config.url}`,
-      response.data
-    );
+    // console.log(
+    //   `✅ [HTTP RESPONSE ${response.status}] ${response.config.method?.toUpperCase()} ${response.config.url}`,
+    //   response.data
+    // );
     return response.data;
   },
   async (error: AxiosError) => {
@@ -256,7 +256,7 @@ axiosClient.interceptors.response.use(
         // Re-execute original request
         return axiosClient(originalRequest);
       } catch (refreshErr) {
-        console.error('❌ [AUTH] Silent token refresh failed:', refreshErr);
+        // console.error('❌ [AUTH] Silent token refresh failed:', refreshErr);
         processQueue(refreshErr, null);
         logout();
         toast.error('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', 'Phiên Hết Hạn');
@@ -270,15 +270,15 @@ axiosClient.interceptors.response.use(
     const errorMsg = extractErrorMessage(error);
     const errorTitle = getErrorTitle(error.response?.status);
 
-    console.error(
-      `❌ [HTTP ERROR ${error.response?.status || 'NETWORK_ERROR'}] ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
-      {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        message: error.message,
-      }
-    );
+    // console.error(
+    //   `❌ [HTTP ERROR ${error.response?.status || 'NETWORK_ERROR'}] ${error.config?.method?.toUpperCase()} ${error.config?.url}`,
+    //   {
+    //     status: error.response?.status,
+    //     statusText: error.response?.statusText,
+    //     data: error.response?.data,
+    //     message: error.message,
+    //   }
+    // );
 
     // Rate Limiting 429 Cooldown Guard
     if (error.response?.status === 429) {

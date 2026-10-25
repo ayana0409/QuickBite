@@ -3,7 +3,8 @@ import axiosClient from '../services/axiosClient';
 import {
   Server, Database, Shield, ShoppingBag, CreditCard,
   AlertCircle, RefreshCw, CheckCircle2, XCircle, Boxes, ArrowRight,
-  HardDrive, Utensils, Zap, Layers, Sparkles, Network, Info, Cpu, Check, Activity
+  HardDrive, Utensils, Zap, Layers, Sparkles, Network, Info, Cpu, Check, Activity,
+  Coffee, ShieldCheck, Clock
 } from 'lucide-react';
 
 interface BootScreenProps {
@@ -221,7 +222,10 @@ function safeAnimate(animeModule: any, params: any) {
   return null;
 }
 
-export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
+// ============================================================================
+// BOOTSCREEN V1 (Legacy / Cyber / Microservices Topology Visualizer)
+// ============================================================================
+export const BootScreenV1: React.FC<BootScreenProps> = ({ onReady }) => {
   const [attempts, setAttempts] = useState<number>(0);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [healthData, setHealthData] = useState<HealthCheckResponse | null>(null);
@@ -372,7 +376,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           duration: 300,
         });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [selectedServiceId]);
 
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
@@ -394,7 +398,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           duration: 600,
         });
       })
-      .catch(() => {});
+      .catch(() => { });
 
     // 1s: Cặp Redis & Payment bừng sáng
     const t1 = setTimeout(() => {
@@ -448,7 +452,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           duration: 500,
         });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [litNodes]);
 
   // 1.5. Countdown timer khi tất cả service đều Healthy
@@ -596,8 +600,8 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
           if (isCancelled) return;
           // Fallback no-cors ping để kích hoạt wake-up packet
           try {
-            fetch(targetUrl, { method: 'GET', mode: 'no-cors' }).catch(() => {});
-          } catch {}
+            fetch(targetUrl, { method: 'GET', mode: 'no-cors' }).catch(() => { });
+          } catch { }
         }
 
         if (!isCancelled && !completedServicesRef.current.has(serviceKey)) {
@@ -620,7 +624,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
       isCancelled = true;
       clearTimeout(initialDelay);
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onReady]);
 
   // Watch serviceStatuses & healthData — when ALL services AND their sub-components are Healthy, trigger redirect
@@ -686,14 +690,13 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
             )}
           </div>
 
-          <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-lg ${
-            isIgniting
+          <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 shadow-lg ${isIgniting
               ? 'bg-gradient-to-r from-purple-500/30 via-pink-500/30 to-amber-500/30 text-purple-200 border border-purple-400 shadow-purple-500/40 animate-pulse'
               : redirectCountdown !== null
-              ? 'bg-gradient-to-r from-emerald-500/30 to-teal-500/30 text-emerald-300 border border-emerald-400 shadow-emerald-500/40 animate-pulse'
-              : healthData?.status === 'Healthy'
-              ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/50 shadow-emerald-500/20'
-              : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/50 shadow-amber-500/20'
+                ? 'bg-gradient-to-r from-emerald-500/30 to-teal-500/30 text-emerald-300 border border-emerald-400 shadow-emerald-500/40 animate-pulse'
+                : healthData?.status === 'Healthy'
+                  ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/50 shadow-emerald-500/20'
+                  : 'bg-gradient-to-r from-amber-500/20 to-rose-500/20 text-amber-300 border border-amber-500/50 shadow-amber-500/20'
             }`}>
             <span className={`w-2 h-2 rounded-full ${isIgniting ? 'bg-purple-400 animate-ping' : healthData?.status === 'Healthy' || redirectCountdown !== null ? 'bg-emerald-400 animate-ping' : 'bg-amber-400 animate-pulse'}`} />
             {isIgniting ? 'IGNITION (5s)' : redirectCountdown !== null ? `ĐANG CHUYỂN HƯỚNG (${redirectCountdown}s)` : healthData?.status || 'Waking'}
@@ -778,9 +781,8 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                       <span className="text-slate-400 flex items-center gap-1">
                         <Activity className="w-3.5 h-3.5 text-cyan-400 animate-pulse" /> Telemetry Realtime:
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${
-                        nodeEntry.status === 'Healthy' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                      }`}>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-extrabold uppercase ${nodeEntry.status === 'Healthy' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
+                        }`}>
                         {nodeEntry.status || 'Checking'} ({nodeEntry.duration_ms ?? 0}ms)
                       </span>
                     </div>
@@ -851,7 +853,7 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
 
             <div className="relative w-full h-80 my-1">
               <svg className="absolute inset-0 w-full h-full pointer-events-none">
-                              {services.map((s) => {
+                {services.map((s) => {
                   // Use serviceStatuses (from direct ping) as the source of truth
                   const directStatus = serviceStatuses[s.apiKey];
                   const isHealthy = directStatus === 'Healthy' || healthData?.entries?.[s.apiKey]?.status === 'Healthy';
@@ -908,27 +910,25 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
                     key={s.id}
                     id={`node-${s.id}`}
                     onClick={() => isLit && setSelectedServiceId(s.id)}
-                    className={`microservice-node node-${s.id} absolute -translate-x-1/2 -translate-y-1/2 border rounded-xl p-2 flex items-center gap-2 shadow-lg z-10 cursor-pointer transition-colors duration-300 ${
-                      !isLit
+                    className={`microservice-node node-${s.id} absolute -translate-x-1/2 -translate-y-1/2 border rounded-xl p-2 flex items-center gap-2 shadow-lg z-10 cursor-pointer transition-colors duration-300 ${!isLit
                         ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-15 grayscale shadow-none pointer-events-none'
                         : isSelected
-                        ? 'ring-2 ring-cyan-400 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/40 opacity-100'
-                        : isHealthy
-                        ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40 opacity-100 hover:border-emerald-400'
-                        : isDegraded
-                        ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40 opacity-100 hover:border-amber-400'
-                        : 'bg-slate-900/95 border-red-500/50 text-red-400 shadow-red-950/40 opacity-100 hover:border-red-400'
-                    }`}
+                          ? 'ring-2 ring-cyan-400 bg-slate-900 border-cyan-400 text-cyan-300 shadow-cyan-500/40 opacity-100'
+                          : isHealthy
+                            ? 'bg-slate-900/95 border-emerald-500/60 text-emerald-400 shadow-emerald-950/40 opacity-100 hover:border-emerald-400'
+                            : isDegraded
+                              ? 'bg-slate-900/95 border-amber-500/50 text-amber-400 shadow-amber-950/40 opacity-100 hover:border-amber-400'
+                              : 'bg-slate-900/95 border-red-500/50 text-red-400 shadow-red-950/40 opacity-100 hover:border-red-400'
+                      }`}
                     style={{ left: `${s.x}%`, top: `${s.y}%` }}
                   >
-                    <div className={`p-1.5 rounded-lg shadow-inner ${
-                      isHealthy
+                    <div className={`p-1.5 rounded-lg shadow-inner ${isHealthy
                         ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30'
                         : isDegraded
-                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                        : isNodePresent
-                        ? 'bg-red-500/20 text-red-300 border border-red-500/30'
-                        : 'bg-slate-800 text-slate-500'
+                          ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                          : isNodePresent
+                            ? 'bg-red-500/20 text-red-300 border border-red-500/30'
+                            : 'bg-slate-800 text-slate-500'
                       }`}>
                       <Icon className="w-3.5 h-3.5" />
                     </div>
@@ -1102,15 +1102,14 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
               return (
                 <div
                   key={s.id}
-                  className={`border rounded-xl p-2.5 flex items-center gap-2 shadow-lg transition-colors duration-300 ${
-                    !isLit
+                  className={`border rounded-xl p-2.5 flex items-center gap-2 shadow-lg transition-colors duration-300 ${!isLit
                       ? 'bg-slate-950/90 border-slate-900 text-slate-700 opacity-20 grayscale shadow-none'
                       : isHealthy
-                      ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30 opacity-100'
-                      : isNodePresent
-                      ? 'bg-slate-900/90 border-amber-500/50 text-amber-300 shadow-amber-950/30 opacity-100'
-                      : 'bg-slate-900/60 border-slate-800 text-slate-500 opacity-100'
-                  }`}
+                        ? 'bg-slate-900/90 border-emerald-500/50 text-emerald-300 shadow-emerald-950/30 opacity-100'
+                        : isNodePresent
+                          ? 'bg-slate-900/90 border-amber-500/50 text-amber-300 shadow-amber-950/30 opacity-100'
+                          : 'bg-slate-900/60 border-slate-800 text-slate-500 opacity-100'
+                    }`}
                 >
                   <div className={`p-1.5 rounded-lg shrink-0 ${isHealthy ? 'bg-gradient-to-br from-emerald-500/20 to-teal-500/20 text-emerald-300 border border-emerald-500/30' : isNodePresent ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' : 'bg-slate-800 text-slate-500'
                     }`}>
@@ -1170,4 +1169,366 @@ export const BootScreen: React.FC<BootScreenProps> = ({ onReady }) => {
   );
 };
 
-export default BootScreen;
+// ============================================================================
+// BOOTSCREEN V2 (Human-Centric / Warm, Friendly Workspace Preparation)
+// ============================================================================
+
+interface FriendlyStep {
+  key: string;
+  name: string;
+  role: string;
+  icon: React.ElementType;
+  badgeColor: string;
+}
+
+const FRIENDLY_STEPS: FriendlyStep[] = [
+  {
+    key: 'identity_service',
+    name: 'Tài khoản & Bảo mật',
+    role: 'Xác thực và bảo vệ phiên làm việc của bạn',
+    icon: ShieldCheck,
+    badgeColor: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+  },
+  {
+    key: 'catalog_service',
+    name: 'Thực đơn & Nhà hàng',
+    role: 'Tải danh mục món ăn, hình ảnh và giá bán',
+    icon: Utensils,
+    badgeColor: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+  },
+  {
+    key: 'inventory_service',
+    name: 'Kho & Nguyên liệu',
+    role: 'Đồng bộ số lượng tồn kho theo thời gian thực',
+    icon: Boxes,
+    badgeColor: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+  },
+  {
+    key: 'order_service',
+    name: 'Tiếp nhận Đơn hàng',
+    role: 'Sẵn sàng điều phối và nhận đơn mới tức thì',
+    icon: ShoppingBag,
+    badgeColor: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+  },
+  {
+    key: 'payment_service',
+    name: 'Cổng Thanh toán',
+    role: 'Kết nối kênh đối soát và giao dịch online',
+    icon: CreditCard,
+    badgeColor: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+  },
+  {
+    key: 'gateway',
+    name: 'Hạ tầng Kết nối Trung tâm',
+    role: 'Tối ưu tốc độ tải và đường truyền dịch vụ',
+    icon: Zap,
+    badgeColor: 'text-orange-400 bg-orange-500/10 border-orange-500/20',
+  },
+];
+
+export const BootScreenV2: React.FC<BootScreenProps> = ({ onReady }) => {
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);
+  const [canRedirect, setCanRedirect] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string>(
+    'Đang gửi tín hiệu kiểm tra tới Cổng kết nối Gateway & các microservices...'
+  );
+
+  const [stepStatuses, setStepStatuses] = useState<Record<string, 'Pending' | 'Ready'>>({
+    identity_service: 'Pending',
+    catalog_service: 'Pending',
+    inventory_service: 'Pending',
+    order_service: 'Pending',
+    payment_service: 'Pending',
+    gateway: 'Pending',
+  });
+
+  // Timer tracking elapsed waiting time
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Natural presentation delay: ensure user sees the boot status for at least 3.5s
+  useEffect(() => {
+    const presentationTimer = setTimeout(() => {
+      setCanRedirect(true);
+    }, 3500);
+    return () => clearTimeout(presentationTimer);
+  }, []);
+
+  // Poll Gateway and services in parallel
+  useEffect(() => {
+    let isCancelled = false;
+
+    const SERVICE_URLS: Record<string, string> = {
+      identity_service: `${import.meta.env.VITE_IDENTITY_URL || 'https://quick-bite-identity.onrender.com'}/health`,
+      order_service: `${import.meta.env.VITE_ORDER_URL || 'https://quick-bite-order.onrender.com/api/app'}/health`,
+      catalog_service: `${import.meta.env.VITE_CATALOG_URL || 'https://quick-bite-catalog.onrender.com'}/health`,
+      inventory_service: `${import.meta.env.VITE_INVENTORY_URL || 'https://quick-bite-inventory.onrender.com/api/v1'}/health`,
+      payment_service: `${import.meta.env.VITE_PAYMENT_URL || 'https://quick-bite-payment.onrender.com/v1'}/health`,
+    };
+
+    // 1. Send parallel wake-up pings to each service container
+    Object.entries(SERVICE_URLS).forEach(([key, url]) => {
+      try {
+        fetch(url, { method: 'GET', mode: 'no-cors' }).catch(() => { });
+      } catch { }
+    });
+
+    // 2. Poll Gateway /health which aggregates the real health check of ALL services
+    const pollAll = async () => {
+      let attempts = 0;
+
+      while (!isCancelled) {
+        attempts++;
+        try {
+          const res: any = await axiosClient.get('/health', { timeout: 30000 });
+          if (isCancelled) return;
+
+          const parsed = parseHealthPayload(res);
+
+          if (parsed) {
+            const entries = parsed.entries || {};
+            const isGwHealthy = parsed.status === 'Healthy' || (parsed as any).status === 'ok';
+
+            const newStatuses: Record<string, 'Pending' | 'Ready'> = {
+              gateway: isGwHealthy ? 'Ready' : 'Pending',
+              identity_service: entries['identity_service']?.status === 'Healthy' ? 'Ready' : 'Pending',
+              catalog_service: entries['catalog_service']?.status === 'Healthy' ? 'Ready' : 'Pending',
+              inventory_service: entries['inventory_service']?.status === 'Healthy' ? 'Ready' : 'Pending',
+              order_service: entries['order_service']?.status === 'Healthy' ? 'Ready' : 'Pending',
+              payment_service: entries['payment_service']?.status === 'Healthy' ? 'Ready' : 'Pending',
+            };
+
+            setStepStatuses(newStatuses);
+
+            const allReady = Object.values(newStatuses).every((st) => st === 'Ready');
+            if (allReady) {
+              setStatusMessage('🎉 Toàn bộ hệ thống microservices đã trực tuyến và sẵn sàng 100%!');
+              return; // Stop polling, all ready!
+            } else {
+              const count = Object.values(newStatuses).filter((st) => st === 'Ready').length;
+              setStatusMessage(`Đã kết nối ${count}/6 dịch vụ. Đang đánh thức các máy chủ còn lại... (Lần ${attempts})`);
+            }
+          }
+        } catch (err: any) {
+          if (isCancelled) return;
+          console.warn('⚠️ [GATEWAY POLL FAILED / RETRYING]', err.message);
+          setStatusMessage(`Đang chờ Gateway & máy chủ thức giấc... (Lần ${attempts})`);
+        }
+
+        if (!isCancelled) {
+          await new Promise((r) => setTimeout(r, 2500));
+        }
+      }
+    };
+
+    pollAll();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const readyCount = Object.values(stepStatuses).filter((st) => st === 'Ready').length;
+  const isAllReady = readyCount >= FRIENDLY_STEPS.length;
+  const progressPercent = Math.min(100, Math.round((readyCount / FRIENDLY_STEPS.length) * 100));
+
+  // Trigger automatic redirect only when all services are verified Ready AND minimum presentation time has elapsed
+  useEffect(() => {
+    if (isAllReady && canRedirect && redirectCountdown === null) {
+      setRedirectCountdown(2);
+    }
+  }, [isAllReady, canRedirect, redirectCountdown]);
+
+  useEffect(() => {
+    if (redirectCountdown === null) return;
+    if (redirectCountdown <= 0) {
+      onReady();
+      return;
+    }
+    const timer = setTimeout(() => {
+      setRedirectCountdown((prev) => (prev !== null ? prev - 1 : null));
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [redirectCountdown, onReady]);
+
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const elapsedFormatted = `${pad(Math.floor(elapsedSeconds / 60))}:${pad(elapsedSeconds % 60)}s`;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950 text-slate-100 overflow-y-auto select-none font-sans">
+      {/* Warm ambient background lighting */}
+      <div className="absolute top-1/4 left-1/4 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-1/4 right-1/4 translate-x-1/2 translate-y-1/2 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl pointer-events-none" />
+
+      {/* Main Container Card */}
+      <div className="relative w-full max-w-2xl rounded-3xl bg-slate-900/90 border border-slate-800/80 shadow-2xl shadow-slate-950/80 p-6 sm:p-8 flex flex-col gap-6 overflow-hidden backdrop-blur-xl">
+        {/* Top vibrant gradient accent line */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-500" />
+
+        {/* Header Section */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 to-orange-600 p-0.5 flex items-center justify-center shadow-lg shadow-amber-500/20">
+              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
+                <Utensils className="w-6 h-6 text-amber-400" />
+              </div>
+            </div>
+            <div>
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-500/10 border border-amber-500/30 text-amber-300 mb-1">
+                <Sparkles className="w-3 h-3" />
+                <span>Không gian làm việc QuickBite</span>
+              </div>
+              <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+                Chào ngày mới! Đang chuẩn bị ca làm việc...
+              </h1>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal">
+          Hệ thống đang đồng bộ dữ liệu thực đơn, kho món ăn và kiểm tra các kênh tiếp nhận đơn hàng để bạn có thể quản trị trơn tru nhất.
+        </p>
+
+        {/* Progress Section */}
+        <div className="rounded-2xl bg-slate-950/60 border border-slate-800/80 p-4 sm:p-5 flex flex-col gap-3">
+          <div className="flex items-center justify-between text-xs sm:text-sm">
+            <span className="font-medium text-slate-300 flex items-center gap-2">
+              {isAllReady ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span className="text-emerald-300 font-semibold">Tất cả dịch vụ đã sẵn sàng phục vụ!</span>
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 text-amber-400 animate-spin" />
+                  <span>Đang kết nối các dịch vụ ({readyCount}/{FRIENDLY_STEPS.length} hoàn tất)</span>
+                </>
+              )}
+            </span>
+            <span className="font-mono font-bold text-amber-300 text-sm sm:text-base">
+              {progressPercent}%
+            </span>
+          </div>
+
+          {/* Smooth Progress Bar */}
+          <div className="w-full h-2.5 rounded-full bg-slate-800 overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-amber-500 via-orange-500 to-emerald-400 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+
+          {/* Real-time status message feed */}
+          <div className="flex items-center gap-2 text-[11px] sm:text-xs text-slate-400 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800/80">
+            <span className={`w-2 h-2 rounded-full shrink-0 ${isAllReady ? 'bg-emerald-400' : 'bg-amber-400 animate-pulse'}`} />
+            <span className="truncate">{statusMessage}</span>
+          </div>
+        </div>
+
+        {/* Humanized Service Steps Checklist */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+          {FRIENDLY_STEPS.map((step) => {
+            const isReady = stepStatuses[step.key] === 'Ready';
+            const Icon = step.icon;
+
+            return (
+              <div
+                key={step.key}
+                className={`flex items-center justify-between p-3 rounded-2xl border transition-all duration-300 ${isReady
+                    ? 'bg-emerald-950/20 border-emerald-500/30 text-slate-100 shadow-xs'
+                    : 'bg-slate-950/40 border-slate-800/70 text-slate-400'
+                  }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border ${isReady ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' : step.badgeColor
+                      }`}
+                  >
+                    <Icon className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className={`text-xs sm:text-sm font-bold truncate ${isReady ? 'text-white' : 'text-slate-300'}`}>
+                      {step.name}
+                    </h3>
+                    <p className="text-[11px] text-slate-400 truncate leading-tight">
+                      {step.role}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="shrink-0 ml-2">
+                  {isReady ? (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+                      <Check className="w-3 h-3" />
+                      <span className="hidden sm:inline">Xong</span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-300/90 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+                      <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                      <span className="hidden sm:inline">Chờ...</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Human Touch Tip Card */}
+        <div className="rounded-2xl bg-slate-800/40 border border-slate-800 p-3.5 flex items-start gap-3 text-xs text-slate-300">
+          <Coffee className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <p className="leading-relaxed text-slate-400">
+            <strong className="text-slate-200">Mẹo nhỏ:</strong> Khi máy chủ đám mây bắt đầu ca làm việc sau thời gian nghỉ, quá trình khởi động có thể mất khoảng 15–30 giây. Bạn có thể thư giãn giây lát nhé!
+          </p>
+        </div>
+
+        {/* Bottom Actions */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2 border-t border-slate-800/80">
+          <div className="flex items-center gap-2 text-xs text-slate-400">
+            <Clock className="w-3.5 h-3.5 text-slate-400" />
+            <span>Thời gian chờ: <strong className="font-mono text-slate-200">{elapsedFormatted}</strong></span>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            {isAllReady ? (
+              <button
+                onClick={onReady}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-lg shadow-emerald-500/20 transition-all cursor-pointer"
+              >
+                <span>Vào trang quản trị ngay</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : (
+              <button
+                onClick={onReady}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white bg-slate-800/60 hover:bg-slate-800 border border-slate-700/60 transition-all cursor-pointer"
+              >
+                <span>Bỏ qua & Vào ngay</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// SWITCH BOOTSCREEN VERSION
+// Hướng dẫn: Đổi dấu comment // bên dưới để chuyển đổi tức thì giữa 2 phiên bản
+// ============================================================================
+
+// [MẶC ĐỊNH - V2]: Giao diện thân thiện con người, ấm áp, UI/UX hiện đại
+export const BootScreen = BootScreenV2;
+export default BootScreenV2;
+
+// [TÙY CHỌN - V1]: Giao diện kỹ thuật Cyberpunk / Topology / Microservices Inspector
+// export const BootScreen = BootScreenV1;
+// export default BootScreenV1;
+

@@ -57,11 +57,11 @@ export class HealthService {
 
     // 3. Microservices list
     const microservices = [
-      { key: 'identity_service', configKey: 'IDENTITY_URL' },
-      { key: 'order_service', configKey: 'ORDER_URL' },
-      { key: 'catalog_service', configKey: 'CATALOG_URL' },
-      { key: 'inventory_service', configKey: 'INVENTORY_URL' },
-      { key: 'payment_service', configKey: 'PAYMENT_URL' },
+      { key: 'identity_service', name: 'Identity Service', configKey: 'IDENTITY_URL' },
+      { key: 'order_service', name: 'Order Service', configKey: 'ORDER_URL' },
+      { key: 'catalog_service', name: 'Catalog Service', configKey: 'CATALOG_URL' },
+      { key: 'inventory_service', name: 'Inventory Service', configKey: 'INVENTORY_URL' },
+      { key: 'payment_service', name: 'Payment Service', configKey: 'PAYMENT_URL' },
     ];
 
     const serviceEntries = await Promise.all(
@@ -73,7 +73,7 @@ export class HealthService {
             key: service.key,
             entry: {
               status: 'Unhealthy' as const,
-              description: `URL not configured for ${service.configKey} on Render Environment`,
+              description: `${service.name} configuration is missing.`,
               data: null,
               duration_ms: 0,
               exception: 'Configuration missing',
@@ -87,10 +87,10 @@ export class HealthService {
             key: service.key,
             entry: {
               status: 'Unhealthy' as const,
-              description: `⚠️ ${service.configKey} is set to localhost (${baseUrl}). Set ${service.configKey} in Render Environment!`,
+              description: `${service.name} is configured to localhost.`,
               data: null,
               duration_ms: 0,
-              exception: `Target URL is localhost: ${baseUrl}`,
+              exception: 'Target URL is localhost in remote environment',
             },
           };
         }
@@ -118,10 +118,10 @@ export class HealthService {
               key: service.key,
               entry: {
                 status: 'Degraded' as const,
-                description: `Service ${service.key} is waking up in background (Holding request to ${baseUrl})`,
+                description: `${service.name} is waking up in the background.`,
                 data: null,
                 duration_ms: duration,
-                exception: `Cold Start in progress for ${baseUrl}`,
+                exception: 'Cold start in progress',
               },
             };
           } else {
@@ -129,7 +129,7 @@ export class HealthService {
               key: service.key,
               entry: {
                 status: 'Healthy' as const,
-                description: `${service.key} is healthy (Pinging: ${baseUrl})`,
+                description: `${service.name} connection is healthy.`,
                 data: result,
                 duration_ms: duration,
                 exception: null,
@@ -141,7 +141,7 @@ export class HealthService {
             key: service.key,
             entry: {
               status: 'Unhealthy' as const,
-              description: `Unable to reach ${service.key} at ${baseUrl}`,
+              description: `Unable to connect to ${service.name}.`,
               data: null,
               duration_ms: Date.now() - startTime,
               exception: error.message || 'Connection failed',
