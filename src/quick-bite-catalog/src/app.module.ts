@@ -1,4 +1,3 @@
-import * as fs from 'fs';
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -54,8 +53,8 @@ import { RecommendationModule } from './recommendation/recommendation.module';
           password,
           database,
           entities,
-          synchronize: true,
-          logging: true,
+          synchronize: false,
+          logging: ['error'],
           ssl,
           extra: {
             max: 2,
