@@ -312,24 +312,35 @@ export class ProxyController {
       // Standardize downstream inventory route to /api/inventory
       const stripped = req.originalUrl.replace(/^\/(api\/v1\/|api\/|v1\/|)(inventory)?/, '');
       const cleanSubPath = stripped.startsWith('/') ? stripped : (stripped ? `/${stripped}` : '');
-      formattedPath = `/api/inventory${cleanSubPath}`;
+      formattedPath = cleanBaseUrl.endsWith('/api/inventory')
+        ? cleanSubPath
+        : `/api/inventory${cleanSubPath}`;
     } else if (targetConfigKey === 'PAYMENT_URL') {
       // Standardize downstream payment route to /api/payments
       const stripped = req.originalUrl.replace(/^\/(api\/v1\/|api\/|v1\/|)(payments)?/, '');
       const cleanSubPath = stripped.startsWith('/') ? stripped : (stripped ? `/${stripped}` : '');
-      formattedPath = `/api/payments${cleanSubPath}`;
+      formattedPath = cleanBaseUrl.endsWith('/api/payments')
+        ? cleanSubPath
+        : `/api/payments${cleanSubPath}`;
     } else if (targetConfigKey === 'ORDER_URL') {
+      // Order Service uses ABP Framework Conventional Controllers under /api/app/...
       const stripped = req.originalUrl.replace(/^\/order/, '');
-      formattedPath = stripped.startsWith('/') ? stripped : `/${stripped}`;
-      if (!cleanBaseUrl.endsWith('/api') && !cleanBaseUrl.endsWith('/api/app') && !formattedPath.startsWith('/api')) {
-        formattedPath = `/api${formattedPath}`;
+      const cleanSubPath = stripped.startsWith('/') ? stripped : `/${stripped}`;
+      if (cleanBaseUrl.endsWith('/api/app')) {
+        formattedPath = cleanSubPath;
+      } else if (cleanBaseUrl.endsWith('/api')) {
+        formattedPath = cleanSubPath.startsWith('/app') ? cleanSubPath : `/app${cleanSubPath}`;
+      } else {
+        formattedPath = cleanSubPath.startsWith('/api/app')
+          ? cleanSubPath
+          : (cleanSubPath.startsWith('/app')
+              ? `/api${cleanSubPath}`
+              : `/api/app${cleanSubPath}`);
       }
     } else if (targetConfigKey === 'CATALOG_URL') {
+      // Catalog Service NestJS controllers are defined at root (/restaurants, /recommendations, etc.)
       const stripped = req.originalUrl.replace(/^\/catalog/, '');
       formattedPath = stripped.startsWith('/') ? stripped : `/${stripped}`;
-      if (!cleanBaseUrl.endsWith('/api') && !formattedPath.startsWith('/api')) {
-        formattedPath = `/api${formattedPath}`;
-      }
     } else {
       const stripped = req.originalUrl.replace(/^\/(catalog|identity|order|inventory|payments)/, '');
       formattedPath = stripped.startsWith('/') ? stripped : `/${stripped}`;

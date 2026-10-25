@@ -63,10 +63,12 @@ export class MerchantService {
     const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386');
     const cleanOrderUrl = orderBaseUrl.replace(/\/$/, '');
     
-    // Automatically ensure /api prefix when calling downstream Order Service root
-    const baseApi = cleanOrderUrl.endsWith('/api/app') || cleanOrderUrl.endsWith('/api')
+    // Ensure accurate ABP Framework route (/api/app/order/by-restaurant)
+    const baseApi = cleanOrderUrl.endsWith('/api/app')
       ? cleanOrderUrl
-      : `${cleanOrderUrl}/api`;
+      : cleanOrderUrl.endsWith('/api')
+      ? `${cleanOrderUrl}/app`
+      : `${cleanOrderUrl}/api/app`;
     const orderEndpointPath = baseApi.endsWith('/order') 
       ? '/by-restaurant' 
       : '/order/by-restaurant';
@@ -170,10 +172,12 @@ export class MerchantService {
     const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386');
     const cleanOrderUrl = orderBaseUrl.replace(/\/$/, '');
 
-    // Automatically ensure /api prefix when calling downstream Order Service root
-    const baseApi = cleanOrderUrl.endsWith('/api/app') || cleanOrderUrl.endsWith('/api')
+    // Ensure accurate ABP Framework route (/api/app/order/statistics)
+    const baseApi = cleanOrderUrl.endsWith('/api/app')
       ? cleanOrderUrl
-      : `${cleanOrderUrl}/api`;
+      : cleanOrderUrl.endsWith('/api')
+      ? `${cleanOrderUrl}/app`
+      : `${cleanOrderUrl}/api/app`;
     const orderEndpointPath = baseApi.endsWith('/order')
       ? '/statistics'
       : '/order/statistics';
