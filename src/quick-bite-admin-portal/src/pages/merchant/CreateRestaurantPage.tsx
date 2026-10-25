@@ -21,7 +21,6 @@ import {
   Compass,
   Info,
   XCircle,
-  Edit3,
 } from 'lucide-react';
 
 export default function CreateRestaurantPage() {

@@ -1282,7 +1282,7 @@ export const BootScreenV2: React.FC<BootScreenProps> = ({ onReady }) => {
     }
 
     // 1. Send parallel wake-up pings to each configured service container
-    Object.entries(SERVICE_URLS).forEach(([key, url]) => {
+    Object.values(SERVICE_URLS).forEach((url) => {
       if (!url) return;
       try {
         fetch(url, { method: 'GET', mode: 'no-cors' }).catch(() => { });
