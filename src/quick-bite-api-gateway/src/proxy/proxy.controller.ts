@@ -459,8 +459,9 @@ export class ProxyController {
     } else {
       res.status(502).json({
         statusCode: 502,
-        message: `Bad Gateway: Unable to connect to downstream service at ${targetUrl}`,
+        message: `Bad Gateway: Unable to connect to downstream service at ${targetUrl}. Reason: ${lastError?.message || 'Connection failed'} (${lastError?.code || 'NO_CODE'})`,
         error: lastError?.message,
+        code: lastError?.code,
       });
     }
   }
