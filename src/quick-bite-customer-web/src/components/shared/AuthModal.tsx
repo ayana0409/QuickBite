@@ -43,12 +43,15 @@ export default function AuthModal({
     initialTab || storeTab || "login"
   );
 
-  // Sync tab with store when modal opens
+  // Sync tab with store when modal opens and clean up any stale error params
   useEffect(() => {
     if (initialTab) {
       setActiveTab(initialTab);
     } else if (storeTab) {
       setActiveTab(storeTab);
+    }
+    if (isOpen && typeof window !== "undefined" && window.location.search.includes("error=")) {
+      window.history.replaceState({}, "", window.location.pathname);
     }
   }, [isOpen, initialTab, storeTab]);
 
@@ -89,10 +92,12 @@ export default function AuthModal({
     setIsLoginLoading(true);
 
     try {
+      const cleanCallbackUrl = typeof window !== "undefined" ? window.location.pathname : "/";
       const res = await signIn("credentials", {
         username: loginUsername.trim(),
         password: loginPassword,
         redirect: false,
+        callbackUrl: cleanCallbackUrl,
       });
 
       if (res?.error) {
@@ -166,10 +171,12 @@ export default function AuthModal({
         setRegSuccess("Đăng ký thành công! Đang tự động đăng nhập...");
 
         // 2. Auto sign in with credentials
+        const cleanCallbackUrl = typeof window !== "undefined" ? window.location.pathname : "/";
         const loginRes = await signIn("credentials", {
           username: cleanUsername,
           password: regPassword,
           redirect: false,
+          callbackUrl: cleanCallbackUrl,
         });
 
         if (loginRes?.ok) {
@@ -201,7 +208,8 @@ export default function AuthModal({
   };
 
   const handleSsoLogin = () => {
-    signIn("oidc", { callbackUrl: window.location.href });
+    const cleanUrl = typeof window !== "undefined" ? window.location.origin + window.location.pathname : "/";
+    signIn("oidc", { callbackUrl: cleanUrl });
   };
 
   return (

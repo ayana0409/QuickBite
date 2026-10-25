@@ -21,6 +21,14 @@ export default function GoogleLoginButton({
   const [isPending, setIsPending] = useState(false);
   const toast = useToast();
 
+  // Clear any stale error query params (e.g. ?error=OAuthCallback) on mount
+  React.useEffect(() => {
+    if (typeof window !== "undefined" && window.location.search.includes("error=")) {
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, "", cleanUrl);
+    }
+  }, []);
+
   const handleBackendGoogleLogin = async (idToken: string) => {
     setIsPending(true);
     try {
@@ -69,15 +77,26 @@ export default function GoogleLoginButton({
       }
 
       // 3. Establish NextAuth session using the google-token credentials provider
+      const cleanCallbackUrl =
+        redirectTo && !redirectTo.includes("error=")
+          ? redirectTo
+          : (typeof window !== "undefined" ? window.location.pathname : "/");
+
       const signInResult = await signIn("google-token", {
         accessToken,
         idToken: idTokenFromBE || idToken,
         refreshToken: refreshToken || "",
         redirect: false,
+        callbackUrl: cleanCallbackUrl,
       });
 
-      if (signInResult?.error) {
+      if (signInResult?.error && signInResult.error !== "OAuthCallback") {
         throw new Error(signInResult.error);
+      }
+
+      // Clear any stale query parameters from URL
+      if (typeof window !== "undefined" && window.location.search) {
+        window.history.replaceState({}, "", window.location.pathname);
       }
 
       // 4. Show success notification
@@ -88,8 +107,13 @@ export default function GoogleLoginButton({
       }
 
       // 5. Navigate to destination or refresh state
-      if (redirectTo && redirectTo !== window.location.pathname) {
-        window.location.href = redirectTo;
+      const targetDestination =
+        redirectTo && !redirectTo.includes("error=")
+          ? redirectTo
+          : (typeof window !== "undefined" ? window.location.pathname : "/");
+
+      if (targetDestination && targetDestination !== window.location.pathname) {
+        window.location.href = targetDestination;
       } else {
         window.location.reload();
       }
