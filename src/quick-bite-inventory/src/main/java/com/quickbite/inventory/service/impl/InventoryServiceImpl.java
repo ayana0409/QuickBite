@@ -52,28 +52,33 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public org.springframework.data.domain.Page<InventoryItemResponse> getInventoryByRestaurant(UUID restaurantId, UUID categoryId, String name, int page, int limit) {
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(Math.max(0, page - 1), limit);
+    public org.springframework.data.domain.Page<InventoryItemResponse> getInventoryByRestaurant(UUID restaurantId,
+            UUID categoryId, String name, int page, int limit) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest
+                .of(Math.max(0, page - 1), limit);
         String searchName = (name == null) ? "" : name.trim();
-        
+
         boolean hasCategoryId = (categoryId != null);
         UUID safeCategoryId = hasCategoryId ? categoryId : UUID.fromString("00000000-0000-0000-0000-000000000000");
-        
-        return inventoryItemRepository.findInventoryByRestaurant(restaurantId, hasCategoryId, safeCategoryId, searchName, pageable);
+
+        return inventoryItemRepository.findInventoryByRestaurant(restaurantId, hasCategoryId, safeCategoryId,
+                searchName, pageable);
     }
 
     @Override
     @Transactional(readOnly = true)
     public InventoryItemResponse getByFoodItemId(UUID foodItemId) {
         InventoryItem item = inventoryItemRepository.findByFoodItemId(foodItemId)
-                .orElseThrow(() -> new IllegalArgumentException("Inventory item not found for food item ID: " + foodItemId));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Inventory item not found for food item ID: " + foodItemId));
         return mapToResponse(item);
     }
 
     @Override
     @Transactional
     public InventoryItemResponse createOrUpdateItem(CreateOrUpdateInventoryRequest request) {
-        log.info("Creating/Updating inventory for food item: {}, quantity: {}", request.getFoodItemId(), request.getQuantity());
+        log.info("Creating/Updating inventory for food item: {}, quantity: {}", request.getFoodItemId(),
+                request.getQuantity());
 
         if (!inventoryFoodItemRepository.existsById(request.getFoodItemId())) {
             throw new IllegalArgumentException("Food item not found with ID: " + request.getFoodItemId());
@@ -93,19 +98,22 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     @Transactional
     public InventoryItemResponse adjustStock(StockAdjustmentRequest request) {
-        log.info("Adjusting stock for food item: {}, adjustment: {}", request.getFoodItemId(), request.getAdjustmentQuantity());
+        log.info("Adjusting stock for food item: {}, adjustment: {}", request.getFoodItemId(),
+                request.getAdjustmentQuantity());
 
         if (!inventoryFoodItemRepository.existsById(request.getFoodItemId())) {
             throw new IllegalArgumentException("Food item not found with ID: " + request.getFoodItemId());
         }
 
-        Optional<InventoryItem> optionalItem = inventoryItemRepository.findByFoodItemIdWithLock(request.getFoodItemId());
+        Optional<InventoryItem> optionalItem = inventoryItemRepository
+                .findByFoodItemIdWithLock(request.getFoodItemId());
 
         if (optionalItem.isPresent()) {
             InventoryItem item = optionalItem.get();
             int newQuantity = item.getQuantity() + request.getAdjustmentQuantity();
             if (newQuantity < item.getReservedQuantity()) {
-                throw new IllegalStateException("Không thể giảm số lượng tồn kho thấp hơn số lượng đang giữ (" + item.getReservedQuantity() + ")");
+                throw new IllegalStateException("Không thể giảm số lượng tồn kho thấp hơn số lượng đang giữ ("
+                        + item.getReservedQuantity() + ")");
             }
 
             item.setQuantity(Math.max(0, newQuantity));
@@ -113,7 +121,9 @@ public class InventoryServiceImpl implements InventoryService {
             return mapToResponse(savedItem);
         } else {
             if (request.getAdjustmentQuantity() < 0) {
-                throw new IllegalArgumentException("Mặt hàng này chưa có dữ liệu tồn kho. Không thể khởi tạo số lượng ban đầu là số âm (" + request.getAdjustmentQuantity() + ")");
+                throw new IllegalArgumentException(
+                        "Mặt hàng này chưa có dữ liệu tồn kho. Không thể khởi tạo số lượng ban đầu là số âm ("
+                                + request.getAdjustmentQuantity() + ")");
             }
 
             InventoryItem newItem = InventoryItem.builder()
@@ -132,7 +142,8 @@ public class InventoryServiceImpl implements InventoryService {
     public void deleteItemByFoodItemId(UUID foodItemId) {
         log.info("Deleting inventory item for food item: {}", foodItemId);
         InventoryItem item = inventoryItemRepository.findByFoodItemId(foodItemId)
-                .orElseThrow(() -> new IllegalArgumentException("Inventory item not found for food item ID: " + foodItemId));
+                .orElseThrow(
+                        () -> new IllegalArgumentException("Inventory item not found for food item ID: " + foodItemId));
         inventoryItemRepository.delete(item);
     }
 
@@ -144,7 +155,8 @@ public class InventoryServiceImpl implements InventoryService {
             return true;
         }
 
-        log.info("[Saga Reserve] Request to reserve stock. OrderId: {}, FoodItemId: {}, Qty: {}", orderId, foodItemId, quantity);
+        log.info("[Saga Reserve] Request to reserve stock. OrderId: {}, FoodItemId: {}, Qty: {}", orderId, foodItemId,
+                quantity);
 
         // 1. Validate FoodItem existence & availability
         Optional<InventoryFoodItem> foodItemOpt = inventoryFoodItemRepository.findById(foodItemId);
@@ -165,8 +177,7 @@ public class InventoryServiceImpl implements InventoryService {
                             .status("OUT_OF_STOCK")
                             .reason(reason)
                             .correlationId(correlationId)
-                            .build()
-            );
+                            .build());
 
             recordInbox(eventId, "order.stock.reservation.requested");
             return false;
@@ -190,8 +201,7 @@ public class InventoryServiceImpl implements InventoryService {
                             .status("OUT_OF_STOCK")
                             .reason(reason)
                             .correlationId(correlationId)
-                            .build()
-            );
+                            .build());
 
             recordInbox(eventId, "order.stock.reservation.requested");
             return false;
@@ -212,8 +222,7 @@ public class InventoryServiceImpl implements InventoryService {
                         .quantity(quantity)
                         .status("SUCCESS")
                         .correlationId(correlationId)
-                        .build()
-        );
+                        .build());
 
         recordInbox(eventId, "order.stock.reservation.requested");
         log.info("[Saga Reserve] SUCCESS - Reserved {} units for order: {}", quantity, orderId);
@@ -222,7 +231,8 @@ public class InventoryServiceImpl implements InventoryService {
 
     @Override
     @Transactional
-    public boolean reserveStockBatch(UUID orderId, java.util.Map<UUID, Integer> items, UUID correlationId, UUID eventId) {
+    public boolean reserveStockBatch(UUID orderId, java.util.Map<UUID, Integer> items, UUID correlationId,
+            UUID eventId) {
         if (eventId != null && inboxMessageRepository.existsById(eventId)) {
             log.info("[Inbox Pattern] Order event ID: {} already processed. Skipping reserve stock batch.", eventId);
             return true;
@@ -251,7 +261,8 @@ public class InventoryServiceImpl implements InventoryService {
             Optional<InventoryItem> optionalItem = inventoryItemRepository.findByFoodItemIdWithLock(foodItemId);
             if (optionalItem.isEmpty() || !optionalItem.get().hasEnoughStock(quantity)) {
                 int avail = optionalItem.map(InventoryItem::getAvailableQuantity).orElse(0);
-                String reason = "Insufficient available stock for item " + foodItemId + ". Available: " + avail + ", Requested: " + quantity;
+                String reason = "Insufficient available stock for item " + foodItemId + ". Available: " + avail
+                        + ", Requested: " + quantity;
                 log.warn("[Saga Reserve Batch] REJECTED - {}", reason);
                 saveRejectedEvent(orderId, foodItemId, quantity, reason, correlationId);
                 recordInbox(eventId, "order.stock.reservation.requested.batch");
@@ -276,8 +287,7 @@ public class InventoryServiceImpl implements InventoryService {
                         .orderId(orderId)
                         .correlationId(correlationId)
                         .status("SUCCESS")
-                        .build()
-        );
+                        .build());
 
         recordInbox(eventId, "order.stock.reservation.requested.batch");
         log.info("[Saga Reserve Batch] SUCCESS - Reserved all {} items for order: {}", items.size(), orderId);
@@ -296,8 +306,7 @@ public class InventoryServiceImpl implements InventoryService {
                         .status("OUT_OF_STOCK")
                         .reason(reason)
                         .correlationId(correlationId)
-                        .build()
-        );
+                        .build());
     }
 
     @Override
@@ -308,7 +317,8 @@ public class InventoryServiceImpl implements InventoryService {
             return true;
         }
 
-        log.info("[Saga Release] Request to release stock. OrderId: {}, FoodItemId: {}, Qty: {}", orderId, foodItemId, quantity);
+        log.info("[Saga Release] Request to release stock. OrderId: {}, FoodItemId: {}, Qty: {}", orderId, foodItemId,
+                quantity);
 
         Optional<InventoryItem> optionalItem = inventoryItemRepository.findByFoodItemIdWithLock(foodItemId);
         boolean released = false;
@@ -332,8 +342,7 @@ public class InventoryServiceImpl implements InventoryService {
                         .quantity(quantity)
                         .status(released ? "RELEASED" : "NOT_FOUND")
                         .correlationId(correlationId)
-                        .build()
-        );
+                        .build());
 
         recordInbox(eventId, "order.stock.release.requested");
         return released;
@@ -347,7 +356,8 @@ public class InventoryServiceImpl implements InventoryService {
             return true;
         }
 
-        log.info("[Saga Confirm] Request to confirm stock deduction. OrderId: {}, FoodItemId: {}, Qty: {}", orderId, foodItemId, quantity);
+        log.info("[Saga Confirm] Request to confirm stock deduction. OrderId: {}, FoodItemId: {}, Qty: {}", orderId,
+                foodItemId, quantity);
         Optional<InventoryItem> optionalItem = inventoryItemRepository.findByFoodItemIdWithLock(foodItemId);
 
         if (optionalItem.isPresent()) {

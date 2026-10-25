@@ -115,28 +115,36 @@ public class OrderEventConsumer {
                 case "saga.stock.release.requested":
                 case "order.cancelled":
                 case "ORDER_CANCELLED":
-                    // Similarly parse items array for releasing stock
+                    // Parse items array and aggregate quantity by foodItemId for releasing stock
                     JsonNode releaseItemsNode = rootNode.has("items") ? rootNode.get("items")
                             : payloadNode.get("items");
+                    java.util.Map<UUID, Integer> releaseItems = new java.util.HashMap<>();
                     if (releaseItemsNode != null && releaseItemsNode.isArray()) {
                         for (JsonNode itemNode : releaseItemsNode) {
                             UUID foodItemId = parseUuid(itemNode, "foodItemId");
+                            if (foodItemId == null)
+                                foodItemId = parseUuid(itemNode, "productId");
                             int quantity = itemNode.has("quantity") ? itemNode.get("quantity").asInt() : 1;
                             if (foodItemId != null) {
-                                UUID itemEventId = UUID
-                                        .nameUUIDFromBytes((eventId.toString() + "-release-" + foodItemId.toString())
-                                                .getBytes(StandardCharsets.UTF_8));
-                                inventoryService.releaseReservedStock(orderId, foodItemId, quantity, correlationId,
-                                        itemEventId);
+                                releaseItems.put(foodItemId, releaseItems.getOrDefault(foodItemId, 0) + quantity);
                             }
                         }
                     } else {
                         UUID singleFoodItemId = parseUuid(rootNode, "foodItemId");
                         int singleQuantity = rootNode.has("quantity") ? rootNode.get("quantity").asInt() : 1;
                         if (singleFoodItemId != null) {
-                            inventoryService.releaseReservedStock(orderId, singleFoodItemId, singleQuantity,
-                                    correlationId, eventId);
+                            releaseItems.put(singleFoodItemId, singleQuantity);
                         }
+                    }
+
+                    for (java.util.Map.Entry<UUID, Integer> entry : releaseItems.entrySet()) {
+                        UUID foodItemId = entry.getKey();
+                        int quantity = entry.getValue();
+                        UUID itemEventId = UUID
+                                .nameUUIDFromBytes((eventId.toString() + "-release-" + foodItemId.toString())
+                                        .getBytes(StandardCharsets.UTF_8));
+                        inventoryService.releaseReservedStock(orderId, foodItemId, quantity, correlationId,
+                                itemEventId);
                     }
                     break;
 
@@ -149,25 +157,35 @@ public class OrderEventConsumer {
 
                 case "order.completed":
                 case "ORDER_COMPLETED":
+                    // Parse items array and aggregate quantity by foodItemId for confirming stock deduction
                     JsonNode confirmItemsNode = rootNode.has("items") ? rootNode.get("items")
                             : payloadNode.get("items");
+                    java.util.Map<UUID, Integer> confirmItems = new java.util.HashMap<>();
                     if (confirmItemsNode != null && confirmItemsNode.isArray()) {
                         for (JsonNode itemNode : confirmItemsNode) {
                             UUID foodItemId = parseUuid(itemNode, "foodItemId");
+                            if (foodItemId == null)
+                                foodItemId = parseUuid(itemNode, "productId");
                             int quantity = itemNode.has("quantity") ? itemNode.get("quantity").asInt() : 1;
                             if (foodItemId != null) {
-                                UUID itemEventId = UUID
-                                        .nameUUIDFromBytes((eventId.toString() + "-confirm-" + foodItemId.toString())
-                                                .getBytes(StandardCharsets.UTF_8));
-                                inventoryService.confirmStockDeduction(orderId, foodItemId, quantity, itemEventId);
+                                confirmItems.put(foodItemId, confirmItems.getOrDefault(foodItemId, 0) + quantity);
                             }
                         }
                     } else {
                         UUID singleFoodItemId = parseUuid(rootNode, "foodItemId");
                         int singleQuantity = rootNode.has("quantity") ? rootNode.get("quantity").asInt() : 1;
                         if (singleFoodItemId != null) {
-                            inventoryService.confirmStockDeduction(orderId, singleFoodItemId, singleQuantity, eventId);
+                            confirmItems.put(singleFoodItemId, singleQuantity);
                         }
+                    }
+
+                    for (java.util.Map.Entry<UUID, Integer> entry : confirmItems.entrySet()) {
+                        UUID foodItemId = entry.getKey();
+                        int quantity = entry.getValue();
+                        UUID itemEventId = UUID
+                                .nameUUIDFromBytes((eventId.toString() + "-confirm-" + foodItemId.toString())
+                                        .getBytes(StandardCharsets.UTF_8));
+                        inventoryService.confirmStockDeduction(orderId, foodItemId, quantity, itemEventId);
                     }
                     break;
 

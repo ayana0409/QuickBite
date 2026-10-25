@@ -74,6 +74,68 @@ class OrderEventConsumerTest {
     }
 
     @Test
+    @DisplayName("Should aggregate duplicate foodItemIds on order.completed and confirm total quantity")
+    void shouldAggregateDuplicateFoodItemsOnOrderCompleted() {
+        // Arrange - 3 separate order items with the same foodItemId
+        String jsonPayload = String.format("""
+                {
+                    "eventId": "%s",
+                    "orderId": "%s",
+                    "eventType": "order.completed",
+                    "items": [
+                        { "foodItemId": "%s", "quantity": 1 },
+                        { "foodItemId": "%s", "quantity": 1 },
+                        { "foodItemId": "%s", "quantity": 1 }
+                    ]
+                }
+                """, UUID.randomUUID(), orderId, foodItemId, foodItemId, foodItemId);
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>("order-events", 0, 0L, "order.completed", jsonPayload);
+
+        // Act
+        orderEventConsumer.handleOrderEvent(record);
+
+        // Assert - confirmStockDeduction should be called exactly once with quantity = 3
+        verify(inventoryService).confirmStockDeduction(
+                eq(orderId),
+                eq(foodItemId),
+                eq(3),
+                any()
+        );
+    }
+
+    @Test
+    @DisplayName("Should aggregate duplicate foodItemIds on order.cancelled and release total quantity")
+    void shouldAggregateDuplicateFoodItemsOnOrderCancelled() {
+        // Arrange - 2 separate order items with the same foodItemId
+        String jsonPayload = String.format("""
+                {
+                    "eventId": "%s",
+                    "orderId": "%s",
+                    "eventType": "order.cancelled",
+                    "items": [
+                        { "foodItemId": "%s", "quantity": 2 },
+                        { "foodItemId": "%s", "quantity": 3 }
+                    ]
+                }
+                """, UUID.randomUUID(), orderId, foodItemId, foodItemId);
+
+        ConsumerRecord<String, String> record = new ConsumerRecord<>("order-events", 0, 0L, "order.cancelled", jsonPayload);
+
+        // Act
+        orderEventConsumer.handleOrderEvent(record);
+
+        // Assert - releaseReservedStock should be called exactly once with quantity = 5
+        verify(inventoryService).releaseReservedStock(
+                eq(orderId),
+                eq(foodItemId),
+                eq(5),
+                any(),
+                any()
+        );
+    }
+
+    @Test
     @DisplayName("Should ignore event if orderId is missing")
     void shouldIgnoreEventWithoutOrderId() {
         // Arrange
