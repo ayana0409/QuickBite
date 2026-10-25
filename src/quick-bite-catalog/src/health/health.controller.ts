@@ -12,7 +12,16 @@ export class HealthController {
     private readonly sysHealth: SystemResourcesHealthService,
   ) {}
 
-  @Get(['', 'health', 'api/health'])
+  @Get(['', 'healthz'])
+  rootPing(@Res() res: Response) {
+    return res.status(200).json({
+      status: 'Healthy',
+      service: 'catalog-service',
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  @Get(['health', 'api/health'])
   async checkHealth(@Res() res: Response) {
     const startTime = Date.now();
 

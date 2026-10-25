@@ -69,10 +69,10 @@ async function bootstrap() {
           brokers,
           ssl,
           sasl,
-          logLevel: 1,
+          logLevel: 1, // Only log errors to prevent console/CPU overhead
           retry: {
-            initialRetryTime: 300,
-            retries: 10,
+            initialRetryTime: 1000,
+            retries: 5,
             maxRetryTime: 30000,
             factor: 2,
           },
@@ -82,9 +82,9 @@ async function bootstrap() {
         consumer: {
           groupId: 'catalog-service-group',
           allowAutoTopicCreation: true,
-          maxWaitTimeInMs: 5000,
-          heartbeatInterval: 3000,
-          sessionTimeout: 30000,
+          maxWaitTimeInMs: 1000,
+          heartbeatInterval: 5000,
+          sessionTimeout: 45000,
           metadataMaxAge: 300000,
           maxBytesPerPartition: 1048576,
         },

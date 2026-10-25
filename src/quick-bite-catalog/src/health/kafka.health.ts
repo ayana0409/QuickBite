@@ -6,10 +6,18 @@ import { HealthCheckEntry } from './database.health';
 @Injectable()
 export class KafkaHealthService {
   private readonly logger = new Logger(KafkaHealthService.name);
+  private cachedResult: HealthCheckEntry | null = null;
+  private lastCheckTime = 0;
+  private readonly CACHE_TTL_MS = 60000; // Cache health check result for 60 seconds
 
   constructor(private readonly config: ConfigService) {}
 
   async check(): Promise<HealthCheckEntry> {
+    const now = Date.now();
+    if (this.cachedResult && now - this.lastCheckTime < this.CACHE_TTL_MS) {
+      return this.cachedResult;
+    }
+
     const startTime = Date.now();
     try {
       const rawBroker = this.config.get<string>('KAFKA_BROKER') || 'localhost:9092';
@@ -64,7 +72,7 @@ export class KafkaHealthService {
       await admin.disconnect();
 
       const duration = Date.now() - startTime;
-      return {
+      const result: HealthCheckEntry = {
         status: 'Healthy',
         description: `Kafka connection OK. Active brokers: ${brokers.length}.`,
         data: {
@@ -74,16 +82,23 @@ export class KafkaHealthService {
         duration_ms: duration,
         exception: null,
       };
+      this.cachedResult = result;
+      this.lastCheckTime = now;
+      return result;
     } catch (error: any) {
       const duration = Date.now() - startTime;
       this.logger.error('Kafka health check failed', error?.stack || error);
-      return {
+      const result: HealthCheckEntry = {
         status: 'Unhealthy',
         description: 'Kafka cluster connection failed.',
         data: null,
         duration_ms: duration,
         exception: error?.message || String(error),
       };
+      // Cache failures for 15 seconds to avoid hammering failing broker
+      this.cachedResult = result;
+      this.lastCheckTime = Date.now() - (this.CACHE_TTL_MS - 15000);
+      return result;
     }
   }
 }
