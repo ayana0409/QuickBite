@@ -348,13 +348,17 @@ export class AdminService {
    * Helper to fetch admin statistics from Order Service (.NET ABP)
    */
   private async fetchOrderStatistics(authHeader?: string): Promise<any> {
-    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386/api/app');
+    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386');
     const cleanOrderUrl = orderBaseUrl.replace(/\/$/, '');
 
-    const endpointPath = cleanOrderUrl.endsWith('/order')
+    // Automatically ensure /api prefix when calling downstream Order Service root
+    const baseApi = cleanOrderUrl.endsWith('/api/app') || cleanOrderUrl.endsWith('/api')
+      ? cleanOrderUrl
+      : `${cleanOrderUrl}/api`;
+    const endpointPath = baseApi.endsWith('/order')
       ? '/admin-statistics'
       : '/order/admin-statistics';
-    const orderTargetUrl = `${cleanOrderUrl}${endpointPath}`;
+    const orderTargetUrl = `${baseApi}${endpointPath}`;
 
     this.logger.log(`🔀 [ADMIN STATS] Calling Order Service at ${orderTargetUrl}`);
 
@@ -588,10 +592,15 @@ export class AdminService {
     const limit = Math.max(1, Math.min(100, Number(params.limit) || 20));
     const skipCount = (page - 1) * limit;
 
-    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386/api/app');
+    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386');
     const cleanOrderUrl = orderBaseUrl.replace(/\/$/, '');
-    const endpointPath = cleanOrderUrl.endsWith('/order') ? '/admin-list' : '/order/admin-list';
-    const targetUrl = `${cleanOrderUrl}${endpointPath}`;
+
+    // Automatically ensure /api prefix when calling downstream Order Service root
+    const baseApi = cleanOrderUrl.endsWith('/api/app') || cleanOrderUrl.endsWith('/api')
+      ? cleanOrderUrl
+      : `${cleanOrderUrl}/api`;
+    const endpointPath = baseApi.endsWith('/order') ? '/admin-list' : '/order/admin-list';
+    const targetUrl = `${baseApi}${endpointPath}`;
 
     const queryParams: any = {
       skipCount,

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  * REST controller for handling Payment API requests and Mock Gateway simulation.
  */
 @RestController
-@RequestMapping("/v1/payments")
+@RequestMapping({"/api/payments", "/v1/payments", "/payments"})
 @RequiredArgsConstructor
 @Tag(name = "Payment Management", description = "Endpoints for handling payment processing and mock gateway")
 public class PaymentController {

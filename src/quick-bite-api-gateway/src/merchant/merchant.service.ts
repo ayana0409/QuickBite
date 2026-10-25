@@ -60,14 +60,17 @@ export class MerchantService {
     this.logger.log(`✅ [MERCHANT AGGREGATION] Resolved restaurantId: ${restaurantId} for userId: ${userId}`);
 
     // Step 2: Fetch orders for the resolved restaurantId from Order Service
-    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386/api/app');
+    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386');
     const cleanOrderUrl = orderBaseUrl.replace(/\/$/, '');
     
-    // Construct order endpoint safely depending on base path
-    const orderEndpointPath = cleanOrderUrl.endsWith('/order') 
+    // Automatically ensure /api prefix when calling downstream Order Service root
+    const baseApi = cleanOrderUrl.endsWith('/api/app') || cleanOrderUrl.endsWith('/api')
+      ? cleanOrderUrl
+      : `${cleanOrderUrl}/api`;
+    const orderEndpointPath = baseApi.endsWith('/order') 
       ? '/by-restaurant' 
       : '/order/by-restaurant';
-    const orderTargetUrl = `${cleanOrderUrl}${orderEndpointPath}`;
+    const orderTargetUrl = `${baseApi}${orderEndpointPath}`;
 
     // Build query params for ABP Framework Order Service (convert page/limit -> skipCount/maxResultCount)
     const page = query.page ?? 1;
@@ -164,13 +167,17 @@ export class MerchantService {
     this.logger.log(`✅ [MERCHANT DASHBOARD] Resolved restaurantId: ${restaurantId}, Rating: ${avgRating}`);
 
     // Step 2: Fetch dashboard stats from Order Service
-    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386/api/app');
+    const orderBaseUrl = await this.configService.getAsync('ORDER_URL', 'https://localhost:44386');
     const cleanOrderUrl = orderBaseUrl.replace(/\/$/, '');
 
-    const orderEndpointPath = cleanOrderUrl.endsWith('/order')
+    // Automatically ensure /api prefix when calling downstream Order Service root
+    const baseApi = cleanOrderUrl.endsWith('/api/app') || cleanOrderUrl.endsWith('/api')
+      ? cleanOrderUrl
+      : `${cleanOrderUrl}/api`;
+    const orderEndpointPath = baseApi.endsWith('/order')
       ? '/statistics'
       : '/order/statistics';
-    const orderTargetUrl = `${cleanOrderUrl}${orderEndpointPath}`;
+    const orderTargetUrl = `${baseApi}${orderEndpointPath}`;
 
     this.logger.log(`🔀 [MERCHANT DASHBOARD] Querying Order Service at ${orderTargetUrl}?restaurantId=${restaurantId}`);
 

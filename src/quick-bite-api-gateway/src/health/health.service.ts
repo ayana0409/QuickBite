@@ -95,7 +95,7 @@ export class HealthService {
           };
         }
 
-        const candidateUrls = this.getHealthUrlCandidates(baseUrl);
+        const candidateUrls = this.getHealthUrlCandidates(baseUrl, service.key);
         const startTime = Date.now();
 
         try {
@@ -255,13 +255,14 @@ export class HealthService {
     return promise;
   }
 
-  private getHealthUrlCandidates(baseUrl: string): string[] {
+  private getHealthUrlCandidates(baseUrl: string, serviceKey?: string): string[] {
     const cleanUrl = baseUrl.trim().replace(/\/$/, '');
     const candidates: string[] = [];
 
-    if (cleanUrl.endsWith('/health')) {
-      candidates.push(cleanUrl);
-    } else {
+    // Prioritize root URL as primary health check for all microservices
+    candidates.push(cleanUrl);
+    candidates.push(`${cleanUrl}/`);
+    if (!cleanUrl.endsWith('/health')) {
       candidates.push(`${cleanUrl}/health`);
     }
 

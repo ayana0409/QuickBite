@@ -65,10 +65,10 @@ export class DynamicConfigService implements OnModuleInit, OnModuleDestroy {
       RATE_LIMIT_MAX: '100',
       GET_CACHE_TTL: '30',
       IDENTITY_URL: 'http://localhost:44391',
-      ORDER_URL: 'https://localhost:44386/api/app',
+      ORDER_URL: 'https://localhost:44386',
       CATALOG_URL: 'http://localhost:3000',
-      INVENTORY_URL: 'http://localhost:8083/api/v1',
-      PAYMENT_URL: 'http://localhost:8084/v1',
+      INVENTORY_URL: 'http://localhost:8083',
+      PAYMENT_URL: 'http://localhost:8084',
     };
 
     try {

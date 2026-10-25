@@ -75,8 +75,23 @@ export class ProxyController {
     await this.forwardRequest('INVENTORY_URL', req, res);
   }
 
+  @All('api/inventory{*path}')
+  async proxyApiInventory(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('INVENTORY_URL', req, res);
+  }
+
   @All('payments{*path}')
   async proxyPayment(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('PAYMENT_URL', req, res);
+  }
+
+  @All('v1/payments{*path}')
+  async proxyV1Payment(@Req() req: Request, @Res() res: Response) {
+    await this.forwardRequest('PAYMENT_URL', req, res);
+  }
+
+  @All('api/payments{*path}')
+  async proxyApiPayment(@Req() req: Request, @Res() res: Response) {
     await this.forwardRequest('PAYMENT_URL', req, res);
   }
 
@@ -290,16 +305,36 @@ export class ProxyController {
     }
 
     // Compute relativePath based on service target
-    let relativePath = req.originalUrl;
+    const cleanBaseUrl = targetBaseUrl.replace(/\/$/, '');
+    let formattedPath = '';
+
     if (targetConfigKey === 'INVENTORY_URL') {
-      // Keep /inventory path so it appends cleanly to INVENTORY_URL (http://localhost:8083/api/v1)
-      relativePath = req.originalUrl.replace(/^\/api\/v1/, '');
+      // Standardize downstream inventory route to /api/inventory
+      const stripped = req.originalUrl.replace(/^\/(api\/v1\/|api\/|v1\/|)(inventory)?/, '');
+      const cleanSubPath = stripped.startsWith('/') ? stripped : (stripped ? `/${stripped}` : '');
+      formattedPath = `/api/inventory${cleanSubPath}`;
+    } else if (targetConfigKey === 'PAYMENT_URL') {
+      // Standardize downstream payment route to /api/payments
+      const stripped = req.originalUrl.replace(/^\/(api\/v1\/|api\/|v1\/|)(payments)?/, '');
+      const cleanSubPath = stripped.startsWith('/') ? stripped : (stripped ? `/${stripped}` : '');
+      formattedPath = `/api/payments${cleanSubPath}`;
+    } else if (targetConfigKey === 'ORDER_URL') {
+      const stripped = req.originalUrl.replace(/^\/order/, '');
+      formattedPath = stripped.startsWith('/') ? stripped : `/${stripped}`;
+      if (!cleanBaseUrl.endsWith('/api') && !cleanBaseUrl.endsWith('/api/app') && !formattedPath.startsWith('/api')) {
+        formattedPath = `/api${formattedPath}`;
+      }
+    } else if (targetConfigKey === 'CATALOG_URL') {
+      const stripped = req.originalUrl.replace(/^\/catalog/, '');
+      formattedPath = stripped.startsWith('/') ? stripped : `/${stripped}`;
+      if (!cleanBaseUrl.endsWith('/api') && !formattedPath.startsWith('/api')) {
+        formattedPath = `/api${formattedPath}`;
+      }
     } else {
-      relativePath = req.originalUrl.replace(/^\/(catalog|identity|order|inventory|payments)/, '');
+      const stripped = req.originalUrl.replace(/^\/(catalog|identity|order|inventory|payments)/, '');
+      formattedPath = stripped.startsWith('/') ? stripped : `/${stripped}`;
     }
 
-    const cleanBaseUrl = targetBaseUrl.replace(/\/$/, '');
-    const formattedPath = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     const targetUrl = `${cleanBaseUrl}${formattedPath}`;
 
     // Cache lookup for GET requests to CATALOG_URL

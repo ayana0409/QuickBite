@@ -35,6 +35,14 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // Support /api/... prefix routing (e.g. /api/restaurants -> /restaurants)
+  app.use((req: any, _res: any, next: any) => {
+    if (req.url.startsWith('/api/') && !req.url.startsWith('/api/health')) {
+      req.url = req.url.replace(/^\/api/, '');
+    }
+    next();
+  });
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,

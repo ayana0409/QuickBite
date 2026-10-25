@@ -12,7 +12,7 @@ export class HealthController {
     private readonly sysHealth: SystemResourcesHealthService,
   ) {}
 
-  @Get(['health', 'api/health'])
+  @Get(['', 'health', 'api/health'])
   async checkHealth(@Res() res: Response) {
     const startTime = Date.now();
 

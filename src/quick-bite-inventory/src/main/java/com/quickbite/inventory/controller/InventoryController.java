@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/inventory")
+@RequestMapping({"/api/inventory", "/api/v1/inventory", "/inventory"})
 @RequiredArgsConstructor
 @Tag(name = "Inventory Management", description = "Endpoints cho Quản lý Tồn kho & Nhập/Xuất kho")
 public class InventoryController {
