@@ -117,9 +117,9 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.Password, OpenIddictConstants.GrantTypes.RefreshToken
             },
             scopes: commonScopes,
-            redirectUri: "http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,http://localhost:3002/signin-oidc,http://localhost:3000/signin-oidc,https://quickbite-wnkc.onrender.com/api/auth/callback/oidc,https://quickbite-wnkc.onrender.com/signin-oidc",
-            clientUri: "https://quickbite-wnkc.onrender.com",
-            postLogoutRedirectUri: "http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc,https://quickbite-wnkc.onrender.com/signout-callback-oidc"
+            redirectUri: "http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,http://localhost:3002/signin-oidc,http://localhost:3000/signin-oidc,https://quickbite-wnkc.onrender.com/api/auth/callback/oidc,https://quickbite-wnkc.onrender.com/signin-oidc,https://thuandd.io.vn/api/auth/callback/oidc,https://thuandd.io.vn/signin-oidc",
+            clientUri: "https://thuandd.io.vn",
+            postLogoutRedirectUri: "http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc,https://quickbite-wnkc.onrender.com/signout-callback-oidc,https://thuandd.io.vn/signout-callback-oidc"
         );
 
         // Admin & Merchant Portal Client (QuickBite_Portal)
@@ -136,9 +136,9 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 OpenIddictConstants.GrantTypes.AuthorizationCode
             },
             scopes: commonScopes,
-            redirectUri: "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://quickbitemanager.onrender.com,https://quickbitemanager.onrender.com/signin-oidc",
-            clientUri: "https://quickbitemanager.onrender.com",
-            postLogoutRedirectUri: "http://localhost:5173/login,http://localhost:3000/login,https://quickbitemanager.onrender.com/login,https://quickbitemanager.onrender.com/signout-callback-oidc"
+            redirectUri: "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://quickbitemanager.onrender.com,https://quickbitemanager.onrender.com/signin-oidc,https://thuandd.io.vn,https://thuandd.io.vn/signin-oidc",
+            clientUri: "https://thuandd.io.vn",
+            postLogoutRedirectUri: "http://localhost:5173/login,http://localhost:3000/login,https://quickbitemanager.onrender.com/login,https://quickbitemanager.onrender.com/signout-callback-oidc,https://thuandd.io.vn/login,https://thuandd.io.vn/signout-callback-oidc"
         );
 
 

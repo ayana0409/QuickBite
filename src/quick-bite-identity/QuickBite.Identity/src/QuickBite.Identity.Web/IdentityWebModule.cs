@@ -428,6 +428,17 @@ public class IdentityWebModule : AbpModule
         var app = context.GetApplicationBuilder();
         var env = context.GetEnvironment();
 
+        // 0. Forwarded headers for reverse proxy (Traefik, Cloudflare, Render, Nginx in Docker)
+        var forwardedHeadersOptions = new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
+        {
+            ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto |
+                               Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedHost
+        };
+        forwardedHeadersOptions.KnownIPNetworks.Clear();
+        forwardedHeadersOptions.KnownProxies.Clear();
+        app.UseForwardedHeaders(forwardedHeadersOptions);
+
         // 1. CORS MUST BE FIRST SO ALL PROBES AND HEALTH CHECKS HAVE ACCESS-CONTROL-ALLOW-ORIGIN
         app.UseCors();
 
@@ -493,11 +504,6 @@ public class IdentityWebModule : AbpModule
                 appBuilder => appBuilder.UseErrorPage()
             );
         }
-
-        app.UseForwardedHeaders(new Microsoft.AspNetCore.Builder.ForwardedHeadersOptions
-        {
-            ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto
-        });
 
         app.UseCorrelationId();
 
