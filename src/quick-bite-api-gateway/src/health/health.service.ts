@@ -96,6 +96,7 @@ export class HealthService {
         }
 
         const candidateUrls = this.getHealthUrlCandidates(baseUrl, service.key);
+        const targetUrl = candidateUrls[0].endsWith('/') ? candidateUrls[0] : `${candidateUrls[0]}/`;
         const startTime = Date.now();
 
         try {
@@ -118,7 +119,7 @@ export class HealthService {
               key: service.key,
               entry: {
                 status: 'Degraded' as const,
-                description: `${service.name} is waking up in the background.`,
+                description: `${service.name} is waking up in the background (Pinging: ${targetUrl}).`,
                 data: null,
                 duration_ms: duration,
                 exception: 'Cold start in progress',
@@ -129,7 +130,7 @@ export class HealthService {
               key: service.key,
               entry: {
                 status: 'Healthy' as const,
-                description: `${service.name} connection is healthy.`,
+                description: `${service.name} is healthy (Pinging: ${targetUrl}).`,
                 data: result,
                 duration_ms: duration,
                 exception: null,
@@ -141,7 +142,7 @@ export class HealthService {
             key: service.key,
             entry: {
               status: 'Unhealthy' as const,
-              description: `Unable to connect to ${service.name}.`,
+              description: `Unable to connect to ${service.name} (Pinging: ${targetUrl}).`,
               data: null,
               duration_ms: Date.now() - startTime,
               exception: error.message || 'Connection failed',
@@ -192,8 +193,9 @@ export class HealthService {
     }
 
     const promise = (async () => {
-      // Pick the best candidate URL (the first one) instead of spamming all of them
-      const targetUrl = candidateUrls[0]; 
+      // Pick the primary ping URL and ensure it always ends with trailing slash '/'
+      const primaryCandidate = candidateUrls[0];
+      const targetUrl = primaryCandidate.endsWith('/') ? primaryCandidate : `${primaryCandidate}/`; 
       this.logger.log(`🚀 [WAKE-UP INIT] Start ping loop for ${serviceKey} at ${targetUrl}`);
       
       // Try up to 12 times (about 2 minutes with 10s delays)
@@ -256,13 +258,15 @@ export class HealthService {
   }
 
   private getHealthUrlCandidates(baseUrl: string, serviceKey?: string): string[] {
-    const cleanUrl = baseUrl.trim().replace(/\/$/, '');
+    const cleanUrl = baseUrl.trim().replace(/\/+$/, '');
+    const urlWithSlash = `${cleanUrl}/`;
     const candidates: string[] = [];
 
-    // Prioritize root URL as primary health check for all microservices
+    // Prioritize root URL with trailing slash '/' as requested by user
+    candidates.push(urlWithSlash);
     candidates.push(cleanUrl);
-    candidates.push(`${cleanUrl}/`);
     if (!cleanUrl.endsWith('/health')) {
+      candidates.push(`${urlWithSlash}health`);
       candidates.push(`${cleanUrl}/health`);
     }
 
