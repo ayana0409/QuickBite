@@ -306,9 +306,8 @@ public class OrderHttpApiHostModule : AbpModule
                 return;
             }
 
-            // B. Fast probe response for /healthz or root ping without HTML accept header (Render, curl, frontend fetch)
-            if (httpContext.Request.Path == "/healthz" || 
-                (httpContext.Request.Path == "/" && !httpContext.Request.Headers.Accept.ToString().Contains("text/html")))
+            // B. Fast probe response for /healthz (liveness probe)
+            if (httpContext.Request.Path == "/healthz")
             {
                 httpContext.Response.StatusCode = StatusCodes.Status200OK;
                 httpContext.Response.ContentType = "application/json";
@@ -316,10 +315,22 @@ public class OrderHttpApiHostModule : AbpModule
                 return;
             }
 
+            // C. Route rewrite: when calling API with /api/... (e.g. /api/order/...), route to /api/app/... for ABP Conventional Controllers
+            if (httpContext.Request.Path.StartsWithSegments("/api", out var remaining) &&
+                !httpContext.Request.Path.StartsWithSegments("/api/app") &&
+                !httpContext.Request.Path.StartsWithSegments("/api/health"))
+            {
+                httpContext.Request.Path = "/api/app" + remaining;
+            }
+
             await next();
         });
 
-        // 3. Health check endpoints (must be before localization, unit of work, and auth to avoid hitting heavy DB/Kafka pipelines)
+        // 3. Health check endpoints (Primary health check is mapped to root "/")
+        app.UseHealthChecks("/", new HealthCheckOptions
+        {
+            ResponseWriter = WriteHealthResponse
+        });
         app.UseHealthChecks("/health", new HealthCheckOptions
         {
             ResponseWriter = WriteHealthResponse
