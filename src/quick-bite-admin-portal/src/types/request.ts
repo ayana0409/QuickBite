@@ -37,7 +37,7 @@ export interface RestaurantRegistrationPayload {
   address: {
     line1: string;
     ward: string;
-    district: string;
+    district?: string;
     city: string;
     geo?: GeoLocation;
   };

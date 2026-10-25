@@ -4,7 +4,7 @@ import { unwrapData, unwrapArray } from '../utils/apiHelper';
 export interface RestaurantAddress {
   line1: string;
   ward: string;
-  district: string;
+  district?: string;
   city: string;
   geo: {
     type: 'Point';
@@ -45,7 +45,7 @@ export const restaurantService = {
       return list.map((item: any) => ({
         ...item,
         address: typeof item.address === 'object' 
-          ? `${item.address.line1 || ''}, ${item.address.ward || ''}, ${item.address.district || ''}, ${item.address.city || ''}`
+          ? [item.address.line1, item.address.ward, item.address.city].filter(Boolean).join(', ')
           : item.address || '',
         isActive: item.status ? item.status !== 'closed' : true,
         createdAt: item.createdAt || new Date().toISOString(),
@@ -94,7 +94,7 @@ export const restaurantService = {
       return {
         ...created,
         address: typeof created.address === 'object'
-          ? `${created.address.line1 || ''}, ${created.address.ward || ''}, ${created.address.district || ''}, ${created.address.city || ''}`
+          ? [created.address.line1, created.address.ward, created.address.city].filter(Boolean).join(', ')
           : created.address || dto.address || '',
         isActive: true,
         createdAt: created.createdAt || new Date().toISOString(),

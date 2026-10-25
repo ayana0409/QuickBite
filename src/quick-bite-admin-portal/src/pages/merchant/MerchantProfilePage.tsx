@@ -43,8 +43,8 @@ const restaurantProfileSchema = z.object({
   status: z.enum(['open', 'closed']),
   address: z.object({
     line1: z.string().trim().min(1, 'Địa chỉ đường / số nhà không được để trống'),
-    ward: z.string().trim().min(1, 'Phường / Xã không được để trống'),
-    district: z.string().trim().min(1, 'Quận / Huyện không được để trống'),
+    ward: z.string().trim().min(1, 'Khu vực / Xã, Phường không được để trống'),
+    district: z.string(),
     city: z.string().trim().min(1, 'Tỉnh / Thành phố không được để trống'),
     longitude: z.number().optional(),
     latitude: z.number().optional(),
@@ -297,9 +297,7 @@ export default function MerchantProfilePage() {
     if (addressInfo.ward) {
       setValueRestaurant('address.ward', addressInfo.ward, { shouldDirty: true, shouldValidate: true });
     }
-    if (addressInfo.district) {
-      setValueRestaurant('address.district', addressInfo.district, { shouldDirty: true, shouldValidate: true });
-    }
+    setValueRestaurant('address.district', '', { shouldDirty: true });
     if (addressInfo.city) {
       setValueRestaurant('address.city', addressInfo.city, { shouldDirty: true, shouldValidate: true });
     }
@@ -323,7 +321,7 @@ export default function MerchantProfilePage() {
         address: {
           line1: formData.address.line1,
           ward: formData.address.ward,
-          district: formData.address.district,
+          district: '',
           city: formData.address.city,
           geo: {
             type: 'Point',
@@ -343,7 +341,7 @@ export default function MerchantProfilePage() {
           address: {
             line1: updated.address?.line1 || formData.address.line1,
             ward: updated.address?.ward || formData.address.ward,
-            district: updated.address?.district || formData.address.district,
+            district: '',
             city: updated.address?.city || formData.address.city,
             longitude: updatedLng,
             latitude: updatedLat,
@@ -369,7 +367,7 @@ export default function MerchantProfilePage() {
         address: {
           line1: restaurant.address?.line1 || '',
           ward: restaurant.address?.ward || '',
-          district: restaurant.address?.district || '',
+          district: '',
           city: restaurant.address?.city || 'Hồ Chí Minh',
           longitude: lng,
           latitude: lat,
@@ -384,7 +382,6 @@ export default function MerchantProfilePage() {
   const fullAddressPreview = [
     watchedRestaurantValues.address?.line1,
     watchedRestaurantValues.address?.ward,
-    watchedRestaurantValues.address?.district,
     watchedRestaurantValues.address?.city,
   ]
     .filter(Boolean)
@@ -869,8 +866,8 @@ export default function MerchantProfilePage() {
 
                   <div>
                     <Input
-                      label="Phường / Xã"
-                      placeholder="VD: Phường Đa Kao..."
+                      label="Khu Vực / Xã, Phường *"
+                      placeholder="VD: Phường Bến Nghé, Xã Long Hòa..."
                       required
                       error={restaurantErrors.address?.ward?.message}
                       {...registerRestaurant('address.ward')}
@@ -879,17 +876,7 @@ export default function MerchantProfilePage() {
 
                   <div>
                     <Input
-                      label="Quận / Huyện"
-                      placeholder="VD: Quận 1..."
-                      required
-                      error={restaurantErrors.address?.district?.message}
-                      {...registerRestaurant('address.district')}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Input
-                      label="Tỉnh / Thành Phố"
+                      label="Tỉnh / Thành Phố *"
                       placeholder="VD: TP. Hồ Chí Minh..."
                       required
                       error={restaurantErrors.address?.city?.message}

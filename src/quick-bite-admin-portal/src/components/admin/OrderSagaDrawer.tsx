@@ -64,7 +64,7 @@ export const OrderSagaDrawer: React.FC<OrderSagaDrawerProps> = ({ order, isOpen,
                   {typeof order.deliveryAddress === 'string'
                     ? order.deliveryAddress
                     : order.deliveryAddress
-                    ? `${order.deliveryAddress.addressLine || ''} ${order.deliveryAddress.district || ''}`
+                    ? [order.deliveryAddress.addressLine, order.deliveryAddress.ward, order.deliveryAddress.province].filter(Boolean).join(', ') || 'N/A'
                     : 'N/A'}
                 </span>
               </div>

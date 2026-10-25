@@ -61,7 +61,7 @@ export const OrderDetailDrawer: React.FC<OrderDetailDrawerProps> = ({
   const receiverName = deliveryObj?.receiverName || deliveryObj?.fullName || order.customerName || 'Khách hàng';
   const phoneNumber = deliveryObj?.phoneNumber || '—';
   const addressLine = deliveryObj
-    ? [deliveryObj.addressLine, deliveryObj.ward, deliveryObj.district, deliveryObj.province].filter(Boolean).join(', ')
+    ? [deliveryObj.addressLine, deliveryObj.ward, deliveryObj.province].filter(Boolean).join(', ')
     : typeof order.deliveryAddress === 'string'
     ? order.deliveryAddress
     : '—';

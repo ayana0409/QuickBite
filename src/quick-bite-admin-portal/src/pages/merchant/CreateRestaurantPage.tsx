@@ -41,7 +41,6 @@ export default function CreateRestaurantPage() {
   const [slug, setSlug] = useState('');
   const [line1, setLine1] = useState('');
   const [ward, setWard] = useState('');
-  const [district, setDistrict] = useState('');
   const [city, setCity] = useState('Hồ Chí Minh');
   const [coords, setCoords] = useState<[number, number]>([10.776192, 106.702444]); // [lat, lng]
 
@@ -87,7 +86,6 @@ export default function CreateRestaurantPage() {
             if (payload.address) {
               if (payload.address.line1) setLine1(payload.address.line1);
               if (payload.address.ward) setWard(payload.address.ward);
-              if (payload.address.district) setDistrict(payload.address.district);
               if (payload.address.city) setCity(payload.address.city);
 
               const rawCoordinates = payload.address.geo?.coordinates;
@@ -158,14 +156,13 @@ export default function CreateRestaurantPage() {
     setCoords([lat, lng]);
     if (addressInfo.line1) setLine1(addressInfo.line1);
     if (addressInfo.ward) setWard(addressInfo.ward);
-    if (addressInfo.district) setDistrict(addressInfo.district);
     if (addressInfo.city) setCity(addressInfo.city);
   };
 
   // Submit Partner Registration Request
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !line1.trim() || !ward.trim() || !district.trim() || !city.trim()) {
+    if (!name.trim() || !line1.trim() || !ward.trim() || !city.trim()) {
       setError('Vui lòng điền đầy đủ các thông tin bắt buộc (*).');
       return;
     }
@@ -183,7 +180,7 @@ export default function CreateRestaurantPage() {
         address: {
           line1: line1.trim(),
           ward: ward.trim(),
-          district: district.trim(),
+          district: '',
           city: city.trim(),
           geo: {
             type: 'Point' as const,
@@ -212,7 +209,7 @@ export default function CreateRestaurantPage() {
   };
 
   // Construct full address preview string
-  const fullAddressPreview = [line1, ward, district, city].filter(Boolean).join(', ');
+  const fullAddressPreview = [line1, ward, city].filter(Boolean).join(', ');
 
   // ─── Render: Initial Loading Spinner ──────────────────────────────────────
   if (isCheckingInitial) {
@@ -304,7 +301,6 @@ export default function CreateRestaurantPage() {
                     ? [
                         payload.address.line1,
                         payload.address.ward,
-                        payload.address.district,
                         payload.address.city,
                       ]
                         .filter(Boolean)
@@ -526,40 +522,27 @@ export default function CreateRestaurantPage() {
                 />
               </div>
 
-              {/* Phường / Xã */}
+              {/* Khu Vực / Xã, Phường */}
               <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Phường / Xã *</label>
+                <label className="text-xs font-bold text-slate-300">Khu Vực / Xã, Phường *</label>
                 <input
                   type="text"
                   value={ward}
                   onChange={(e) => setWard(e.target.value)}
-                  placeholder="Phường Bến Nghé"
-                  required
-                  className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-slate-100 focus:outline-none focus:border-cyan-500 transition-colors"
-                />
-              </div>
-
-              {/* Quận / Huyện */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-300">Quận / Huyện *</label>
-                <input
-                  type="text"
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  placeholder="Quận 1"
+                  placeholder="Ví dụ: Phường Bến Nghé hoặc Xã Bình Chánh"
                   required
                   className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-slate-100 focus:outline-none focus:border-cyan-500 transition-colors"
                 />
               </div>
 
               {/* Tỉnh / Thành Phố */}
-              <div className="space-y-1.5 sm:col-span-2">
+              <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-300">Tỉnh / Thành Phố *</label>
                 <input
                   type="text"
                   value={city}
                   onChange={(e) => setCity(e.target.value)}
-                  placeholder="TP. Hồ Chí Minh"
+                  placeholder="Ví dụ: TP. Hồ Chí Minh"
                   required
                   className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs font-medium text-slate-100 focus:outline-none focus:border-cyan-500 transition-colors"
                 />

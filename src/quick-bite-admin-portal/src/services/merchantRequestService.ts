@@ -8,7 +8,7 @@ export interface SubmitRestaurantRegistrationDto {
   address: {
     line1: string;
     ward: string;
-    district: string;
+    district?: string;
     city: string;
     geo: {
       type: 'Point';

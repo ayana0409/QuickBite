@@ -100,7 +100,6 @@ export const ReviewRequestModal: React.FC<ReviewRequestModalProps> = ({
       const fullAddress = [
         payload.address?.line1,
         payload.address?.ward,
-        payload.address?.district,
         payload.address?.city,
       ]
         .filter(Boolean)

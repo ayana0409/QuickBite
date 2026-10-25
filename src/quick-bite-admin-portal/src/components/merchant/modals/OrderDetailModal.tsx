@@ -155,10 +155,9 @@ export default function OrderDetailModal({
                 <div className="sm:col-span-2">
                   <div className="text-slate-500 dark:text-slate-400">Địa chỉ giao:</div>
                   <div className="text-slate-800 dark:text-slate-200 mt-0.5 leading-relaxed font-medium">
-                    {addressObj.addressLine}
-                    {addressObj.ward ? `, ${addressObj.ward}` : ''}
-                    {addressObj.district ? `, ${addressObj.district}` : ''}
-                    {addressObj.province ? `, ${addressObj.province}` : ''}
+                    {[addressObj.addressLine, addressObj.ward, addressObj.province]
+                      .filter(Boolean)
+                      .join(', ')}
                   </div>
                   {addressObj.note && (
                     <div className="text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-lg mt-1.5 text-[11px] font-medium border border-amber-200/50 dark:border-amber-900/50">

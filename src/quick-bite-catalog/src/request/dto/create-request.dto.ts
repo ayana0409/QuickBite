@@ -38,10 +38,10 @@ export class RequestAddressDto {
   @IsNotEmpty()
   ward!: string;
 
-  @ApiProperty({ example: 'District 5' })
+  @ApiPropertyOptional({ example: 'District 5' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  district!: string;
+  district?: string;
 
   @ApiProperty({ example: 'Ho Chi Minh City' })
   @IsString()

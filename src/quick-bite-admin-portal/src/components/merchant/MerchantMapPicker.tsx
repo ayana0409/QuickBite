@@ -94,10 +94,9 @@ export default function MerchantMapPicker({
 
       const line1 = geoResult?.line1 || '';
       const ward = geoResult?.ward || '';
-      const district = geoResult?.district || '';
       const city = geoResult?.city || '';
 
-      const parts = [line1, ward, district, city].filter(Boolean);
+      const parts = [line1, ward, city].filter(Boolean);
       const fullAddress = parts.join(', ');
 
       if (geoResult && parts.length > 0) {
@@ -115,7 +114,7 @@ export default function MerchantMapPicker({
       onLocationSelect(roundedLat, roundedLng, {
         line1,
         ward,
-        district,
+        district: '',
         city,
         fullAddress,
       });

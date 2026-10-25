@@ -4,7 +4,7 @@ import {
     ArrayMinSize,
     ArrayMaxSize,
     IsString,
-    IsUUID,
+    IsOptional,
     ValidateNested,
 } from 'class-validator';
 
@@ -25,8 +25,9 @@ class AddressDto {
     @IsString()
     ward!: string;
 
+    @IsOptional()
     @IsString()
-    district!: string;
+    district?: string;
 
     @IsString()
     city!: string;

@@ -67,12 +67,15 @@ export async function fetchAddressFromCoordinates(
         line1 = data.name;
       }
 
+      const parts = [line1, ward, city].filter(Boolean);
+      const displayName = parts.join(', ') || data.display_name || '';
+
       return {
         line1: line1.trim(),
         ward: ward.trim(),
-        district: district.trim(),
+        district: '',
         city: city.trim(),
-        displayName: data.display_name,
+        displayName,
       };
     }
   } catch (error) {
@@ -107,15 +110,14 @@ export async function fetchAddressFromCoordinates(
       }
 
       const rawLine1 = (data.localityInfo?.informative?.[0]?.name || locality || '').trim();
-      const line1 = rawLine1 === city || rawLine1 === district || rawLine1 === ward ? '' : rawLine1;
-
-      const parts = [line1, ward, district, city].filter(Boolean);
+      const line1 = rawLine1 === city || rawLine1 === ward ? '' : rawLine1;
+      const parts = [line1, ward, city].filter(Boolean);
       const displayName = parts.join(', ') || data.city || '';
 
       return {
         line1: line1.trim(),
         ward: ward.trim(),
-        district: district.trim(),
+        district: '',
         city: city.trim(),
         displayName,
       };
