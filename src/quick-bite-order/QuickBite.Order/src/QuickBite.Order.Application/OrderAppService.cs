@@ -61,7 +61,7 @@ public class OrderAppService :
             input.DeliveryAddress.PhoneNumber,
             input.DeliveryAddress.AddressLine,
             input.DeliveryAddress.Ward,
-            input.DeliveryAddress.District,
+            input.DeliveryAddress.District ?? string.Empty,
             input.DeliveryAddress.Province,
             input.DeliveryAddress.Note ?? string.Empty,
             latitude,
@@ -280,7 +280,7 @@ public class OrderAppService :
             input.DeliveryAddress.PhoneNumber,
             input.DeliveryAddress.AddressLine,
             input.DeliveryAddress.Ward,
-            input.DeliveryAddress.District,
+            input.DeliveryAddress.District ?? string.Empty,
             input.DeliveryAddress.Province,
             input.DeliveryAddress.Note ?? string.Empty
         );

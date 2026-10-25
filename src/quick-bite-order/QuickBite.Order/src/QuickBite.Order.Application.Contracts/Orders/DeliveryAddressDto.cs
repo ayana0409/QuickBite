@@ -16,8 +16,7 @@ public class DeliveryAddressDto
     [Required]
     public string Ward { get; set; } = string.Empty;
 
-    [Required]
-    public string District { get; set; } = string.Empty;
+    public string? District { get; set; } = string.Empty;
 
     [Required]
     public string Province { get; set; } = string.Empty;
