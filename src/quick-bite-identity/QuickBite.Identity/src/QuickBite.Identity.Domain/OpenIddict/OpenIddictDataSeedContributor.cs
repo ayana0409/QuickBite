@@ -58,33 +58,64 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
 
     private async Task CreateScopesAsync()
     {
-        if (await _openIddictScopeRepository.FindByNameAsync("Identity") == null)
+        // Load custom scopes from configuration instead of hardcoding
+        var scopeConfigs = _configuration
+            .GetSection("OpenIddict:Scopes")
+            .Get<List<OpenIddictScopeConfig>>() ?? new List<OpenIddictScopeConfig>();
+
+        foreach (var scopeConfig in scopeConfigs)
         {
-            await _scopeManager.CreateAsync(new OpenIddictScopeDescriptor {
-                Name = "Identity", DisplayName = "Identity API", Resources = { "Identity" }
-            });
+            if (string.IsNullOrWhiteSpace(scopeConfig.Name))
+            {
+                continue;
+            }
+
+            if (await _openIddictScopeRepository.FindByNameAsync(scopeConfig.Name) == null)
+            {
+                await _scopeManager.CreateAsync(new OpenIddictScopeDescriptor
+                {
+                    Name = scopeConfig.Name,
+                    DisplayName = scopeConfig.DisplayName,
+                    Resources = { scopeConfig.Resource }
+                });
+            }
         }
     }
 
+    private static readonly List<string> DefaultScopes = new()
+    {
+        OpenIddictConstants.Permissions.Scopes.Address,
+        OpenIddictConstants.Permissions.Scopes.Email,
+        OpenIddictConstants.Permissions.Scopes.Phone,
+        OpenIddictConstants.Permissions.Scopes.Profile,
+        OpenIddictConstants.Permissions.Scopes.Roles,
+        "Identity",
+        "offline_access"
+    };
+
+    private static readonly List<string> DefaultGrantTypes = new()
+    {
+        OpenIddictConstants.GrantTypes.AuthorizationCode,
+        OpenIddictConstants.GrantTypes.RefreshToken
+    };
+
     private async Task CreateApplicationsAsync()
     {
-        var commonScopes = new List<string> {
-            OpenIddictConstants.Permissions.Scopes.Address,
-            OpenIddictConstants.Permissions.Scopes.Email,
-            OpenIddictConstants.Permissions.Scopes.Phone,
-            OpenIddictConstants.Permissions.Scopes.Profile,
-            OpenIddictConstants.Permissions.Scopes.Roles,
-            "Identity",
-            "offline_access"
-        };
+        var configSection = _configuration.GetSection("OpenIddict:Applications");
 
-        var configurationSection = _configuration.GetSection("OpenIddict:Applications");
+        // --- Dynamic clients from "OpenIddict:Applications:Clients" array ---
+        var clientConfigs = configSection
+            .GetSection("Clients")
+            .Get<List<OpenIddictClientConfig>>() ?? new List<OpenIddictClientConfig>();
 
-        //Web Client (Identity_Web)
-        var webClientId = configurationSection["Identity_Web:ClientId"];
-        if (!webClientId.IsNullOrWhiteSpace())
+        // --- Legacy: Identity_Web client (uses dynamic RootUrl) ---
+        // Only seed if NOT already defined in Clients array to prevent duplicate or conflicting configuration
+        var webClientId = configSection["Identity_Web:ClientId"];
+        if (!webClientId.IsNullOrWhiteSpace() &&
+            !clientConfigs.Any(c => string.Equals(c.ClientId, webClientId, StringComparison.OrdinalIgnoreCase)))
         {
-            var webClientRootUrl = configurationSection["Identity_Web:RootUrl"]!.EnsureEndsWith('/');
+            var webClientRootUrl = configSection["Identity_Web:RootUrl"]!.EnsureEndsWith('/');
+            var webClientSecret = configSection["Identity_Web:ClientSecret"] ?? "1q2w3e*";
 
             /* Identity_Web client is only needed if you created a tiered
              * solution. Otherwise, you can delete this client. */
@@ -93,63 +124,29 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 type: OpenIddictConstants.ClientTypes.Confidential,
                 consentType: OpenIddictConstants.ConsentTypes.Implicit,
                 displayName: "Web Application",
-                secret: configurationSection["Identity_Web:ClientSecret"] ?? "1q2w3e*",
-                grantTypes: new List<string> //Hybrid flow
+                secret: webClientSecret,
+                grantTypes: new List<string>
                 {
-                    OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.RefreshToken
+                    OpenIddictConstants.GrantTypes.AuthorizationCode,
+                    OpenIddictConstants.GrantTypes.Implicit,
+                    OpenIddictConstants.GrantTypes.RefreshToken
                 },
-                scopes: commonScopes,
-                redirectUri: $"{webClientRootUrl}api/auth/callback/oidc,http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,https://localhost:44391/signin-oidc,{webClientRootUrl}signin-oidc,https://quickbite-wnkc.onrender.com/api/auth/callback/oidc,https://quickbite-wnkc.onrender.com/signin-oidc,https://quickbitemanager.onrender.com/signin-oidc",
+                scopes: ResolveScopes(configSection["Identity_Web:Scopes"]),
+                redirectUri: configSection["Identity_Web:RedirectUris"] ??
+                    $"{webClientRootUrl}api/auth/callback/oidc,{webClientRootUrl}signin-oidc,https://localhost:44391/signin-oidc",
                 clientUri: webClientRootUrl,
-                postLogoutRedirectUri: $"{webClientRootUrl}signout-callback-oidc,http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc,https://quickbite-wnkc.onrender.com/signout-callback-oidc,https://quickbitemanager.onrender.com/signout-callback-oidc"
+                postLogoutRedirectUri: configSection["Identity_Web:PostLogoutRedirectUris"] ??
+                    $"{webClientRootUrl}signout-callback-oidc"
             );
         }
 
-        // Customer Web Client (quickbite_web)
-        await CreateApplicationAsync(
-            name: "quickbite_web",
-            type: OpenIddictConstants.ClientTypes.Confidential,
-            consentType: OpenIddictConstants.ConsentTypes.Implicit,
-            displayName: "QuickBite Customer Web Application",
-            secret: "1q2w3e*",
-            grantTypes: new List<string>
-            {
-                OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Implicit, OpenIddictConstants.GrantTypes.Password, OpenIddictConstants.GrantTypes.RefreshToken
-            },
-            scopes: commonScopes,
-            redirectUri: "http://localhost:3002/api/auth/callback/oidc,http://localhost:3000/api/auth/callback/oidc,http://localhost:3002/signin-oidc,http://localhost:3000/signin-oidc,https://quickbite-wnkc.onrender.com/api/auth/callback/oidc,https://quickbite-wnkc.onrender.com/signin-oidc,https://thuandd.io.vn/api/auth/callback/oidc,https://thuandd.io.vn/signin-oidc",
-            clientUri: "https://thuandd.io.vn",
-            postLogoutRedirectUri: "http://localhost:3002/signout-callback-oidc,http://localhost:3000/signout-callback-oidc,https://quickbite-wnkc.onrender.com/signout-callback-oidc,https://thuandd.io.vn/signout-callback-oidc"
-        );
-
-        // Admin & Merchant Portal Client (QuickBite_Portal)
-        await CreateApplicationAsync(
-            name: "QuickBite_Portal",
-            type: OpenIddictConstants.ClientTypes.Public,
-            consentType: OpenIddictConstants.ConsentTypes.Implicit,
-            displayName: "QuickBite Admin & Merchant Portal",
-            secret: null,
-            grantTypes: new List<string>
-            {
-                OpenIddictConstants.GrantTypes.Password,
-                OpenIddictConstants.GrantTypes.RefreshToken,
-                OpenIddictConstants.GrantTypes.AuthorizationCode
-            },
-            scopes: commonScopes,
-            redirectUri: "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://localhost:3002,https://quickbitemanager.onrender.com,https://quickbitemanager.onrender.com/signin-oidc,https://thuandd.io.vn,https://thuandd.io.vn/signin-oidc",
-            clientUri: "https://thuandd.io.vn",
-            postLogoutRedirectUri: "http://localhost:5173/login,http://localhost:3000/login,https://quickbitemanager.onrender.com/login,https://quickbitemanager.onrender.com/signout-callback-oidc,https://thuandd.io.vn/login,https://thuandd.io.vn/signout-callback-oidc"
-        );
-
-
-
-
-
-        // Swagger Client
-        var swaggerClientId = configurationSection["Identity_Swagger:ClientId"];
-        if (!swaggerClientId.IsNullOrWhiteSpace())
+        // --- Legacy: Swagger client (uses dynamic RootUrl) ---
+        // Only seed if NOT already defined in Clients array
+        var swaggerClientId = configSection["Identity_Swagger:ClientId"];
+        if (!swaggerClientId.IsNullOrWhiteSpace() &&
+            !clientConfigs.Any(c => string.Equals(c.ClientId, swaggerClientId, StringComparison.OrdinalIgnoreCase)))
         {
-            var swaggerRootUrl = configurationSection["Identity_Swagger:RootUrl"]?.TrimEnd('/');
+            var swaggerRootUrl = configSection["Identity_Swagger:RootUrl"]?.TrimEnd('/');
 
             await CreateApplicationAsync(
                 name: swaggerClientId!,
@@ -157,13 +154,138 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 consentType: OpenIddictConstants.ConsentTypes.Implicit,
                 displayName: "Swagger Application",
                 secret: null,
-                grantTypes: new List<string> { OpenIddictConstants.GrantTypes.AuthorizationCode, OpenIddictConstants.GrantTypes.Password },
-                scopes: commonScopes,
+                grantTypes: new List<string>
+                {
+                    OpenIddictConstants.GrantTypes.AuthorizationCode,
+                    OpenIddictConstants.GrantTypes.Password
+                },
+                scopes: ResolveScopes(configSection["Identity_Swagger:Scopes"]),
                 redirectUri: $"{swaggerRootUrl}/swagger/oauth2-redirect.html",
                 clientUri: swaggerRootUrl
             );
         }
+
+        // --- Dynamic clients from "OpenIddict:Applications:Clients" array ---
+        foreach (var clientConfig in clientConfigs)
+        {
+            if (string.IsNullOrWhiteSpace(clientConfig.ClientId))
+            {
+                continue;
+            }
+
+            var clientType = string.Equals(clientConfig.Type, "confidential", StringComparison.OrdinalIgnoreCase)
+                ? OpenIddictConstants.ClientTypes.Confidential
+                : OpenIddictConstants.ClientTypes.Public;
+
+            await CreateApplicationAsync(
+                name: clientConfig.ClientId,
+                type: clientType,
+                consentType: OpenIddictConstants.ConsentTypes.Implicit,
+                displayName: clientConfig.DisplayName,
+                secret: clientConfig.Secret,
+                grantTypes: MapGrantTypes(clientConfig.GrantTypes),
+                scopes: ResolveScopes(clientConfig.Scopes),
+                redirectUri: clientConfig.RedirectUris.Count > 0
+                    ? string.Join(",", clientConfig.RedirectUris)
+                    : null,
+                clientUri: clientConfig.ClientUri,
+                postLogoutRedirectUri: clientConfig.PostLogoutRedirectUris.Count > 0
+                    ? string.Join(",", clientConfig.PostLogoutRedirectUris)
+                    : null
+            );
+        }
     }
+
+    /// <summary>
+    /// Maps string grant type names from config to OpenIddict constant values.
+    /// Accepts friendly names (e.g. "authorization_code") or full OpenIddict strings.
+    /// Falls back to default grant types if input is empty.
+    /// </summary>
+    private static List<string> MapGrantTypes(List<string>? grantTypes)
+    {
+        if (grantTypes == null || grantTypes.Count == 0)
+        {
+            return new List<string>(DefaultGrantTypes);
+        }
+
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["authorization_code"] = OpenIddictConstants.GrantTypes.AuthorizationCode,
+            ["implicit"]           = OpenIddictConstants.GrantTypes.Implicit,
+            ["password"]           = OpenIddictConstants.GrantTypes.Password,
+            ["refresh_token"]      = OpenIddictConstants.GrantTypes.RefreshToken,
+            ["client_credentials"] = OpenIddictConstants.GrantTypes.ClientCredentials,
+            ["device_code"]        = OpenIddictConstants.GrantTypes.DeviceCode,
+        };
+
+        var resolved = grantTypes
+            .Select(g => map.TryGetValue(g, out var mapped) ? mapped : g)
+            .Distinct()
+            .ToList();
+
+        return resolved.Count > 0 ? resolved : new List<string>(DefaultGrantTypes);
+    }
+
+    /// <summary>
+    /// Resolves scope list from a comma-separated config string.
+    /// Maps friendly names (e.g. "email") to OpenIddict permission constants.
+    /// Custom scopes (e.g. "Identity", "QuickTest") are passed through as-is.
+    /// Falls back to default scopes if input is empty or null.
+    /// </summary>
+    private static List<string> ResolveScopes(string? scopesCsv)
+    {
+        if (string.IsNullOrWhiteSpace(scopesCsv))
+        {
+            return new List<string>(DefaultScopes);
+        }
+
+        var resolved = scopesCsv
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(MapScopeName)
+            .Distinct()
+            .ToList();
+
+        return resolved.Count > 0 ? resolved : new List<string>(DefaultScopes);
+    }
+
+    /// <summary>
+    /// Resolves scope list from a List&lt;string&gt; (from config array binding).
+    /// Falls back to default scopes if input is empty or null.
+    /// </summary>
+    private static List<string> ResolveScopes(List<string>? scopes)
+    {
+        if (scopes == null || scopes.Count == 0)
+        {
+            return new List<string>(DefaultScopes);
+        }
+
+        var resolved = scopes
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Select(MapScopeName)
+            .Distinct()
+            .ToList();
+
+        return resolved.Count > 0 ? resolved : new List<string>(DefaultScopes);
+    }
+
+    /// <summary>
+    /// Maps a friendly scope short-name to the OpenIddict Permissions.Scopes constant.
+    /// Unknown/custom scopes are returned unchanged.
+    /// </summary>
+    private static string MapScopeName(string scope)
+    {
+        return scope.ToLowerInvariant() switch
+        {
+            "address"        => OpenIddictConstants.Permissions.Scopes.Address,
+            "email"          => OpenIddictConstants.Permissions.Scopes.Email,
+            "phone"          => OpenIddictConstants.Permissions.Scopes.Phone,
+            "profile"        => OpenIddictConstants.Permissions.Scopes.Profile,
+            "roles"          => OpenIddictConstants.Permissions.Scopes.Roles,
+            "offline_access" => "offline_access",
+            _                => scope  // custom scopes (e.g. "Identity", "QuickTest") pass through
+        };
+    }
+
 
     private async Task CreateApplicationAsync(
         [NotNull] string name,
@@ -200,6 +322,16 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
             DisplayName = displayName,
             ClientUri = clientUri,
         };
+
+        if (grantTypes == null || grantTypes.Count == 0)
+        {
+            grantTypes = new List<string>(DefaultGrantTypes);
+        }
+
+        if (scopes == null || scopes.Count == 0)
+        {
+            scopes = new List<string>(DefaultScopes);
+        }
 
         Check.NotNullOrEmpty(grantTypes, nameof(grantTypes));
         Check.NotNullOrEmpty(scopes, nameof(scopes));
@@ -370,22 +502,60 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
             client.PostLogoutRedirectUris = JsonSerializer.Serialize(application.PostLogoutRedirectUris.Select(q => q.ToString().TrimEnd('/')));
 
             await _applicationManager.UpdateAsync(client.ToModel());
+            await _openIddictApplicationRepository.UpdateAsync(client, autoSave: true);
         }
 
         if (!HasSameScopes(client, application))
         {
             client.Permissions = JsonSerializer.Serialize(application.Permissions.Select(q => q.ToString()));
             await _applicationManager.UpdateAsync(client.ToModel());
+            await _openIddictApplicationRepository.UpdateAsync(client, autoSave: true);
         }
     }
 
     private bool HasSameRedirectUris(OpenIddictApplication existingClient, AbpApplicationDescriptor application)
     {
-        return existingClient.RedirectUris == JsonSerializer.Serialize(application.RedirectUris.Select(q => q.ToString().TrimEnd('/')));
+        if (string.IsNullOrWhiteSpace(existingClient.RedirectUris) || string.IsNullOrWhiteSpace(existingClient.PostLogoutRedirectUris))
+        {
+            return false;
+        }
+
+        try
+        {
+            var existingUris = JsonSerializer.Deserialize<List<string>>(existingClient.RedirectUris) ?? new List<string>();
+            var newUris = application.RedirectUris.Select(q => q.ToString().TrimEnd('/')).ToList();
+
+            var existingPostLogout = JsonSerializer.Deserialize<List<string>>(existingClient.PostLogoutRedirectUris) ?? new List<string>();
+            var newPostLogout = application.PostLogoutRedirectUris.Select(q => q.ToString().TrimEnd('/')).ToList();
+
+            var urisMatch = existingUris.Count == newUris.Count && !existingUris.Except(newUris, StringComparer.OrdinalIgnoreCase).Any();
+            var postLogoutMatch = existingPostLogout.Count == newPostLogout.Count && !existingPostLogout.Except(newPostLogout, StringComparer.OrdinalIgnoreCase).Any();
+
+            return urisMatch && postLogoutMatch;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private bool HasSameScopes(OpenIddictApplication existingClient, AbpApplicationDescriptor application)
     {
-        return existingClient.Permissions == JsonSerializer.Serialize(application.Permissions.Select(q => q.ToString().TrimEnd('/')));
+        if (string.IsNullOrWhiteSpace(existingClient.Permissions))
+        {
+            return false;
+        }
+
+        try
+        {
+            var existingPermissions = JsonSerializer.Deserialize<List<string>>(existingClient.Permissions) ?? new List<string>();
+            var newPermissions = application.Permissions.Select(q => q.ToString()).ToList();
+
+            return existingPermissions.Count == newPermissions.Count && !existingPermissions.Except(newPermissions, StringComparer.OrdinalIgnoreCase).Any();
+        }
+        catch
+        {
+            return false;
+        }
     }
 }

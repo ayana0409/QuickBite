@@ -119,10 +119,22 @@ public class IdentityWebModule : AbpModule
                 OpenIddictConstants.Scopes.Phone,
                 OpenIddictConstants.Scopes.Roles,
                 OpenIddictConstants.Scopes.OfflineAccess,
-                "Identity",
                 "quickbite.api",
                 "permissions"
             );
+
+            // Register custom scopes dynamically from configuration (OpenIddict:Scopes[*].Name)
+            var customScopeNames = configuration
+                .GetSection("OpenIddict:Scopes")
+                .GetChildren()
+                .Select(s => s["Name"])
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToArray();
+
+            if (customScopeNames.Length > 0)
+            {
+                serverBuilder.RegisterScopes(customScopeNames!);
+            }
 
             // Configure explicit Issuer URI for OpenIddict (prevents http/https reverse proxy mismatch)
             var configuredIssuer = configuration["AuthServer:Authority"]

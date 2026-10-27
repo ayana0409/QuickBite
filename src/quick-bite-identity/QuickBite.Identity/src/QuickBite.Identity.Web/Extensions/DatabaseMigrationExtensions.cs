@@ -79,7 +79,15 @@ public static class DatabaseMigrationExtensions
             }
             else
             {
-                logger.LogInformation("[AutoMigration] Database tables already exist and schema is up to date. Skipping migration.");
+                logger.LogInformation("[AutoMigration] Database tables already exist and schema is up to date. Ensuring data seeding is applied...");
+
+                var dataSeeder = serviceProvider.GetRequiredService<Volo.Abp.Data.IDataSeeder>();
+                await dataSeeder.SeedAsync(new Volo.Abp.Data.DataSeedContext()
+                    .WithProperty(Volo.Abp.Identity.IdentityDataSeedContributor.AdminEmailPropertyName, Volo.Abp.Identity.IdentityDataSeedContributor.AdminEmailDefaultValue)
+                    .WithProperty(Volo.Abp.Identity.IdentityDataSeedContributor.AdminPasswordPropertyName, Volo.Abp.Identity.IdentityDataSeedContributor.AdminPasswordDefaultValue)
+                );
+
+                logger.LogInformation("[AutoMigration] Data seeding completed successfully.");
             }
         }
     }
