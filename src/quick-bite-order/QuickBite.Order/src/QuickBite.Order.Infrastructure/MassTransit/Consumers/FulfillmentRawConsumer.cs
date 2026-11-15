@@ -41,76 +41,93 @@ public class FulfillmentRawConsumer : IConsumer<FulfillmentRawMessage>
     {
         using var uow = _unitOfWorkManager.Begin();
 
-        var raw = context.Message;
-        var eventType = raw.EventType?.ToLower()?.Trim();
-
-        _logger.LogInformation("[FulfillmentRawConsumer] Received event '{EventType}' for OrderId: {OrderId}",
-            eventType, raw.OrderId);
-
-        switch (eventType)
+        try
         {
-            case "stock.reserved":
-                var reserved = new StockReservedEto
-                {
-                    EventId = raw.EventId,
-                    OrderId = raw.OrderId,
-                    CorrelationId = raw.CorrelationId,
-                    OccurredAt = raw.OccurredAt
-                };
-                await _localEventBus.PublishAsync(reserved);
-                _logger.LogInformation("[FulfillmentRawConsumer] Dispatched StockReservedEto for OrderId: {OrderId}", raw.OrderId);
-                break;
+            var raw = context.Message;
+            if (raw == null || raw.OrderId == Guid.Empty)
+            {
+                _logger.LogWarning("[FulfillmentRawConsumer] Skipping invalid message with empty OrderId or null payload.");
+                await uow.CompleteAsync();
+                return;
+            }
 
-            case "stock.rejected":
-                var rejected = new StockRejectedEto
-                {
-                    EventId = raw.EventId,
-                    OrderId = raw.OrderId,
-                    FoodItemId = raw.FoodItemId,
-                    Quantity = raw.Quantity,
-                    Status = raw.Status,
-                    Reason = raw.Reason,
-                    CorrelationId = raw.CorrelationId,
-                    OccurredAt = raw.OccurredAt
-                };
-                await _localEventBus.PublishAsync(rejected);
-                _logger.LogInformation("[FulfillmentRawConsumer] Dispatched StockRejectedEto for OrderId: {OrderId}, Reason: {Reason}",
-                    raw.OrderId, raw.Reason);
-                break;
+            var eventType = raw.EventType?.ToLower()?.Trim();
 
-            case "payment.authorized":
-                var authorized = new PaymentAuthorizedEto
-                {
-                    EventId = raw.EventId,
-                    OrderId = raw.OrderId,
-                    PaymentId = raw.PaymentId ?? Guid.Empty,
-                    CorrelationId = raw.CorrelationId,
-                    OccurredAt = raw.OccurredAt
-                };
-                await _localEventBus.PublishAsync(authorized);
-                _logger.LogInformation("[FulfillmentRawConsumer] Dispatched PaymentAuthorizedEto for OrderId: {OrderId}", raw.OrderId);
-                break;
+            _logger.LogInformation("[FulfillmentRawConsumer] Received event '{EventType}' for OrderId: {OrderId}",
+                eventType, raw.OrderId);
 
-            case "payment.failed":
-                var failed = new PaymentFailedEto
-                {
-                    EventId = raw.EventId,
-                    OrderId = raw.OrderId,
-                    Reason = raw.Reason,
-                    CorrelationId = raw.CorrelationId,
-                    OccurredAt = raw.OccurredAt
-                };
-                await _localEventBus.PublishAsync(failed);
-                _logger.LogInformation("[FulfillmentRawConsumer] Dispatched PaymentFailedEto for OrderId: {OrderId}, Reason: {Reason}",
-                    raw.OrderId, raw.Reason);
-                break;
+            var occurredAt = raw.OccurredAt ?? DateTime.UtcNow;
 
-            default:
-                _logger.LogWarning("[FulfillmentRawConsumer] Unknown eventType '{EventType}', skipping.", eventType);
-                break;
+            switch (eventType)
+            {
+                case "stock.reserved":
+                    var reserved = new StockReservedEto
+                    {
+                        EventId = raw.EventId,
+                        OrderId = raw.OrderId,
+                        CorrelationId = raw.CorrelationId,
+                        OccurredAt = occurredAt
+                    };
+                    await _localEventBus.PublishAsync(reserved);
+                    _logger.LogInformation("[FulfillmentRawConsumer] Dispatched StockReservedEto for OrderId: {OrderId}", raw.OrderId);
+                    break;
+
+                case "stock.rejected":
+                    var rejected = new StockRejectedEto
+                    {
+                        EventId = raw.EventId,
+                        OrderId = raw.OrderId,
+                        FoodItemId = raw.FoodItemId,
+                        Quantity = raw.Quantity,
+                        Status = raw.Status,
+                        Reason = raw.Reason,
+                        CorrelationId = raw.CorrelationId,
+                        OccurredAt = occurredAt
+                    };
+                    await _localEventBus.PublishAsync(rejected);
+                    _logger.LogInformation("[FulfillmentRawConsumer] Dispatched StockRejectedEto for OrderId: {OrderId}, Reason: {Reason}",
+                        raw.OrderId, raw.Reason);
+                    break;
+
+                case "payment.authorized":
+                    var authorized = new PaymentAuthorizedEto
+                    {
+                        EventId = raw.EventId,
+                        OrderId = raw.OrderId,
+                        PaymentId = raw.PaymentId ?? Guid.Empty,
+                        CorrelationId = raw.CorrelationId,
+                        OccurredAt = occurredAt
+                    };
+                    await _localEventBus.PublishAsync(authorized);
+                    _logger.LogInformation("[FulfillmentRawConsumer] Dispatched PaymentAuthorizedEto for OrderId: {OrderId}", raw.OrderId);
+                    break;
+
+                case "payment.failed":
+                    var failed = new PaymentFailedEto
+                    {
+                        EventId = raw.EventId,
+                        OrderId = raw.OrderId,
+                        Reason = raw.Reason,
+                        CorrelationId = raw.CorrelationId,
+                        OccurredAt = occurredAt
+                    };
+                    await _localEventBus.PublishAsync(failed);
+                    _logger.LogInformation("[FulfillmentRawConsumer] Dispatched PaymentFailedEto for OrderId: {OrderId}, Reason: {Reason}",
+                        raw.OrderId, raw.Reason);
+                    break;
+
+                default:
+                    _logger.LogWarning("[FulfillmentRawConsumer] Unknown eventType '{EventType}', skipping.", eventType);
+                    break;
+            }
+
+            await uow.CompleteAsync();
         }
-
-        await uow.CompleteAsync();
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[FulfillmentRawConsumer] Error consuming message for OrderId: {OrderId}", context.Message?.OrderId);
+            throw; // Re-throw to trigger MassTransit retry policy
+        }
     }
 }
 
@@ -148,5 +165,5 @@ public class FulfillmentRawMessage
     public Guid CorrelationId { get; set; }
 
     [JsonPropertyName("occurredAt")]
-    public DateTime OccurredAt { get; set; }
+    public DateTime? OccurredAt { get; set; }
 }

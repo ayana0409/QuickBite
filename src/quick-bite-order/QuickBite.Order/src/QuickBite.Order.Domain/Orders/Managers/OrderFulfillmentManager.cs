@@ -49,6 +49,22 @@ public class OrderFulfillmentManager : DomainService
         var order = await _orderRepository.FindAsync(eventData.OrderId);
         if (order != null)
         {
+            // Two-layer Idempotency Guard: prevent Poison Pill exceptions when replaying Kafka messages
+            if (order.Status == OrderStatus.WaitingPayment)
+            {
+                _logger.LogInformation("[ProcessStockReserved] Order {OrderId} is already in WaitingPayment. Skipping duplicate transition.", order.Id);
+                return;
+            }
+
+            var validInitialStatuses = new[] { OrderStatus.Pending, OrderStatus.WaitingInventory, OrderStatus.WaitingStock };
+            if (!validInitialStatuses.Contains(order.Status))
+            {
+                _logger.LogWarning(
+                    "[ProcessStockReserved] Skipping transition for OrderId: {OrderId}. Current status '{Status}' cannot transition to WaitingPayment.",
+                    order.Id, order.Status);
+                return;
+            }
+
             order.UpdateStatus(OrderStatus.WaitingPayment);
             await _orderRepository.UpdateAsync(order, autoSave: true);
 
@@ -208,6 +224,20 @@ public class OrderFulfillmentManager : DomainService
         var order = await _orderRepository.FindAsync(eventData.OrderId);
         if (order != null)
         {
+            if (order.Status == OrderStatus.Cancelled)
+            {
+                _logger.LogInformation("[ProcessPaymentFailed] Order {OrderId} is already Cancelled. Skipping.", order.Id);
+                return;
+            }
+
+            if (order.Status == OrderStatus.Completed || order.Status == OrderStatus.Delivering)
+            {
+                _logger.LogWarning(
+                    "[ProcessPaymentFailed] Skipping cancellation for OrderId: {OrderId}. Current status '{Status}' cannot be cancelled.",
+                    order.Id, order.Status);
+                return;
+            }
+
             string reason = !string.IsNullOrWhiteSpace(eventData.Reason) ? eventData.Reason : "Thanh toán thất bại.";
             order.Cancel(reason);
             await _orderRepository.UpdateAsync(order, autoSave: true);

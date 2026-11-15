@@ -112,12 +112,14 @@ public class OrderHttpApiHostModule : AbpModule
             options.ConfigureConsumer = config =>
             {
                 configuration.GetSection("Kafka:Consumer").Bind(config);
+                config.ClientId = "order-service-abp-consumer";
                 if (!string.IsNullOrEmpty(bootstrapServers)) config.BootstrapServers = bootstrapServers;
             };
 
             options.ConfigureProducer = config =>
             {
                 configuration.GetSection("Kafka:Producer").Bind(config);
+                config.ClientId = "order-service-abp-producer";
                 if (!string.IsNullOrEmpty(bootstrapServers)) config.BootstrapServers = bootstrapServers;
             };
 

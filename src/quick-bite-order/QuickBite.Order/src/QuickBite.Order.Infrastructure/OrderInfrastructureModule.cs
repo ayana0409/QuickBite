@@ -76,6 +76,8 @@ public class OrderInfrastructureModule : AbpModule
 
                     k.TopicEndpoint<FoodItemUpdatedEto>("catalog-events", "order-service-catalog-consumer", e =>
                     {
+                        e.AutoOffsetReset = Confluent.Kafka.AutoOffsetReset.Earliest;
+                        e.UseMessageRetry(r => r.Interval(3, TimeSpan.FromMilliseconds(500)));
                         e.UseRawJsonSerializer();
                         e.ConfigureConsumer<CatalogEventConsumer>(ctx);
                     });
@@ -85,6 +87,8 @@ public class OrderInfrastructureModule : AbpModule
                     // preventing stock.reserved from being deserialized as StockRejectedEto.
                     k.TopicEndpoint<FulfillmentRawMessage>("fulfillment-events", "order-service-fulfillment-consumer", e =>
                     {
+                        e.AutoOffsetReset = Confluent.Kafka.AutoOffsetReset.Earliest;
+                        e.UseMessageRetry(r => r.Interval(3, TimeSpan.FromMilliseconds(500)));
                         e.UseRawJsonSerializer();
                         e.ConfigureConsumer<FulfillmentRawConsumer>(ctx);
                     });
