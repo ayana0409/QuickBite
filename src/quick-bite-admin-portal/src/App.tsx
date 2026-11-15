@@ -123,8 +123,11 @@ export default function App() {
 
         {/* Protected Merchant Routes */}
         <Route element={<AuthGuard allowedRoles={MERCHANT_ROLES} />}>
+          {/* Onboarding & Pending Setup page (accessible without requiring existing restaurant) */}
+          <Route path="/merchant/setup" element={<CreateRestaurantPage />} />
+
+          {/* Operational Merchant Portal (strictly requires an active restaurant) */}
           <Route element={<RestaurantGuard />}>
-            <Route path="/merchant/setup" element={<CreateRestaurantPage />} />
             <Route path="/merchant" element={<MerchantLayout />}>
               <Route index element={<Navigate to="/merchant/dashboard" replace />} />
               <Route path="dashboard" element={<MerchantDashboardPage />} />

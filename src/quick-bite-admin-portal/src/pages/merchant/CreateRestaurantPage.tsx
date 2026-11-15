@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
+import { useRestaurantStore } from '../../stores/restaurantStore';
 import { merchantRequestService } from '../../services/merchantRequestService';
 import { restaurantService } from '../../services/restaurantService';
 import MerchantMapPicker, { type AddressInfo } from '../../components/merchant/MerchantMapPicker';
@@ -25,7 +26,9 @@ import {
 
 export default function CreateRestaurantPage() {
   const { user, logout } = useAuthStore();
+  const { setRestaurant, clearRestaurant } = useRestaurantStore();
   const navigate = useNavigate();
+  const isRedirectingRef = useRef(false);
 
   // Loading and request status state
   const [isCheckingInitial, setIsCheckingInitial] = useState(true);
@@ -45,6 +48,7 @@ export default function CreateRestaurantPage() {
   const [coords, setCoords] = useState<[number, number]>([10.776192, 106.702444]); // [lat, lng]
 
   const handleLogout = () => {
+    clearRestaurant();
     logout();
     navigate('/login', { replace: true });
   };
@@ -55,6 +59,9 @@ export default function CreateRestaurantPage() {
   // Check if merchant already has an approved restaurant or a pending registration request
   const checkStatus = useCallback(
     async (isManualRefresh = false) => {
+      // Prevent running multiple status checks while redirecting to dashboard
+      if (isRedirectingRef.current) return;
+
       if (isManualRefresh) {
         setIsRefreshing(true);
       }
@@ -66,6 +73,9 @@ export default function CreateRestaurantPage() {
         // 1. Check if user already owns an approved active restaurant
         const existingRestaurant = await restaurantService.getRestaurantByOwner(ownerId);
         if (existingRestaurant) {
+          isRedirectingRef.current = true;
+          // Sync with global store so RestaurantGuard immediately recognizes the active restaurant
+          setRestaurant(existingRestaurant);
           toast.success(
             `Nhà hàng "${existingRestaurant.name}" đã được kích hoạt! Đang chuyển hướng đến bảng điều khiển...`,
             'Đã Phê Duyệt'
@@ -103,8 +113,20 @@ export default function CreateRestaurantPage() {
 
           if (isManualRefresh) {
             if (request.status === 'APPROVED') {
-              toast.success('Hồ sơ đã được phê duyệt! Đang chuyển hướng...', 'Thành công');
-              navigate('/merchant/dashboard', { replace: true });
+              // Retry fetching the newly created restaurant to ensure DB sync before redirecting
+              const newlyCreatedRestaurant = await restaurantService.getRestaurantByOwner(ownerId);
+              if (newlyCreatedRestaurant) {
+                isRedirectingRef.current = true;
+                setRestaurant(newlyCreatedRestaurant);
+                toast.success('Hồ sơ đã được phê duyệt! Đang chuyển hướng đến bảng điều khiển...', 'Thành công');
+                navigate('/merchant/dashboard', { replace: true });
+                return;
+              } else {
+                toast.info(
+                  'Hồ sơ đã được phê duyệt! Hệ thống đang hoàn tất tạo dữ liệu quán, vui lòng bấm làm mới lại sau vài giây.',
+                  'Đang Khởi Tạo'
+                );
+              }
             } else if (request.status === 'PENDING') {
               toast.info('Hồ sơ của bạn đang chờ Ban Quản Trị xét duyệt.', 'Đang xử lý');
             } else if (request.status === 'REJECTED') {
@@ -129,7 +151,7 @@ export default function CreateRestaurantPage() {
         }
       }
     },
-    [user, navigate]
+    [user, navigate, setRestaurant]
   );
 
   useEffect(() => {
