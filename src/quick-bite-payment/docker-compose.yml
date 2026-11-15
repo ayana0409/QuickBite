@@ -1,0 +1,44 @@
+services:
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickbite-payment
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8084/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.http.routers.payment.rule=(Host(`thuandd.io.vn`) || Host(`traefik`)) && PathPrefix(`/quick-bite-payment`)"
+      - "traefik.http.routers.payment.entrypoints=web"
+      - "traefik.http.services.payment.loadbalancer.server.port=8084"
+      - "traefik.http.routers.payment.middlewares=payment-stripprefix@docker"
+      - "traefik.http.middlewares.payment-stripprefix.stripprefix.prefixes=/quick-bite-payment"
+    networks:
+      - web
+      - internal-net
+      - quickbite-net
+
+networks:
+  web:
+    external: true
+  internal-net:
+    external: true
+  quickbite-net:
+    external: true

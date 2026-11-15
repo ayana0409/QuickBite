@@ -1,0 +1,51 @@
+services:
+  catalog-service:
+    build: .
+    container_name: quickbite-catalog
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3000/\", (res) => process.exit(0)).on(\"error\", () => process.exit(1))'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.docker.allownonrunning=true"
+      - "traefik.http.routers.catalog.rule=(Host(`thuandd.io.vn`) || Host(`traefik`)) && PathPrefix(`/quick-bite-catalog`)"
+      - "traefik.http.routers.catalog.entrypoints=web"
+      - "traefik.http.services.catalog.loadbalancer.server.port=3000"
+      - "traefik.http.routers.catalog.middlewares=catalog-stripprefix@docker,catalog-sablier@docker"
+      - "traefik.http.middlewares.catalog-stripprefix.stripprefix.prefixes=/quick-bite-catalog"
+      - "sablier.enable=true"
+      - "sablier.group=catalog"
+      - "traefik.http.middlewares.catalog-sablier.plugin.sablier.sablierurl=http://sablier:10000"
+      - "traefik.http.middlewares.catalog-sablier.plugin.sablier.sessionduration=15m"
+      - "traefik.http.middlewares.catalog-sablier.plugin.sablier.names=quickbite-catalog"
+      - "traefik.http.middlewares.catalog-sablier.plugin.sablier.dynamic.theme=hacker-terminal"
+      - "traefik.http.middlewares.catalog-sablier.plugin.sablier.dynamic.displayname=Catalog Service"
+      - "traefik.http.middlewares.catalog-sablier.plugin.sablier.dynamic.refreshfrequency=2s"
+    networks:
+      - web
+      - internal-net
+      - quickbite-net
+
+networks:
+  web:
+    external: true
+  internal-net:
+    external: true
+  quickbite-net:
+    external: true

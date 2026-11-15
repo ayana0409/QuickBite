@@ -1,0 +1,52 @@
+services:
+  order-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickbite-order
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '(: < /dev/tcp/localhost/8080) > /dev/null 2>&1 || exit 1'"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 25s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.docker.allownonrunning=true"
+      - "traefik.http.routers.order.rule=(Host(`thuandd.io.vn`) || Host(`traefik`)) && PathPrefix(`/quick-bite-order`)"
+      - "traefik.http.routers.order.entrypoints=web"
+      - "traefik.http.services.order.loadbalancer.server.port=8080"
+      - "traefik.http.routers.order.middlewares=order-sablier@docker,order-stripprefix@docker"
+      - "traefik.http.middlewares.order-stripprefix.stripprefix.prefixes=/quick-bite-order"
+      - "sablier.enable=true"
+      - "sablier.group=order"
+      - "traefik.http.middlewares.order-sablier.plugin.sablier.sablierurl=http://sablier:10000"
+      - "traefik.http.middlewares.order-sablier.plugin.sablier.sessionduration=15m"
+      - "traefik.http.middlewares.order-sablier.plugin.sablier.names=quickbite-order"
+      - "traefik.http.middlewares.order-sablier.plugin.sablier.mode=blocking"
+      - "traefik.http.middlewares.order-sablier.plugin.sablier.blocking.timeout=60s"
+    networks:
+      - web
+      - internal-net
+      - quickbite-net
+
+networks:
+  web:
+    external: true
+  internal-net:
+    external: true
+  quickbite-net:
+    external: true

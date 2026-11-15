@@ -1,0 +1,49 @@
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: quickbite-gateway
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+    healthcheck:
+      test: ["CMD-SHELL", "node -e 'require(\"http\").get(\"http://localhost:3001/\", (res) => process.exit(0)).on(\"error\", () => process.exit(1))'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      # Router chính đón toàn bộ /api từ frontend
+      - "traefik.http.routers.gateway.rule=Host(`thuandd.io.vn`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.gateway.entrypoints=web"
+      - "traefik.http.services.gateway.loadbalancer.server.port=3001"
+      # Router truy cập trực tiếp Swagger / giao diện gateway tại /quick-bite-gw
+      - "traefik.http.routers.gateway-direct.rule=Host(`thuandd.io.vn`) && PathPrefix(`/quick-bite-gw`)"
+      - "traefik.http.routers.gateway-direct.entrypoints=web"
+      - "traefik.http.routers.gateway-direct.service=gateway"
+      - "traefik.http.routers.gateway-direct.middlewares=gateway-stripprefix@docker"
+      - "traefik.http.middlewares.gateway-stripprefix.stripprefix.prefixes=/quick-bite-gw"
+    networks:
+      - web
+      - internal-net
+      - quickbite-net
+
+networks:
+  web:
+    external: true
+  internal-net:
+    external: true
+  quickbite-net:
+    external: true

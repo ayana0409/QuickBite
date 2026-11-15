@@ -1,0 +1,49 @@
+services:
+  quickbite-identity:
+    build: .
+    container_name: quickbite-identity
+    restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    env_file:
+      - .env
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - "bash -c '(: < /dev/tcp/localhost/8080) > /dev/null 2>&1 || exit 1'"
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=web"
+      - "traefik.docker.allownonrunning=true"
+      - "traefik.http.routers.identity.rule=Host(`identity.thuandd.io.vn`)"
+      - "traefik.http.routers.identity.entrypoints=web"
+      - "traefik.http.services.identity.loadbalancer.server.port=8080"
+      - "sablier.enable=true"
+      - "sablier.group=identity"
+      - "traefik.http.routers.identity.middlewares=identity-sablier@docker"
+      - "traefik.http.middlewares.identity-sablier.plugin.sablier.sablierurl=http://sablier:10000"
+      - "traefik.http.middlewares.identity-sablier.plugin.sablier.sessionduration=20m"
+      - "traefik.http.middlewares.identity-sablier.plugin.sablier.names=quickbite-identity"
+      - "traefik.http.middlewares.identity-sablier.plugin.sablier.dynamic.theme=hacker-terminal"
+      - "traefik.http.middlewares.identity-sablier.plugin.sablier.dynamic.displayname=Identity Service"
+      - "traefik.http.middlewares.identity-sablier.plugin.sablier.dynamic.refreshfrequency=2s"
+    networks:
+      - web
+      - internal-net
+
+networks:
+  web:
+    external: true
+  internal-net:
+    external: true
