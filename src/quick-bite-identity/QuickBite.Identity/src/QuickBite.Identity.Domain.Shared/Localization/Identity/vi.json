@@ -8,6 +8,8 @@
     "Account": "Tài khoản",
     "Roles": "Vai trò",
     "Welcome": "Chào mừng bạn",
-    "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io."
+    "LongWelcomeMessage": "Chào mừng bạn đến ứng dụng. Đây là một dự án khởi nghiệp dựa trên khung ABP. Để biết thêm thông tin, hãy truy cập abp.io.",
+    "Permission:Device": "Quản lý thiết bị",
+    "Permission:XiaomiNwtAirConditioner": "Điều hòa Xiaomi NWT"
   }
 }

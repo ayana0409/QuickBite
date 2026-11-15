@@ -177,6 +177,31 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 ? OpenIddictConstants.ClientTypes.Confidential
                 : OpenIddictConstants.ClientTypes.Public;
 
+            var redirectUris = new List<string>(clientConfig.RedirectUris);
+            var postLogoutRedirectUris = new List<string>(clientConfig.PostLogoutRedirectUris);
+            var clientUri = clientConfig.ClientUri;
+
+            // Resolve defaults from RootUrl if specified
+            if (!string.IsNullOrWhiteSpace(clientConfig.RootUrl))
+            {
+                var rootUrl = clientConfig.RootUrl.TrimEnd('/');
+                if (string.IsNullOrWhiteSpace(clientUri))
+                {
+                    clientUri = rootUrl;
+                }
+                if (redirectUris.Count == 0)
+                {
+                    redirectUris.Add(rootUrl);
+                    redirectUris.Add($"{rootUrl}/signin-oidc");
+                    redirectUris.Add($"{rootUrl}/api/auth/callback/oidc");
+                }
+                if (postLogoutRedirectUris.Count == 0)
+                {
+                    postLogoutRedirectUris.Add($"{rootUrl}/login");
+                    postLogoutRedirectUris.Add($"{rootUrl}/signout-callback-oidc");
+                }
+            }
+
             await CreateApplicationAsync(
                 name: clientConfig.ClientId,
                 type: clientType,
@@ -185,13 +210,14 @@ public class OpenIddictDataSeedContributor : IDataSeedContributor, ITransientDep
                 secret: clientConfig.Secret,
                 grantTypes: MapGrantTypes(clientConfig.GrantTypes),
                 scopes: ResolveScopes(clientConfig.Scopes),
-                redirectUri: clientConfig.RedirectUris.Count > 0
-                    ? string.Join(",", clientConfig.RedirectUris)
+                redirectUri: redirectUris.Count > 0
+                    ? string.Join(",", redirectUris)
                     : null,
-                clientUri: clientConfig.ClientUri,
-                postLogoutRedirectUri: clientConfig.PostLogoutRedirectUris.Count > 0
-                    ? string.Join(",", clientConfig.PostLogoutRedirectUris)
-                    : null
+                clientUri: clientUri,
+                postLogoutRedirectUri: postLogoutRedirectUris.Count > 0
+                    ? string.Join(",", postLogoutRedirectUris)
+                    : null,
+                permissions: clientConfig.Permissions.Count > 0 ? clientConfig.Permissions : null
             );
         }
     }

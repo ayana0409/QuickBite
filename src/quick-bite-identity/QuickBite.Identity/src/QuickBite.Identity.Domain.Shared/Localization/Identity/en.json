@@ -8,6 +8,8 @@
     "Account": "Accounts",
     "Roles": "Roles",
     "Welcome": "Welcome",
-    "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io."
+    "LongWelcomeMessage": "Welcome to the application. This is a startup project based on the ABP framework. For more information, visit abp.io.",
+    "Permission:Device": "Device Management",
+    "Permission:XiaomiNwtAirConditioner": "Xiaomi NWT Air Conditioner"
   }
 }

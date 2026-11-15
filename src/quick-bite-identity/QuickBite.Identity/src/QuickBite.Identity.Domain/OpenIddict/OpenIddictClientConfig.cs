@@ -58,4 +58,13 @@ public class OpenIddictClientConfig
 
     /// <summary>URI of the client application itself</summary>
     public string? ClientUri { get; set; }
+
+    /// <summary>Root URL for the client application (convenience for generating default URIs)</summary>
+    public string? RootUrl { get; set; }
+
+    /// <summary>
+    /// ABP permissions to grant to this client (e.g. "xiaomi-nwt-airconditioner").
+    /// Seeded via IPermissionDataSeeder using ClientPermissionValueProvider.
+    /// </summary>
+    public List<string> Permissions { get; set; } = new();
 }
