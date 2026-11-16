@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.Instant;
@@ -20,7 +19,7 @@ public class HealthController {
     private final KafkaHealthIndicator kafkaHealthIndicator;
     private final SystemResourcesHealthIndicator sysHealthIndicator;
 
-    @GetMapping({"/", "/health", "/api/health", "/api/v1/health", "/v1/health"})
+    @GetMapping({ "/", "/health", "/api/health", "/api/v1/health", "/v1/health" })
     public ResponseEntity<HealthResponse> getHealth() {
         long startTime = System.currentTimeMillis();
 
