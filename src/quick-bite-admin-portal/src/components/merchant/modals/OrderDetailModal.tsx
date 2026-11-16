@@ -11,6 +11,8 @@ import {
   Receipt,
   Loader2,
   AlertCircle,
+  Utensils,
+  Truck,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import type { Order, DeliveryAddressDetails } from '../../../types';
@@ -23,7 +25,9 @@ interface OrderDetailModalProps {
   orderSummary: Order | null;
   onOpenCancel: (order: Order) => void;
   onSubmitOrder: (orderId: string) => void;
+  onStartPreparing?: (orderId: string) => void;
   onCompletePreparing: (orderId: string) => void;
+  onCompleteOrder?: (orderId: string) => void;
   isActionLoading?: boolean;
 }
 
@@ -33,7 +37,9 @@ export default function OrderDetailModal({
   orderSummary,
   onOpenCancel,
   onSubmitOrder,
+  onStartPreparing,
   onCompletePreparing,
+  onCompleteOrder,
   isActionLoading = false,
 }: OrderDetailModalProps) {
   // Fetch full order details when modal opens
@@ -53,7 +59,9 @@ export default function OrderDetailModal({
 
   // Status conditions
   const isDraft = statusLower === 'draft';
+  const isConfirmed = statusLower === 'confirmed';
   const isPreparing = statusLower === 'preparing';
+  const isDelivering = statusLower === 'delivering';
   const canCancel = ['draft', 'pending', 'waitingpayment', 'waitingstock', 'waitinginventory', 'confirmed', 'preparing'].includes(statusLower);
 
   // Address parsing
@@ -282,20 +290,46 @@ export default function OrderDetailModal({
               </button>
             )}
 
-            {/* 2. Complete Preparing Button (for Preparing orders) */}
+            {/* 2. Start Preparing Button (for Confirmed orders) */}
+            {isConfirmed && onStartPreparing && (
+              <button
+                type="button"
+                onClick={() => onStartPreparing(order.id)}
+                disabled={isActionLoading}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-blue-600/20 active:scale-98 transition-all cursor-pointer"
+              >
+                <Utensils className="w-3.5 h-3.5" />
+                <span>Nhận đơn & Nấu món</span>
+              </button>
+            )}
+
+            {/* 3. Start Delivering Button (for Preparing orders) */}
             {isPreparing && (
               <button
                 type="button"
                 onClick={() => onCompletePreparing(order.id)}
                 disabled={isActionLoading}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 active:scale-98 transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-amber-600/20 active:scale-98 transition-all cursor-pointer"
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Chuẩn bị xong</span>
+                <Truck className="w-3.5 h-3.5" />
+                <span>Bắt đầu giao hàng</span>
               </button>
             )}
 
-            {/* 3. Cancel Order Button (if cancellable) */}
+            {/* 4. Complete Order Button (for Delivering orders) */}
+            {isDelivering && onCompleteOrder && (
+              <button
+                type="button"
+                onClick={() => onCompleteOrder(order.id)}
+                disabled={isActionLoading}
+                className="inline-flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-bold rounded-xl shadow-md shadow-emerald-600/20 active:scale-98 transition-all cursor-pointer"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Đã giao thành công</span>
+              </button>
+            )}
+
+            {/* 5. Cancel Order Button (if cancellable) */}
             {canCancel && (
               <button
                 type="button"

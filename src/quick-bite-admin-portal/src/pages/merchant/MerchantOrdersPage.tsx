@@ -10,6 +10,8 @@ import {
   FileText,
   Clock,
   Send,
+  Utensils,
+  Truck,
 } from 'lucide-react';
 import { orderService } from '../../services/orderService';
 import type { Order, OrderStatus } from '../../types';
@@ -151,10 +153,24 @@ export default function MerchantOrdersPage() {
     });
   };
 
+  const handleStartPreparing = (orderId: string) => {
+    updateStatus({
+      orderId,
+      status: 'Preparing',
+    });
+  };
+
   const handleCompletePreparing = (orderId: string) => {
     updateStatus({
       orderId,
       status: 'Delivering',
+    });
+  };
+
+  const handleCompleteOrder = (orderId: string) => {
+    updateStatus({
+      orderId,
+      status: 'Completed',
     });
   };
 
@@ -295,7 +311,9 @@ export default function MerchantOrdersPage() {
                 {orders.map((order) => {
                   const statusLower = (order.status || '').toLowerCase().trim();
                   const isDraft = statusLower === 'draft';
+                  const isConfirmed = statusLower === 'confirmed';
                   const isPreparing = statusLower === 'preparing';
+                  const isDelivering = statusLower === 'delivering';
                   const canCancel = ['draft', 'pending', 'waitingpayment', 'waitingstock', 'waitinginventory', 'confirmed', 'preparing'].includes(statusLower);
 
                   return (
@@ -358,17 +376,45 @@ export default function MerchantOrdersPage() {
                             </button>
                           )}
 
-                          {/* 3. Nút Chuẩn bị xong (nếu là Preparing) */}
+                          {/* 3. Nút Nhận đơn / Chuẩn bị món (khi Confirmed) */}
+                          {isConfirmed && (
+                            <button
+                              type="button"
+                              onClick={() => handleStartPreparing(order.id)}
+                              disabled={isAnyActionPending}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
+                              title="Nhận đơn và bắt đầu chuẩn bị món"
+                            >
+                              <Utensils className="w-3.5 h-3.5" />
+                              <span>Nấu món</span>
+                            </button>
+                          )}
+
+                          {/* 4. Nút Giao hàng (khi Preparing) */}
                           {isPreparing && (
                             <button
                               type="button"
                               onClick={() => handleCompletePreparing(order.id)}
                               disabled={isAnyActionPending}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
+                              title="Đã nấu xong, chuyển sang đang giao hàng"
+                            >
+                              <Truck className="w-3.5 h-3.5" />
+                              <span>Giao hàng</span>
+                            </button>
+                          )}
+
+                          {/* 5. Nút Hoàn thành (khi Delivering) */}
+                          {isDelivering && (
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteOrder(order.id)}
+                              disabled={isAnyActionPending}
                               className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold rounded-lg shadow-xs transition-all cursor-pointer"
-                              title="Đánh dấu đã chế biến xong, chuyển sang đang giao"
+                              title="Đánh dấu đã giao hàng thành công"
                             >
                               <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Xong</span>
+                              <span>Đã giao</span>
                             </button>
                           )}
 
@@ -418,7 +464,9 @@ export default function MerchantOrdersPage() {
         orderSummary={selectedOrder}
         onOpenCancel={openCancelModal}
         onSubmitOrder={(id) => submitOrder(id)}
+        onStartPreparing={handleStartPreparing}
         onCompletePreparing={handleCompletePreparing}
+        onCompleteOrder={handleCompleteOrder}
         isActionLoading={isAnyActionPending}
       />
 

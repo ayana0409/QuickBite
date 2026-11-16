@@ -45,13 +45,6 @@ public class OrderMockFulfillmentLocalEventHandler :
         var options = MockFulfillmentOptions.FromEnvOrConfig(_configuration);
         _logger.LogInformation("[MockFulfillmentHandler] Received OrderConfirmedEto for OrderId: {OrderId}. Enabled={Enabled}", eventData.OrderId, options.Enabled);
 
-        if (!options.Enabled)
-        {
-            return;
-        }
-
-        _logger.LogInformation("[MockFulfillmentHandler] Processing OrderId: {OrderId}", eventData.OrderId);
-
         var order = await _orderRepository.FindAsync(eventData.OrderId);
         if (order == null)
         {
@@ -65,34 +58,27 @@ public class OrderMockFulfillmentLocalEventHandler :
             return;
         }
 
-        // 1. Immediately transition to Preparing
+        // 1. Automatically transition Confirmed -> Preparing upon successful payment authorization
+        // Order domain automatically emits OrderPreparingEto via Outbox
         if (order.Status == OrderStatus.Confirmed)
         {
             order.UpdateStatus(OrderStatus.Preparing);
             await _orderRepository.UpdateAsync(order, autoSave: true);
-            _logger.LogInformation("[MockFulfillmentHandler] Order {OrderId} status updated to PREPARING.", order.Id);
-
-            // Publish OrderPreparingEto
-            var preparingEto = new OrderPreparingEto
-            {
-                EventId = Guid.NewGuid(),
-                OrderId = order.Id,
-                CorrelationId = order.CorrelationId,
-                OccurredAt = DateTime.UtcNow,
-                Items = order.OrderItems.Select(x => new OrderItemEto
-                {
-                    FoodItemId = x.Sku,
-                    ItemName = x.ItemName,
-                    Quantity = x.Quantity,
-                    UnitPrice = x.UnitPrice,
-                    SelectedVariantName = x.SelectedVariantName ?? string.Empty,
-                    SelectedToppings = x.SelectedToppings
-                }).ToList()
-            };
-            await _distributedEventBus.PublishAsync(preparingEto);
+            _logger.LogInformation("[MockFulfillmentHandler] Order {OrderId} status automatically updated to PREPARING.", order.Id);
         }
 
-        // 2. Calculate preparation time: total item quantity * options.PreparationTimePerItemSeconds
+        // 2. Check if automated simulation (Demo mode) is enabled in appsettings.json
+        if (!options.Enabled)
+        {
+            _logger.LogInformation(
+                "[MockFulfillmentHandler] Demo mode is DISABLED (MockFulfillment:Enabled=false). Order {OrderId} remains in PREPARING waiting for manual Merchant/Shipper action.",
+                eventData.OrderId);
+            return;
+        }
+
+        _logger.LogInformation("[MockFulfillmentHandler] Demo mode is ENABLED. Enqueuing automated simulation for OrderId: {OrderId}", eventData.OrderId);
+
+        // 3. Calculate preparation time: total item quantity * options.PreparationTimePerItemSeconds
         int totalQuantity = order.OrderItems.Sum(x => x.Quantity);
         if (totalQuantity <= 0) totalQuantity = 1;
 
@@ -101,7 +87,7 @@ public class OrderMockFulfillmentLocalEventHandler :
             "[MockFulfillmentHandler] Order {OrderId} total items: {Qty}. Preparation delay: {PrepSeconds}s.",
             order.Id, totalQuantity, prepDelaySeconds);
 
-        // 3. Enqueue SimulateOrderDeliveryJob with delay
+        // 4. Enqueue SimulateOrderDeliveryJob with delay
         await _backgroundJobManager.EnqueueAsync(
             new SimulateOrderDeliveryJobArgs { OrderId = order.Id },
             delay: TimeSpan.FromSeconds(prepDelaySeconds)

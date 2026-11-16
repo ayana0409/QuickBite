@@ -55,31 +55,12 @@ public class SimulateOrderDeliveryJob : AsyncBackgroundJob<SimulateOrderDelivery
             return;
         }
 
-        // 1. Transition status to Delivering
+        // 1. Transition status to Delivering (Order domain automatically emits OrderDeliveringEto via Outbox)
         order.UpdateStatus(OrderStatus.Delivering);
         await _orderRepository.UpdateAsync(order, autoSave: true);
         _logger.LogInformation("[MockFulfillmentJob] Order {OrderId} status updated to DELIVERING.", order.Id);
 
-        // 2. Publish OrderDeliveringEto to distributed event bus
-        var eventEto = new OrderDeliveringEto
-        {
-            EventId = Guid.NewGuid(),
-            OrderId = order.Id,
-            CorrelationId = order.CorrelationId,
-            OccurredAt = DateTime.UtcNow,
-            Items = order.OrderItems.Select(x => new OrderItemEto
-            {
-                FoodItemId = x.Sku,
-                ItemName = x.ItemName,
-                Quantity = x.Quantity,
-                UnitPrice = x.UnitPrice,
-                SelectedVariantName = x.SelectedVariantName ?? string.Empty,
-                SelectedToppings = x.SelectedToppings
-            }).ToList()
-        };
-        await _distributedEventBus.PublishAsync(eventEto);
-
-        // 3. Random distance between 2.0 and 6.0 km
+        // 2. Random distance between 2.0 and 6.0 km
         double distanceKm = _random.NextDouble() * (6.0 - 2.0) + 2.0;
         var options = MockFulfillmentOptions.FromEnvOrConfig(_configuration);
         int deliveryDelaySeconds = (int)Math.Round(distanceKm * options.DeliveryTimePerKmSeconds);

@@ -46,29 +46,9 @@ public class SimulateOrderCompletedJob : AsyncBackgroundJob<SimulateOrderComplet
             return;
         }
 
-        // 1. Transition status to Completed
+        // 1. Transition status to Completed (Order domain automatically emits OrderCompletedEto via Outbox)
         order.UpdateStatus(OrderStatus.Completed);
         await _orderRepository.UpdateAsync(order, autoSave: true);
         _logger.LogInformation("[MockFulfillmentJob] Order {OrderId} status updated to COMPLETED.", order.Id);
-
-        // 2. Publish OrderCompletedEto to distributed event bus (consumed by Inventory Service to deduct stock)
-        var eventEto = new OrderCompletedEto
-        {
-            EventId = Guid.NewGuid(),
-            OrderId = order.Id,
-            CorrelationId = order.CorrelationId,
-            OccurredAt = DateTime.UtcNow,
-            Items = order.OrderItems.Select(x => new OrderItemEto
-            {
-                FoodItemId = x.Sku,
-                ItemName = x.ItemName,
-                Quantity = x.Quantity,
-                UnitPrice = x.UnitPrice,
-                SelectedVariantName = x.SelectedVariantName ?? string.Empty,
-                SelectedToppings = x.SelectedToppings
-            }).ToList()
-        };
-        await _distributedEventBus.PublishAsync(eventEto);
-        _logger.LogInformation("[MockFulfillmentJob] Published OrderCompletedEto for OrderId: {OrderId}", order.Id);
     }
 }

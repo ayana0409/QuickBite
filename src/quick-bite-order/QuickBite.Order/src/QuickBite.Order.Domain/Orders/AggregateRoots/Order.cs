@@ -1,6 +1,7 @@
 using QuickBite.Order.Domain.Enums;
 using QuickBite.Order.Domain.Orders.Entities;
 using QuickBite.Order.Domain.Orders.ValueObjects;
+using QuickBite.Order.Domain.Shared.Event;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -260,6 +261,61 @@ public class Order : FullAuditedAggregateRoot<Guid>
         Status = newStatus;
         Version++;
         AddStatusHistory(oldStatus, newStatus, note);
+
+        // Automatically emit distributed ETO when status transitions (ABP Transactional Outbox)
+        EmitStatusChangedEvent(newStatus);
+    }
+
+    private void EmitStatusChangedEvent(OrderStatus newStatus)
+    {
+        switch (newStatus)
+        {
+            case OrderStatus.Preparing:
+                AddDistributedEvent(new OrderPreparingEto
+                {
+                    EventId = Guid.NewGuid(),
+                    OrderId = Id,
+                    CorrelationId = CorrelationId,
+                    OccurredAt = DateTime.UtcNow,
+                    Items = MapToItemEtos()
+                });
+                break;
+
+            case OrderStatus.Delivering:
+                AddDistributedEvent(new OrderDeliveringEto
+                {
+                    EventId = Guid.NewGuid(),
+                    OrderId = Id,
+                    CorrelationId = CorrelationId,
+                    OccurredAt = DateTime.UtcNow,
+                    Items = MapToItemEtos()
+                });
+                break;
+
+            case OrderStatus.Completed:
+                AddDistributedEvent(new OrderCompletedEto
+                {
+                    EventId = Guid.NewGuid(),
+                    OrderId = Id,
+                    CorrelationId = CorrelationId,
+                    OccurredAt = DateTime.UtcNow,
+                    Items = MapToItemEtos()
+                });
+                break;
+        }
+    }
+
+    private List<OrderItemEto> MapToItemEtos()
+    {
+        return OrderItems.Select(x => new OrderItemEto
+        {
+            FoodItemId = x.Sku,
+            ItemName = x.ItemName,
+            Quantity = x.Quantity,
+            UnitPrice = x.UnitPrice,
+            SelectedVariantName = x.SelectedVariantName ?? string.Empty,
+            SelectedToppings = x.SelectedToppings
+        }).ToList();
     }
 
     private void AddStatusHistory(OrderStatus? fromStatus, OrderStatus toStatus, string note)
