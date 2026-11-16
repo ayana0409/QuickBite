@@ -22,10 +22,10 @@ services:
       start_period: 15s
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=web"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.docker.allownonrunning=true"
       - "traefik.http.routers.catalog.rule=(Host(`thuandd.io.vn`) || Host(`traefik`)) && PathPrefix(`/quick-bite-catalog`)"
-      - "traefik.http.routers.catalog.entrypoints=dokploy-network"
+      - "traefik.http.routers.catalog.entrypoints=web"
       - "traefik.http.services.catalog.loadbalancer.server.port=3000"
       - "traefik.http.routers.catalog.middlewares=catalog-stripprefix@docker,catalog-sablier@docker"
       - "traefik.http.middlewares.catalog-stripprefix.stripprefix.prefixes=/quick-bite-catalog"
