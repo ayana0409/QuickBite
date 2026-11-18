@@ -24,7 +24,7 @@ services:
       start_period: 5s
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=web"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.docker.allownonrunning=true"
       - "traefik.http.routers.identity.rule=Host(`identity.thuandd.io.vn`)"
       - "traefik.http.routers.identity.entrypoints=web"
@@ -41,8 +41,11 @@ services:
     networks:
       - web
       - internal-net
+      - dokploy-network
 
 networks:
+  dokploy-network:
+    external: true
   web:
     external: true
   internal-net:
