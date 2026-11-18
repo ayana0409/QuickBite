@@ -24,7 +24,7 @@ services:
       start_period: 25s
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=web"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.docker.allownonrunning=true"
       - "traefik.http.routers.order.rule=(Host(`thuandd.io.vn`) || Host(`traefik`)) && PathPrefix(`/quick-bite-order`)"
       - "traefik.http.routers.order.entrypoints=web"
@@ -42,8 +42,11 @@ services:
       - web
       - internal-net
       - quickbite-net
+      - dokploy-network
 
 networks:
+  dokploy-network:
+    external: true
   web:
     external: true
   internal-net:
