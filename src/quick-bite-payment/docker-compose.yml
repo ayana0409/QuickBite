@@ -24,7 +24,7 @@ services:
           memory: 512M
     labels:
       - "traefik.enable=true"
-      - "traefik.docker.network=web"
+      - "traefik.docker.network=dokploy-network"
       - "traefik.http.routers.payment.rule=(Host(`thuandd.io.vn`) || Host(`traefik`)) && PathPrefix(`/quick-bite-payment`)"
       - "traefik.http.routers.payment.entrypoints=web"
       - "traefik.http.services.payment.loadbalancer.server.port=8084"
@@ -34,8 +34,11 @@ services:
       - web
       - internal-net
       - quickbite-net
+      - dokploy-network
 
 networks:
+  dokploy-network:
+    external: true
   web:
     external: true
   internal-net:
