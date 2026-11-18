@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Multi-stage Dockerfile for QuickBite Payment Service (Spring Boot - Java 21)
 
 # Stage 1: Build stage
@@ -7,11 +8,11 @@ WORKDIR /app
 
 # Copy pom.xml and download dependencies
 COPY pom.xml ./
-RUN mvn dependency:go-offline -B
+RUN --mount=type=cache,target=/root/.m2 mvn dependency:go-offline -B
 
 # Copy source code and package application
 COPY src ./src
-RUN mvn package -DskipTests
+RUN --mount=type=cache,target=/root/.m2 mvn package -DskipTests
 
 # Stage 2: Production runtime stage
 FROM eclipse-temurin:21-jre-alpine AS runner
